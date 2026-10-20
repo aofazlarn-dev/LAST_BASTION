@@ -152,6 +152,60 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .btn.skip { justify-self: start; font-size: 11.5px; padding: 2px 8px; }
 .wave-left { font-size: 12px; font-weight: 700; color: #ff8a73; }
 .meter.camp i { background: #c98a2e; }
+.meter.xp { height: 10px; }
+.meter.xp i { background: #d9b84a; }
+.meter.xp span { font-size: 9.5px; line-height: 10px; }
+
+.bag-btn {
+  position: fixed; width: 64px; height: 64px; border-radius: 50%;
+  right: calc(env(safe-area-inset-right, 0px) + 16px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 196px);
+  display: grid; place-content: center; background: var(--panel); color: var(--ink);
+  border: 2px solid var(--panel-line); font: 700 12.5px var(--font-ui); cursor: pointer; touch-action: manipulation;
+}
+.bag-btn span { font-family: var(--font-pixel); font-size: 9px; color: var(--ink-dim); }
+.bag-btn.new { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(226, 176, 74, 0.25); }
+.bag-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.inv {
+  position: fixed; z-index: 5; display: grid; gap: 10px;
+  right: calc(env(safe-area-inset-right, 0px) + 118px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  width: min(320px, calc(100vw - 134px)); max-height: calc(100vh - 32px); overflow-y: auto;
+  background: #161b13; border: 1px solid var(--panel-line); border-radius: 8px; padding: 12px;
+}
+.inv-head { display: flex; align-items: center; gap: 8px; }
+.inv-head b { font-size: 16px; }
+.inv-head span { flex: 1; font-size: 12px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.inv-stats { display: flex; flex-wrap: wrap; gap: 3px 10px; font-size: 11.5px; color: var(--ink-dim); }
+.inv-stats b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.inv-equip { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.inv-slot { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-dim); }
+.inv-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+.inv-cell {
+  position: relative; aspect-ratio: 1; min-width: 0; max-width: 100%; display: grid; place-items: center;
+  background: rgba(0, 0, 0, 0.35); border: 1.5px solid var(--r, var(--panel-line)); border-radius: 5px;
+  color: var(--r, var(--ink-dim)); padding: 0; cursor: pointer; font: 600 10px var(--font-ui);
+}
+.inv-slot .inv-cell { width: 44px; }
+.inv-cell svg { width: 62%; height: 62%; }
+.inv-cell .ilv { position: absolute; right: 3px; bottom: 1px; font-size: 9px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.inv-cell.empty { border-style: dashed; border-color: rgba(214, 196, 140, 0.15); cursor: default; color: var(--ink-dim); font-size: 10px; }
+.inv-cell.sel { box-shadow: 0 0 0 2px var(--ink); }
+.inv-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.inv-detail { border-top: 1px solid var(--panel-line); padding-top: 9px; display: grid; gap: 5px; min-height: 64px; }
+.inv-empty { margin: 0; font-size: 12px; color: var(--ink-dim); }
+.inv-name { font-size: 15px; font-weight: 700; }
+.inv-meta { font-size: 11.5px; color: var(--ink-dim); }
+.inv-stat { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 13px; }
+.inv-stat li { display: grid; grid-template-columns: 1fr auto 64px; gap: 8px; }
+.inv-stat span { color: var(--ink-dim); }
+.inv-stat b { font-variant-numeric: tabular-nums; text-align: right; }
+.inv-stat em { font-style: normal; font-size: 12px; font-variant-numeric: tabular-nums; }
+.inv-stat em.up { color: #7fcf6a; }
+.inv-stat em.down { color: #ff8a73; }
+.inv-act { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 3px; }
+.inv-act .btn { padding: 6px 6px; font-size: 12.5px; }
 
 .banner {
   position: fixed; left: 50%; transform: translateX(-50%);
@@ -235,13 +289,14 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 }
 @media (prefers-reduced-motion: reduce) { #minimap, .hint { transition: none; } }
 @media (max-height: 560px) { .hud-top .stats, .hud-top .step { display: none; } }
+@media (max-height: 460px) { .bag-btn { bottom: calc(env(safe-area-inset-bottom, 0px) + 120px); right: calc(env(safe-area-inset-right, 0px) + 88px); } }
 </style>
 
 <div id="game" tabindex="0" aria-label="พื้นที่เกม คลิกที่พื้นเพื่อเดิน หรือใช้ WASD และปุ่มลูกศร"></div>
 
 <div class="hud hud-top">
   <div class="brand">SURVIVAL HERO DEFENSE</div>
-  <div class="step">ต้นแบบ <b>ขั้น 5 / 8</b> · กลางวัน/กลางคืนและ Wave</div>
+  <div class="step">ต้นแบบ <b>ขั้น 6 / 8</b> · เลเวลและของดรอป</div>
   <div class="clock" id="clock">
     <div class="clock-row"><span id="clock-label">วันที่ 1 / 5 · กลางวัน</span><span id="clock-time">ค่ำใน 4:00</span></div>
     <div class="clock-bar"><i id="clock-fill"></i></div>
@@ -258,6 +313,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
     <div class="meter hp"><i id="hp-fill"></i><span id="hp-text">120 / 120</span></div>
     <div class="camp-tag" id="camp-tag" hidden>อยู่ในเขตค่าย · HP กำลังฟื้น</div>
     <div class="meter mp"><i id="mp-fill"></i><span id="mp-text">100 / 100</span></div>
+    <div class="meter xp"><i id="xp-fill"></i><span id="xp-text">Lv 1</span></div>
   </div>
   <dl class="stats">
     <dt>Hero</dt><dd><span class="team-dot"></span>Archer · ทีม 1</dd>
@@ -277,7 +333,17 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 </div>
 
 <div class="hud hint" id="hint">
-  <span id="hint-keys"><kbd>WASD</kbd> หรือ<kbd>คลิก</kbd>เพื่อเดิน · ยืนติดต้นไม้/หินเพื่อเก็บ · <kbd>B</kbd> สร้าง · <kbd>Q</kbd> สกิล · <kbd>H</kbd> กลับฐาน · <kbd>Esc</kbd> เมนู</span>
+  <span id="hint-keys"><kbd>WASD</kbd> หรือ<kbd>คลิก</kbd>เพื่อเดิน · ยืนติดต้นไม้/หินเพื่อเก็บ · <kbd>B</kbd> สร้าง · <kbd>Q</kbd> สกิล · <kbd>I</kbd> กระเป๋า · <kbd>H</kbd> กลับฐาน · <kbd>Esc</kbd> เมนู</span>
+</div>
+
+<button type="button" class="bag-btn" id="bag-btn" aria-expanded="false" aria-controls="inv">กระเป๋า<span>I</span></button>
+
+<div class="inv" id="inv" hidden>
+  <div class="inv-head"><b>กระเป๋า</b><span id="inv-count">0 / 12</span><button type="button" class="btn" id="inv-close" aria-label="ปิดกระเป๋า">ปิด</button></div>
+  <div class="inv-stats" id="inv-stats"></div>
+  <div class="inv-equip" id="inv-equip"></div>
+  <div class="inv-grid" id="inv-grid"></div>
+  <div class="inv-detail" id="inv-detail"></div>
 </div>
 
 <div class="build-dock">
@@ -367,6 +433,30 @@ const DATA = {
     archer: { hp: 120, mp: 100, atk: 14, def: 3, as: 1.4, spd: 170, rng: 220, crit: 0.15, skill: "volley" },
   },
   hero: { mpRegen: 6, campRegenPct: 0.1, respawnSec: 10, recallSec: 3, arrowSpeed: 640, arrowLife: 0.5 },
+  levels: { max: 50, hp: 12, atk: 2, def: 0.6, healOnLevel: 0.3, nightBonus: 40 },
+  items: {
+    bag: 12, pickupR: 30, lootSec: 120,
+    dropChance: { normal: 0.08, wave: 0.06 },
+    rarity: [
+      { key: "common", name: "ธรรมดา", weight: 70, affixes: 0, mul: 1 },
+      { key: "rare", name: "หายาก", weight: 25, affixes: 1, mul: 1.15 },
+      { key: "epic", name: "มหากาพย์", weight: 5, affixes: 2, mul: 1.35 },
+    ],
+    names: {
+      weapon: [["ธนูไม้", "ธนูสั้น", "ธนูพราน"], ["ธนูยาวพราน", "ธนูกระดูกหมาป่า", "ธนูไม้มะเกลือ"], ["ธนูเงาจันทร์", "ธนูเพลิงอรุณ", "ธนูพายุคลั่ง"]],
+      armor: [["เสื้อหนังเก่า", "เสื้อผ้าป่าน", "เสื้อนวม"], ["เกราะหนังหมาป่า", "เสื้อคลุมพราน", "เกราะไม้ไผ่สาน"], ["เกราะเหล็กกล้า", "เสื้อคลุมรัตติกาล", "เกราะเกล็ดงู"]],
+    },
+    // ค่าเสริมสุ่ม: ค่าตั้งต้น + ต่อเลเวลไอเทม
+    affixes: {
+      atk: { name: "พลังโจมตี", base: 1, per: 0.45 },
+      as: { name: "ความเร็วยิง", base: 0.05, per: 0.003, pct: true },
+      crit: { name: "คริติคอล", base: 0.03, per: 0.0012, pct: true },
+      hp: { name: "พลังชีวิต", base: 8, per: 2.2 },
+      def: { name: "ป้องกัน", base: 0.8, per: 0.15 },
+      spd: { name: "ความเร็วเดิน", base: 6, per: 0.25 },
+    },
+    salvage: { common: { wood: 3 }, rare: { wood: 6, stone: 3 }, epic: { wood: 12, stone: 8 } },
+  },
   skills: {
     volley: { name: "ยิงกระจาย", mp: 20, cd: 6, arrows: 7, spread: 0.95, dmgMul: 0.8 },
   },
@@ -457,7 +547,7 @@ const Core = (() => {
       world: { w: size, h: size },
       camp,
       heroes: [],
-      monsters: [], arrows: [], events: [], kills: {},
+      monsters: [], arrows: [], events: [], kills: {}, loot: [],
       units: [], buildings: [], stock: { 1: { ...DATA.stockStart } }, resLeft: {}, claims: {}, mapVersion: 0,
       clock: 0, day: 1, wave: null, field: null, fieldVersion: -1, fieldTick: -999, buildAt: {}, result: null, endless: false,
       spawnTimer: 0,
@@ -465,7 +555,10 @@ const Core = (() => {
     };
     const c = map.n / 2;
     st.buildings.push(makeBuilding(st, "camp", 1, c - 1, c - 1, 2));
-    st.heroes.push(makeHero(st, "p1", 1, "archer", camp.x, camp.y + 90));
+    const hero = makeHero(st, "p1", 1, "archer", camp.x, camp.y + 90);
+    hero.equip.weapon = { id: st.nextId++, slot: "weapon", rarity: "common", rarityIdx: 0, ilv: 1, name: "ธนูไม้ฝึกหัด", stats: { atk: 2 } };
+    recalcStats(hero); hero.hp = hero.maxHp;
+    st.heroes.push(hero);
     for (let i = 0; i < 400 && st.monsters.length < DATA.spawn.population; i++) spawnPack(st);
     updateVision(st);
     return st;
@@ -515,7 +608,89 @@ const Core = (() => {
       face: -Math.PI / 2, ix: 0, iy: 0, path: null, stuck: 0, moving: false,
       spd: c.spd, hp: c.hp, maxHp: c.hp, mp: c.mp, maxMp: c.mp, atk: c.atk, def: c.def, as: c.as, rng: c.rng, crit: c.crit,
       atkCd: 0, skillCd: 0, wantSkill: false, lastHurt: -999, dead: false, respawnAt: 0,
+      lv: 1, exp: 0, bag: [], equip: { weapon: null, armor: null },
     };
+  }
+
+  /* ----- เลเวลและค่าสถานะ ----- */
+  function expToNext(lv) { return Math.round(100 * Math.pow(lv, 1.5)); }
+
+  function recalcStats(h) {
+    const c = DATA.classes[h.cls], G = DATA.levels, L = h.lv - 1;
+    const st = { atk: c.atk + G.atk * L, def: c.def + G.def * L, hp: c.hp + G.hp * L, as: c.as, crit: c.crit, spd: c.spd };
+    let asBonus = 0;
+    for (const it of [h.equip.weapon, h.equip.armor]) {
+      if (!it) continue;
+      for (const [k, v] of Object.entries(it.stats)) { if (k === "as") asBonus += v; else st[k] += v; }
+    }
+    const ratio = h.maxHp ? h.hp / h.maxHp : 1;
+    h.atk = st.atk; h.def = st.def; h.crit = Math.min(0.75, st.crit); h.spd = st.spd; h.as = st.as * (1 + asBonus);
+    h.maxHp = Math.round(st.hp); h.hp = Math.min(h.maxHp, Math.max(1, Math.round(ratio * h.maxHp)));
+  }
+
+  function giveExp(st, team, amount) {
+    for (const h of st.heroes) {
+      if (h.team !== team || h.lv >= DATA.levels.max) continue;
+      h.exp += amount;
+      while (h.lv < DATA.levels.max && h.exp >= expToNext(h.lv)) {
+        h.exp -= expToNext(h.lv); h.lv++;
+        recalcStats(h);
+        if (!h.dead) h.hp = Math.min(h.maxHp, h.hp + h.maxHp * DATA.levels.healOnLevel);
+        st.events.push({ type: "levelUp", id: h.id, lv: h.lv, x: h.x, y: h.y });
+      }
+    }
+  }
+
+  /* ----- ไอเทม ----- */
+  function rollAffix(st, key, ilv, mul) {
+    const a = DATA.items.affixes[key], v = (a.base + a.per * ilv) * mul * (0.85 + rand(st) * 0.3);
+    return a.pct ? Math.round(v * 100) / 100 : key === "def" ? Math.round(v * 10) / 10 : Math.max(1, Math.round(v));
+  }
+
+  function makeItem(st, slot, rarityIdx, ilv) {
+    const R = DATA.items.rarity[rarityIdx], names = DATA.items.names[slot][rarityIdx];
+    const stats = {};
+    if (slot === "weapon") stats.atk = Math.round((3 + ilv * 1.1) * R.mul * (0.9 + rand(st) * 0.2));
+    else { stats.hp = Math.round((12 + ilv * 3.5) * R.mul * (0.9 + rand(st) * 0.2)); stats.def = Math.round((1 + ilv * 0.35) * R.mul * 10) / 10; }
+    const pool = Object.keys(DATA.items.affixes);
+    for (let i = 0; i < R.affixes; i++) {
+      const k = pool[Math.floor(rand(st) * pool.length)];
+      stats[k] = Math.round(((stats[k] || 0) + rollAffix(st, k, ilv, R.mul)) * 100) / 100;
+    }
+    return { id: st.nextId++, slot, rarity: R.key, rarityIdx, ilv, name: names[Math.floor(rand(st) * names.length)], stats };
+  }
+
+  function rollRarity(st, lv) {
+    const W = DATA.items.rarity.map((r, i) => r.weight + (i === 2 ? lv * 0.12 : i === 1 ? lv * 0.25 : 0));
+    let x = rand(st) * W.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < W.length; i++) { x -= W[i]; if (x <= 0) return i; }
+    return 0;
+  }
+
+  function maybeDrop(st, m) {
+    const chance = m.wave ? DATA.items.dropChance.wave : DATA.items.dropChance.normal;
+    if (rand(st) >= chance) return;
+    const item = makeItem(st, rand(st) < 0.55 ? "weapon" : "armor", rollRarity(st, m.lv), m.lv);
+    st.loot.push({ id: st.nextId++, x: m.x, y: m.y, item, ttl: DATA.items.lootSec });
+    st.events.push({ type: "drop", x: m.x, y: m.y, rarity: item.rarity });
+  }
+
+  function stepLoot(st, dt) {
+    const I = DATA.items;
+    for (const l of st.loot) l.ttl -= dt;
+    for (const h of st.heroes) {
+      if (h.dead) continue;
+      for (const l of st.loot) {
+        if (l.ttl <= 0 || Math.hypot(l.x - h.x, l.y - h.y) > I.pickupR) continue;
+        if (h.bag.length >= I.bag) {
+          if (st.tick - (h.bagFullTick || -999) > 60) { h.bagFullTick = st.tick; st.events.push({ type: "bagFull", id: h.id }); }
+          continue;
+        }
+        h.bag.push(l.item); l.ttl = 0;
+        st.events.push({ type: "pickup", id: h.id, item: l.item, x: l.x, y: l.y });
+      }
+    }
+    st.loot = st.loot.filter((l) => l.ttl > 0);
   }
 
   /* ----- Monster ----- */
@@ -590,7 +765,11 @@ const Core = (() => {
     if (target.hp <= 0) {
       target.hp = 0; target.dead = true;
       st.events.push({ type: "death", id: target.id, kind: target.kind, x: target.x, y: target.y });
-      if (target.kind === "monster") st.kills[attacker.team] = (st.kills[attacker.team] || 0) + 1;
+      if (target.kind === "monster") {
+        st.kills[attacker.team] = (st.kills[attacker.team] || 0) + 1;
+        giveExp(st, attacker.team, Math.round((8 + target.lv * 4) * (target.type === "wolf" ? 0.8 : 1)));
+        maybeDrop(st, target);
+      }
       if (target.kind === "unit") {
         releaseClaim(st, target);
         for (const m of st.monsters) if (m.target === target.id) { m.target = null; m.mode = "return"; }
@@ -768,6 +947,7 @@ const Core = (() => {
     if (st.clock >= C.daySec + C.nightSec) {
       // รุ่งเช้า: Monster จากคืนนี้ที่เหลือโดนแดดเผา
       for (const m of st.monsters) if (m.wave && !m.dead) { m.dead = true; st.events.push({ type: "death", id: m.id, kind: "monster", x: m.x, y: m.y, burn: true }); }
+      giveExp(st, st.camp.team, DATA.levels.nightBonus * st.day);
       st.day++; st.clock = 0; st.wave = null;
       st.events.push({ type: "dawn", day: st.day });
       if (st.day > C.nights && !st.endless && !st.result) { st.result = "win"; st.events.push({ type: "result", result: "win" }); }
@@ -1014,6 +1194,23 @@ const Core = (() => {
     const h = st.heroes.find((e) => e.id === cmd.heroId);
     if (!h || h.dead) return false;
     if (cmd.type === "skill") { h.wantSkill = true; return true; }
+    if (cmd.type === "equip") {
+      const i = h.bag.findIndex((it) => it.id === cmd.itemId);
+      if (i < 0) return "missing";
+      const it = h.bag[i], old = h.equip[it.slot];
+      h.equip[it.slot] = it; h.bag.splice(i, 1);
+      if (old) h.bag.splice(i, 0, old);
+      recalcStats(h);
+      return true;
+    }
+    if (cmd.type === "salvage") {
+      const i = h.bag.findIndex((it) => it.id === cmd.itemId);
+      if (i < 0) return "missing";
+      const it = h.bag.splice(i, 1)[0], gain = DATA.items.salvage[it.rarity], stock = st.stock[h.team];
+      for (const k in gain) stock[k] = (stock[k] || 0) + gain[k];
+      st.events.push({ type: "salvaged", id: h.id, gain });
+      return true;
+    }
     if (cmd.type === "recall") {
       if (h.inCamp) return "inCamp";
       if (h.recall) { h.recall = null; return "cancel"; }
@@ -1335,6 +1532,7 @@ const Core = (() => {
         } else h.gatherT = 0;
       } else h.gatherT = 0;
     }
+    stepLoot(st, dt);
     stepUnits(st, dt);
     stepBuildings(st, dt);
     stepArrows(st, dt);
@@ -1343,7 +1541,7 @@ const Core = (() => {
     st.tick++;
   }
 
-  return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, afford, phase };
+  return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, afford, phase, expToNext };
 })();
 
 /* ===== input/ : คีย์บอร์ดและจอสัมผัส → เวกเตอร์เดิน ===== */
@@ -1368,6 +1566,7 @@ const Input = (() => {
     else if (e.code === "KeyB" && !e.repeat) emit("build");
     else if (e.code === "Escape") emit("esc");
     else if (e.code === "KeyH" && !e.repeat) emit("recall");
+    else if (e.code === "KeyI" && !e.repeat) emit("bag");
     else if (e.code === "KeyQ" && !e.repeat) { skillQueued = true; emit("key"); }
   });
   window.addEventListener("keyup", (e) => keys.delete(e.code));
@@ -1423,6 +1622,19 @@ function canvasTexture(scene, key, w, h, draw) {
 }
 const TILE_RGB = [[63, 90, 51], [31, 58, 28], [138, 135, 120], [47, 95, 122], [226, 176, 74], [154, 109, 64]];
 const RES_NAME = { wood: "ไม้", stone: "หิน" };
+const RARITY_HEX = [0xe8e3d3, 0x5ea8ff, 0xc07cff];
+const RARITY_CSS = ["#e8e3d3", "#5ea8ff", "#c07cff"];
+const STAT_ORDER = ["atk", "hp", "def", "as", "crit", "spd"];
+const STAT_NAME = { atk: "พลังโจมตี", hp: "พลังชีวิต", def: "ป้องกัน", as: "ความเร็วยิง", crit: "คริติคอล", spd: "ความเร็วเดิน" };
+function fmtStat(k, v) {
+  if (k === "as" || k === "crit") return `${v >= 0 ? "+" : ""}${Math.round(v * 100)}%`;
+  if (k === "def") return `${v >= 0 ? "+" : ""}${Math.round(v * 10) / 10}`;
+  return `${v >= 0 ? "+" : ""}${Math.round(v)}`;
+}
+const ICON = {
+  weapon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3a12 12 0 0 1 0 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M7 3v18M10 12h11M18 9l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  armor: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l5 4-3 3v11H6V10L3 7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 3c0 2 4 2 4 0" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+};
 const BUILD_ERR = {
   far: "สร้างได้เฉพาะในเขตค่าย (วงสีฟ้า)", blocked: "ตรงนี้สร้างไม่ได้", occupied: "มีคนหรือ Monster ยืนขวางอยู่",
   cost: "ทรัพยากรไม่พอ", max: `คนงานเต็มแล้ว (สูงสุด ${DATA.worker.max} คน)`,
@@ -1451,6 +1663,78 @@ const Banner = (() => {
       clearTimeout(timer); timer = setTimeout(() => { el.hidden = true; }, 4200);
     },
     hide() { el.hidden = true; },
+  };
+})();
+
+/* ===== กระเป๋า: ของที่เก็บได้ สวมใส่ ย่อย ===== */
+const Inventory = (() => {
+  const el = document.getElementById("inv"), btn = document.getElementById("bag-btn");
+  const scene = () => window.__game && window.__game.scene.getScene("game");
+  let sel = null, sig = "";
+  const hero = () => { const sc = scene(); return sc ? sc.state.heroes[0] : null; };
+
+  function cell(it, label) {
+    if (!it) return `<div class="inv-cell empty">${label || ""}</div>`;
+    return `<button type="button" class="inv-cell${sel === it.id ? " sel" : ""}" data-id="${it.id}" style="--r:${RARITY_CSS[it.rarityIdx]}" title="${it.name}">${ICON[it.slot]}<span class="ilv">${it.ilv}</span></button>`;
+  }
+
+  function render() {
+    const h = hero(); if (!h) return;
+    const all = [h.equip.weapon, h.equip.armor, ...h.bag].filter(Boolean);
+    if (sel && !all.some((i) => i.id === sel)) sel = null;
+    const it = all.find((i) => i.id === sel);
+    document.getElementById("inv-count").textContent = `${h.bag.length} / ${DATA.items.bag}`;
+    document.getElementById("inv-stats").innerHTML =
+      `<span>Lv <b>${h.lv}</b></span><span>ATK <b>${Math.round(h.atk)}</b></span><span>HP <b>${h.maxHp}</b></span><span>DEF <b>${Math.round(h.def * 10) / 10}</b></span><span>ยิง/วิ <b>${h.as.toFixed(2)}</b></span><span>คริ <b>${Math.round(h.crit * 100)}%</b></span>`;
+    document.getElementById("inv-equip").innerHTML =
+      `<div class="inv-slot"><span>อาวุธ</span>${cell(h.equip.weapon, "ว่าง")}</div><div class="inv-slot"><span>เสื้อเกราะ</span>${cell(h.equip.armor, "ว่าง")}</div>`;
+    let grid = "";
+    for (let i = 0; i < DATA.items.bag; i++) grid += cell(h.bag[i]);
+    document.getElementById("inv-grid").innerHTML = grid;
+
+    const d = document.getElementById("inv-detail");
+    if (!it) { d.innerHTML = `<p class="inv-empty">แตะของเพื่อดูรายละเอียด · ฆ่า Monster มีโอกาสดรอปของ ยิ่งไกลค่ายยิ่งดี</p>`; return; }
+    const equipped = h.equip[it.slot] === it, cur = h.equip[it.slot];
+    const keys = STAT_ORDER.filter((k) => k in it.stats || (!equipped && cur && k in cur.stats));
+    const rows = keys.map((k) => {
+      const v = it.stats[k] || 0, diff = equipped || !cur ? 0 : v - (cur.stats[k] || 0);
+      const cmp = !equipped && Math.abs(diff) > 0.001 ? `<em class="${diff > 0 ? "up" : "down"}">${diff > 0 ? "▲" : "▼"} ${fmtStat(k, diff).replace(/^[+-]/, "")}</em>` : "";
+      return `<li><span>${STAT_NAME[k]}</span><b>${v ? fmtStat(k, v) : "—"}</b>${cmp}</li>`;
+    }).join("");
+    const salv = Object.entries(DATA.items.salvage[it.rarity]).map(([k, v]) => `${v} ${RES_NAME[k]}`).join(" ");
+    d.innerHTML = `<div class="inv-name" style="color:${RARITY_CSS[it.rarityIdx]}">${it.name}</div>
+      <div class="inv-meta">${DATA.items.rarity[it.rarityIdx].name} · Lv ไอเทม ${it.ilv} · ${it.slot === "weapon" ? "อาวุธ" : "เสื้อเกราะ"}${equipped ? " · สวมอยู่" : ""}</div>
+      <ul class="inv-stat">${rows}</ul>
+      ${equipped ? "" : `<div class="inv-act"><button type="button" class="btn primary" data-act="equip">สวมใส่</button><button type="button" class="btn" data-act="salvage">ย่อย (+${salv})</button></div>`}`;
+  }
+
+  el.addEventListener("click", (e) => {
+    const c = e.target.closest("[data-id]");
+    if (c) { sel = Number(c.dataset.id); sig = ""; render(); return; }
+    const a = e.target.closest("[data-act]");
+    if (!a || !sel) return;
+    const sc = scene();
+    const r = Core.applyCommand(sc.state, { type: a.dataset.act, heroId: sc.localHero, itemId: sel });
+    if (r === true && a.dataset.act === "salvage") { Toast.show("ย่อยแล้ว ได้ทรัพยากรคืน"); sel = null; }
+    if (r === true && a.dataset.act === "equip") Toast.show("สวมใส่แล้ว");
+    sig = ""; render();
+  });
+  document.getElementById("inv-close").addEventListener("click", () => close());
+
+  function open() { el.hidden = false; btn.classList.remove("new"); btn.setAttribute("aria-expanded", "true"); sig = ""; render(); }
+  function close() { el.hidden = true; btn.setAttribute("aria-expanded", "false"); try { document.getElementById("game").focus({ preventScroll: true }); } catch (_) {} }
+  btn.addEventListener("click", () => { btn.blur(); el.hidden ? open() : close(); });
+  return {
+    toggle: () => (el.hidden ? open() : close()),
+    close,
+    isOpen: () => !el.hidden,
+    markNew: () => { if (el.hidden) btn.classList.add("new"); },
+    tick() {   // วาดใหม่เมื่อของในกระเป๋าเปลี่ยน
+      if (el.hidden) return;
+      const h = hero(); if (!h) return;
+      const s2 = [h.lv, Math.round(h.atk), h.maxHp, h.equip.weapon && h.equip.weapon.id, h.equip.armor && h.equip.armor.id, ...h.bag.map((i) => i.id)].join(",");
+      if (s2 !== sig) { sig = s2; render(); }
+    },
   };
 })();
 
@@ -1568,6 +1852,8 @@ class GameScene extends Phaser.Scene {
     this.lights = this.add.graphics().setDepth(7.6e6).setBlendMode(Phaser.BlendModes.ADD);
     this.waveArrow = this.add.graphics().setDepth(8.2e6);
     this.recallRing = this.add.graphics().setDepth(8.3e6);
+    this.lootViews = new Map();
+    this.lootFx = this.add.graphics().setDepth(-1.4e6).setBlendMode(Phaser.BlendModes.ADD);
     this.paused = false;
 
     this.makeFog();
@@ -1729,6 +2015,20 @@ class GameScene extends Phaser.Scene {
     });
     canvasTexture(this, "pebbles", 20, 12, (g) => {
       g.fillStyle = "#7d7a6c"; [[5, 7, 3], [11, 5, 2.5], [15, 8, 2]].forEach(([x, y, r]) => { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); });
+    });
+    // ไอคอนของดรอปบนพื้น
+    canvasTexture(this, "loot_weapon", 24, 24, (g) => {
+      g.strokeStyle = "#5a3f24"; g.lineWidth = 3; g.lineCap = "round";
+      g.beginPath(); g.arc(8, 12, 10, -1.1, 1.1); g.stroke();
+      g.strokeStyle = "#efe8d2"; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(8 + 10 * Math.cos(-1.1), 12 + 10 * Math.sin(-1.1)); g.lineTo(8 + 10 * Math.cos(1.1), 12 + 10 * Math.sin(1.1)); g.stroke();
+      g.fillStyle = "#c9a46a"; g.fillRect(11, 11, 10, 2);
+    });
+    canvasTexture(this, "loot_armor", 24, 24, (g) => {
+      g.fillStyle = "#7d6a4e"; g.beginPath();
+      g.moveTo(5, 6); g.lineTo(9, 3); g.lineTo(15, 3); g.lineTo(19, 6); g.lineTo(22, 11); g.lineTo(18, 13); g.lineTo(17, 21); g.lineTo(7, 21); g.lineTo(6, 13); g.lineTo(2, 11); g.closePath(); g.fill();
+      g.strokeStyle = "#3b2c18"; g.lineWidth = 1.5; g.stroke();
+      g.fillStyle = "#a88c62"; g.fillRect(10, 4, 4, 5);
     });
     canvasTexture(this, "arrow", 26, 6, (g) => {
       g.fillStyle = "#d8c9a0"; g.fillRect(4, 2, 17, 2);
@@ -1999,6 +2299,20 @@ class GameScene extends Phaser.Scene {
           if (e.burn) { v.body.setAlpha(0.8); this.tweens.add({ targets: v.root, alpha: 0, y: v.root.y - 16, duration: 900, onComplete: () => v.root.destroy() }); }
           else this.tweens.add({ targets: v.root, alpha: 0, scale: 0.4, duration: 260, onComplete: () => v.root.destroy() });
         }
+      } else if (e.type === "levelUp" && e.id === this.localHero) {
+        const hv = this.heroViews.get(e.id);
+        this.popText(hv.root.x, hv.root.y - 26, `LEVEL ${e.lv}!`, "#ffd166", 22);
+        const ring = this.add.graphics().setPosition(hv.root.x, hv.root.y).setDepth(8.4e6);
+        ring.lineStyle(3, 0xffd166, 1); ring.strokeCircle(0, 0, 20);
+        this.tweens.add({ targets: ring, alpha: 0, scale: 3, duration: 600, onComplete: () => ring.destroy() });
+        Banner.show(`เลเวลอัป! Lv ${e.lv} · พลังชีวิตและพลังโจมตีเพิ่มขึ้น`, "day");
+      } else if (e.type === "pickup" && e.id === this.localHero) {
+        Toast.show(`ได้ ${e.item.name} (${DATA.items.rarity[e.item.rarityIdx].name}) · กด I เพื่อดู`);
+        Inventory.markNew();
+      } else if (e.type === "bagFull" && e.id === this.localHero) {
+        Toast.show("กระเป๋าเต็ม · ย่อยของที่ไม่ใช้ก่อน (กด I)");
+      } else if (e.type === "drop" && e.rarity === "epic" && this.visibleAt(e.x, e.y)) {
+        Toast.show("ของระดับมหากาพย์ดรอป!");
       } else if (e.type === "recalled") {
         Toast.show("กลับถึงค่ายแล้ว");
       } else if (e.type === "recallBroken") {
@@ -2056,6 +2370,27 @@ class GameScene extends Phaser.Scene {
       v.x = x; v.y = y;
     }
     for (const [id, v] of this.monViews) if (!seen.has(id)) { v.root.destroy(); this.monViews.delete(id); }
+  }
+
+  syncLoot(time) {
+    const seen = new Set(), g = this.lootFx;
+    g.clear();
+    for (const l of this.state.loot) {
+      seen.add(l.id);
+      let img = this.lootViews.get(l.id);
+      if (!img) { img = this.add.image(l.x, l.y, "loot_" + l.item.slot).setDepth(l.y - 1); this.lootViews.set(l.id, img); }
+      const vis = this.visibleAt(l.x, l.y);
+      img.setVisible(vis);
+      if (!vis) continue;
+      const bob = Math.sin(time / 300 + l.id) * 3;
+      img.y = l.y - 6 + bob;
+      img.setAlpha(l.ttl < 10 ? 0.4 + 0.6 * Math.abs(Math.sin(time / 120)) : 1);
+      const col = RARITY_HEX[l.item.rarityIdx];
+      g.fillStyle(col, 0.22); g.fillEllipse(l.x, l.y + 6, 34, 14);
+      g.fillStyle(col, 0.35); g.fillEllipse(l.x, l.y + 6, 18, 7);
+      if (l.item.rarityIdx === 2) { g.fillStyle(col, 0.18 + 0.06 * Math.sin(time / 200)); g.fillRect(l.x - 4, l.y - 70, 8, 74); }
+    }
+    for (const [id, img] of this.lootViews) if (!seen.has(id)) { img.destroy(); this.lootViews.delete(id); }
   }
 
   syncArrows(a) {
@@ -2127,6 +2462,7 @@ class GameScene extends Phaser.Scene {
     this.syncUnits(a, time);
     this.syncBuildings();
     this.syncArrows(a);
+    this.syncLoot(time);
     this.drawBars();
     if (this.buildMode && this.hold.on && p.isDown && this.buildMode === "wall") this.tryPlace(p, false);
     this.drawGhost();
@@ -2194,6 +2530,10 @@ const HUD = (() => {
     $("hp-fill").parentElement.classList.toggle("low", me.hp / me.maxHp < 0.3);
     $("hp-fill").parentElement.classList.toggle("regen", !!me.inCamp && me.hp < me.maxHp);
     $("camp-tag").hidden = !me.inCamp || me.dead;
+    const need = Core.expToNext(me.lv);
+    $("xp-fill").style.width = (me.lv >= DATA.levels.max ? 100 : (me.exp / need) * 100) + "%";
+    $("xp-text").textContent = me.lv >= DATA.levels.max ? `Lv ${me.lv} · สูงสุด` : `Lv ${me.lv} · EXP ${me.exp} / ${need}`;
+    Inventory.tick();
     $("mp-fill").style.width = (me.mp / me.maxMp) * 100 + "%";
     $("mp-text").textContent = `MP ${Math.floor(me.mp)} / ${me.maxMp}`;
 
@@ -2268,9 +2608,11 @@ function recall() {
     if (kind === "build") { Build.toggle(); return; }
     if (kind === "esc") {
       if (document.getElementById("build-toggle").classList.contains("on")) { Build.close(); return; }
+      if (Inventory.isOpen()) { Inventory.close(); return; }
       Menu.toggle(); return;
     }
     if (kind === "recall") { recall(); return; }
+    if (kind === "bag") { Inventory.toggle(); return; }
     if (kind === "touch") keysHint.textContent = "ลากนิ้วฝั่งซ้ายเพื่อเดิน · ยืนติดต้นไม้เพื่อเก็บไม้ · ปุ่มสร้างอยู่ขวาล่าง";
     if (!fadeQueued) { fadeQueued = true; setTimeout(() => hint.classList.add("faded"), 4000); }
   });
@@ -2297,7 +2639,7 @@ function recall() {
   });
   window.__game = game;   // ให้แผงสร้างและการทดสอบเข้าถึงฉากเกมได้
   const restart = (seed) => {
-    Build.close(); Result.hide(); Banner.hide(); Menu.close();
+    Build.close(); Result.hide(); Banner.hide(); Menu.close(); Inventory.close();
     game.scene.getScene("game").scene.restart({ seed: seed || 1 + Math.floor(Math.random() * 999999) });
     try { document.getElementById("game").focus({ preventScroll: true }); } catch (_) {}
   };
