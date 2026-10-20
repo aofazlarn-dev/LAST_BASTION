@@ -241,6 +241,11 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .result-stats dt { font-size: 11.5px; color: var(--ink-dim); }
 .result-stats dd { margin: 0; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .result-actions { display: grid; gap: 8px; }
+.result-share { display: grid; gap: 6px; }
+.result-share textarea {
+  width: 100%; resize: none; font: 12.5px/1.5 var(--font-ui); color: var(--ink);
+  background: rgba(0, 0, 0, 0.35); border: 1px solid var(--panel-line); border-radius: 5px; padding: 7px 9px;
+}
 .btn.big { font-size: 14px; padding: 9px 12px; }
 .btn.primary { background: var(--accent); color: #1c1608; border-color: var(--accent); }
 .btn.primary:hover { color: #1c1608; filter: brightness(1.08); }
@@ -488,6 +493,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
     <button type="button" class="build-item" data-build="wall"><b>กำแพงไม้</b><span class="cost"></span><span class="note">ลากเพื่อวางต่อกัน</span></button>
     <button type="button" class="build-item" data-build="gate"><b>ประตูไม้</b><span class="cost"></span><span class="note">คนงานผ่านได้ Monster ผ่านไม่ได้</span></button>
     <button type="button" class="build-item" data-build="tower"><b>ป้อมธนู</b><span class="cost"></span><span class="note">ยิง Monster เอง</span></button>
+    <button type="button" class="build-item" id="repair"><b>ซ่อมทั้งหมด</b><span class="cost" id="repair-cost">ไม่มีอะไรเสียหาย</span><span class="note">กำแพง ป้อม ประตู และค่าย</span></button>
     <button type="button" class="build-item" id="train"><b>ฝึกคนงาน</b><span class="cost"></span><span class="note">เก็บไม้/หินให้เอง</span></button>
   </div>
   <button type="button" class="build-toggle" id="build-toggle" aria-expanded="false">สร้าง<span>B</span></button>
@@ -505,6 +511,10 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
       <div><dt>สิ่งก่อสร้าง</dt><dd id="result-build">0</dd></div>
       <div><dt>สำรวจแผนที่</dt><dd id="result-explored">0%</dd></div>
     </dl>
+    <div class="result-share">
+      <textarea id="result-text" readonly rows="3" aria-label="สรุปผลสำหรับส่งให้เพื่อน"></textarea>
+      <button type="button" class="btn" id="result-copy">คัดลอกผลส่งเพื่อน</button>
+    </div>
     <div class="result-actions">
       <button type="button" class="btn big" id="result-continue">เล่นต่อแบบไม่มีที่สิ้นสุด</button>
       <button type="button" class="btn big" id="result-same">เล่นใหม่แผนที่เดิม</button>
@@ -589,7 +599,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
       <button type="button" class="btn big" data-act="same">เริ่มใหม่แผนที่เดิม</button>
       <button type="button" class="btn big" data-act="title">กลับหน้าแรก</button>
     </div>
-    <div class="menu-ver">ต้นแบบ ขั้น 7 / 8 · หลายเวฟและบอส</div>
+    <div class="menu-ver">ต้นแบบ 0.8 · พร้อมทดสอบ</div>
     <div class="menu-keys">Esc เปิด/ปิดเมนู · H กลับฐาน · B สร้าง · Q สกิล · M แผนที่</div>
   </div>
 </div>
@@ -651,32 +661,33 @@ const DATA = {
   monsters: {
     zombie: { name: "ซอมบี้", hp: 40, atk: 8, def: 1, as: 0.7, spd: 66, r: 13, aggro: 5, reach: 10 },
     wolf: { name: "หมาป่า", hp: 24, atk: 4.5, def: 0, as: 1.1, spd: 185, r: 12, aggro: 6, reach: 8 },
-    boss: { name: "ราชาซอมบี้", hp: 480, atk: 12, def: 4, as: 0.55, spd: 56, r: 15, aggro: 6, reach: 18 },   // r = ขนาดชน (ภาพใหญ่กว่านี้)
+    boss: { name: "ราชาซอมบี้", hp: 650, atk: 13, def: 4, as: 0.55, spd: 56, r: 15, aggro: 6, reach: 18 },   // r = ขนาดชน (ภาพใหญ่กว่านี้)
   },
   stockStart: { wood: 40, stone: 10 },
   resources: {                      // ไม้จากต้นไม้, หินจากก้อนหิน
     tree: { give: "wood", amount: 4, sec: 0.7 },
-    rock: { give: "stone", amount: 3, sec: 1.0 },
+    rock: { give: "stone", amount: 5, sec: 1.0 },
   },
   buildRadius: 13,                  // เขตที่สร้างได้รอบค่าย (ช่อง)
+  repairShare: 0.3,                 // ซ่อมเต็มหลอด = 30% ของราคาสร้าง
   buildings: {
-    camp: { name: "ค่ายพักแรม", hp: 1500, def: 6, vision: 9 },
+    camp: { name: "ค่ายพักแรม", hp: 1500, def: 6, vision: 9, repairCost: { wood: 60, stone: 30 } },
     wall: { name: "กำแพงไม้", cost: { wood: 5 }, hp: 160, def: 4, vision: 0 },
     gate: { name: "ประตูไม้", cost: { wood: 8 }, hp: 200, def: 4, vision: 0 },
-    tower: { name: "ป้อมธนู", cost: { wood: 20, stone: 10 }, hp: 240, def: 4, atk: 12, as: 1.1, rng: 220, vision: 7 },
+    tower: { name: "ป้อมธนู", cost: { wood: 25, stone: 12 }, hp: 240, def: 4, atk: 12, as: 1.1, rng: 220, vision: 7 },
   },
-  worker: { name: "คนงาน", cost: { wood: 15 }, max: 6, hp: 40, spd: 115, r: 9, carry: 5, gatherSec: 0.9, range: 16, flee: 4, vision: 4 },
+  worker: { name: "คนงาน", cost: { wood: 15 }, max: 6, hp: 40, spd: 115, r: 9, carry: 5, gatherSec: 0.9, range: 19, flee: 4, avoid: 5, vision: 4 },
   cycle: { daySec: 240, nightSec: 120, warnSec: 30, nights: 5, skipTo: 10 },   // กลางวัน 4 นาที กลางคืน 2 นาที
   waves: {
     count: [2, 3, 3, 3, 3],             // จำนวนเวฟในแต่ละคืน (คืนหลังจากนี้ใช้ค่าสุดท้าย)
-    base: 6, perNight: 3, perWave: 2,   // ขนาดเวฟ = base + perNight×คืน + perWave×ลำดับเวฟ
-    wolfFrom: 2, wolfShare: 0.3, lvPerNight: 1.5, dist: [32, 38], batches: 5, batchEvery: 2.5, nextWarn: 10,
+    base: 6, perNight: 4, perWave: 3,   // ขนาดเวฟ = base + perNight×คืน + perWave×ลำดับเวฟ
+    wolfFrom: 2, wolfShare: 0.3, lvPerNight: 2, dist: [32, 38], batches: 5, batchEvery: 2.5, nextWarn: 10,
   },
   night: {                              // กลางคืน Monster ทั่วแผนที่ดุร้ายขึ้น
     aggro: 1.6, spd: 1.15, atk: 1.25,
     roamers: { base: 40, perNight: 15, lvBonus: 3, dist: [15, 50] },
   },
-  boss: { lvBase: 2, lvPerNight: 2, drops: [2, 3], minRarity: 1, epicChance: 0.4, summonEvery: 15, summonCount: 2 },
+  boss: { lvBase: 2, lvPerNight: 2, drops: [2, 3], minRarity: 1, epicChance: 0.25, summonEvery: 15, summonCount: 2 },
   spawn: { population: 450, safeRadius: 14, zoneDensity: [1, 0.75, 0.55, 0.4], leash: 16, refillEvery: 4, sleepRadius: 26 },
 };
 
@@ -736,6 +747,19 @@ const Core = (() => {
         else if (fbm(seed + 37, x / 7, y / 7) > rockTh[z] || rr < rockRand[z]) t[i] = T.ROCK;
       }
     }
+    // รับประกันว่ามีกลุ่มหินและดงไม้ใกล้ค่ายทุกแผนที่ (คนงานต้องมีของให้เก็บ)
+    const placeCluster = (kind, count, size) => {
+      for (let k = 0; k < count; k++) {
+        const a = (k / count) * Math.PI * 2 + r() * 1.2, d = 10 + r() * 5;
+        const cx = Math.round(c + Math.cos(a) * d), cy = Math.round(c + Math.sin(a) * d);
+        for (let n = 0; n < size; n++) {
+          const x = cx + Math.round((r() - 0.5) * 4), y = cy + Math.round((r() - 0.5) * 4);
+          if (Math.hypot(x + 0.5 - c, y + 0.5 - c) >= DATA.campClear + 1) t[y * N + x] = kind;
+        }
+      }
+    };
+    placeCluster(T.ROCK, 3, 6);
+    placeCluster(T.TREE, 2, 8);
     for (let y = c - 1; y <= c; y++) for (let x = c - 1; x <= c; x++) t[y * N + x] = T.CAMP;   // กระโจม
     return { n: N, t };
   }
@@ -1552,6 +1576,15 @@ const Core = (() => {
       st.events.push({ type: "built", id: b.id, x: b.x, y: b.y });
       return true;
     }
+    if (cmd.type === "repair") {
+      const cost = repairCost(st, h.team);
+      if (!cost.any) return "nothing";
+      if (!afford(st.stock[h.team], cost.total)) return "cost";
+      pay(st.stock[h.team], cost.total);
+      for (const b of st.buildings) if (b.team === h.team && b.hp < b.maxHp) b.hp = b.maxHp;
+      st.events.push({ type: "repaired", team: h.team, n: cost.any });
+      return true;
+    }
     if (cmd.type === "train") {
       const w = DATA.worker;
       if (st.units.filter((u) => u.team === h.team && u.type === "worker").length >= w.max) return "max";
@@ -1566,6 +1599,18 @@ const Core = (() => {
   }
 
   /* ----- ทรัพยากรและสิ่งก่อสร้าง ----- */
+  // ค่าซ่อมทุกอย่างที่เสียหาย: ตามสัดส่วนความเสียหาย × ราคาสร้าง × 30%
+  function repairCost(st, team) {
+    const total = {}; let any = 0;
+    for (const b of st.buildings) {
+      if (b.team !== team || b.hp >= b.maxHp) continue;
+      const D = DATA.buildings[b.type], base = D.repairCost || D.cost, k = 1 - b.hp / b.maxHp;
+      for (const r in base) total[r] = (total[r] || 0) + base[r] * k * (D.repairCost ? 1 : DATA.repairShare);
+      any++;
+    }
+    for (const r in total) total[r] = Math.max(1, Math.ceil(total[r]));
+    return { total, any };
+  }
   const afford = (stock, cost) => Object.keys(cost).every((k) => (stock[k] || 0) >= cost[k]);
   const pay = (stock, cost) => { for (const k in cost) stock[k] -= cost[k]; };
 
@@ -1657,12 +1702,16 @@ const Core = (() => {
 
   function findResource(st, u, kind) {
     const N = st.map.n, S = DATA.tile, c = N / 2, R = DATA.worker.range;
+    const lim = (R + DATA.worker.avoid + 2) * S;
+    const danger = st.monsters.filter((m) => !m.dead && Math.abs(m.x - st.camp.x) < lim && Math.abs(m.y - st.camp.y) < lim);
     let best = -1, bd = Infinity;
     for (let y = c - R; y <= c + R; y++) for (let x = c - R; x <= c + R; x++) {
       if (Math.hypot(x + 0.5 - c, y + 0.5 - c) > R) continue;
       const idx = y * N + x;
       if (resourceKind(st, idx) !== kind || st.claims[idx] || (st.badRes && st.badRes[idx] > st.tick)) continue;
-      const d = Math.hypot((x + 0.5) * S - u.x, (y + 0.5) * S - u.y);
+      const px = (x + 0.5) * S, py = (y + 0.5) * S;
+      if (danger.some((m) => Math.abs(m.x - px) < DATA.worker.avoid * S && Math.abs(m.y - py) < DATA.worker.avoid * S)) continue;   // มี Monster อยู่ใกล้ ไม่ไป
+      const d = Math.hypot(px - u.x, py - u.y);
       if (d < bd) { bd = d; best = idx; }
     }
     return best;
@@ -1690,7 +1739,10 @@ const Core = (() => {
       }
       if (u.job === "shelter") { u.job = "seek"; u.hidden = false; u.x = u.px = door.x; u.y = u.py = door.y; }
       const threat = st.monsters.some((m) => !m.dead && Math.hypot(m.x - u.x, m.y - u.y) < W.flee * S) || st.tick - (u.lastHurt || -999) < 20;
-      if (threat && u.job !== "flee") { releaseClaim(st, u); u.job = "flee"; u.path = planPath(st, u, door.x, door.y); }
+      if (threat && u.job !== "flee") {
+        if (u.res >= 0) (st.badRes || (st.badRes = {}))[u.res] = st.tick + 400;   // จำว่าจุดนี้อันตราย
+        releaseClaim(st, u); u.job = "flee"; u.path = planPath(st, u, door.x, door.y);
+      }
       if (u.wait > 0) { u.wait--; continue; }
       if (u.job === "flee") {
         const r = followPath(st, u, dt, u.spd * 1.15);
@@ -1853,7 +1905,7 @@ const Core = (() => {
     st.tick++;
   }
 
-  return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, afford, phase, expToNext };
+  return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, afford, phase, expToNext, repairCost };
 })();
 
 /* ===== input/ : คีย์บอร์ดและจอสัมผัส → เวกเตอร์เดิน ===== */
@@ -2196,6 +2248,9 @@ const Result = (() => {
       $("result-build").textContent = st.buildings.filter((b) => b.type !== "camp").length;
       $("result-explored").textContent = ((st.explored[1] / (DATA.mapTiles * DATA.mapTiles)) * 100).toFixed(1) + "%";
       $("result-continue").hidden = result !== "win";
+      const h = st.heroes[0], gear = [h.equip.weapon, h.equip.armor].filter(Boolean).map((i) => `${i.name} (${DATA.items.rarity[i.rarityIdx].name})`).join(", ") || "-";
+      $("result-text").value = `LAST BASTION · ${result === "win" ? "ชนะ! รอดครบ " + DATA.cycle.nights + " คืน" : "แพ้ในคืนที่ " + (st.wave ? st.wave.night : st.day)}\n` +
+        `Seed ${st.seed} · Hero Lv ${h.lv} · กำจัด ${st.kills[1] || 0} ตัว · สิ่งก่อสร้าง ${st.buildings.filter((b) => b.type !== "camp").length}\nอุปกรณ์: ${gear}`;
       el.hidden = false;
     },
     hide() { el.hidden = true; },
@@ -2225,6 +2280,13 @@ const Build = (() => {
     b.querySelector(".cost").textContent = costText(DATA.buildings[k].cost);
     b.addEventListener("click", () => { choose(b.classList.contains("on") ? null : k); b.blur(); });
   }
+  const repair = document.getElementById("repair");
+  repair.addEventListener("click", () => {
+    const sc = scene(); if (!sc) return;
+    const r = Core.applyCommand(sc.state, { type: "repair", heroId: sc.localHero });
+    Toast.show(r === true ? "ซ่อมเรียบร้อย" : r === "nothing" ? "ไม่มีอะไรต้องซ่อม" : "ทรัพยากรไม่พอสำหรับซ่อม");
+    repair.blur();
+  });
   const train = document.getElementById("train");
   train.querySelector(".cost").textContent = costText(DATA.worker.cost);
   train.addEventListener("click", () => {
@@ -2239,6 +2301,12 @@ const Build = (() => {
     refresh(stock) {
       for (const b of dock.querySelectorAll("[data-build]")) b.classList.toggle("poor", !Core.afford(stock, DATA.buildings[b.dataset.build].cost));
       train.classList.toggle("poor", !Core.afford(stock, DATA.worker.cost));
+      const sc = scene();
+      if (sc && !dock.hidden) {
+        const rc = Core.repairCost(sc.state, sc.team);
+        document.getElementById("repair-cost").textContent = rc.any ? `${costText(rc.total)} · ${rc.any} ชิ้น` : "ไม่มีอะไรเสียหาย";
+        repair.classList.toggle("poor", rc.any > 0 && !Core.afford(stock, rc.total));
+      }
     },
   };
 })();
@@ -2340,6 +2408,14 @@ class GameScene extends Phaser.Scene {
       g.fillStyle = "#6f6c5f"; g.beginPath(); g.moveTo(4, 26); g.lineTo(8, 10); g.lineTo(19, 3); g.lineTo(32, 9); g.lineTo(35, 26); g.closePath(); g.fill();
       g.fillStyle = "#94917f"; g.beginPath(); g.moveTo(9, 12); g.lineTo(19, 5); g.lineTo(29, 10); g.lineTo(19, 16); g.closePath(); g.fill();
     });
+    for (const top of [false, true]) for (const bot of [false, true]) for (const rip of [false, true]) {
+      canvasTexture(this, "water" + (top ? "T" : "") + (bot ? "B" : "") + (rip ? "R" : ""), 32, 32, (g) => {
+        g.fillStyle = "#2f5f7a"; g.fillRect(0, 0, 32, 32);
+        if (top) { g.fillStyle = "rgba(122,167,189,0.9)"; g.fillRect(0, 0, 32, 3); }
+        if (bot) { g.fillStyle = "#234a60"; g.fillRect(0, 28, 32, 4); }
+        if (rip) { g.fillStyle = "rgba(93,142,168,0.7)"; g.fillRect(11, 14, 8, 2); }
+      });
+    }
     canvasTexture(this, "tuft", 20, 16, (g) => {
       g.strokeStyle = "#5f8547"; g.lineWidth = 2; g.lineCap = "round";
       [[4, 14, 2, 4], [10, 14, 10, 2], [16, 14, 18, 5], [7, 14, 6, 6], [13, 14, 14, 6]].forEach(([a, b, c, d]) => { g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); });
@@ -2487,25 +2563,26 @@ class GameScene extends Phaser.Scene {
   drawTerrain() {
     const { n: N, t } = this.state.map, S = DATA.tile, TT = Core.T;
     const r = Core.rng(this.state.seed + 99);
-    const water = this.add.graphics().setDepth(-2.9e6);
     this.tileImgs = new Map();
+    this.statics = [];   // ภาพนิ่งทั้งหมด ซ่อนตัวที่อยู่นอกจอเพื่อให้ลื่น
     const isWater = (x, y) => x >= 0 && y >= 0 && x < N && y < N && t[y * N + x] === TT.WATER;
     for (let y = 0; y < N; y++) {
       for (let x = 0; x < N; x++) {
         const k = t[y * N + x], px = x * S, py = y * S;
         if (k === TT.WATER) {
-          water.fillStyle(0x2f5f7a, 1); water.fillRect(px, py, S, S);
-          if (!isWater(x, y - 1)) { water.fillStyle(0x7aa7bd, 0.9); water.fillRect(px, py, S, 3); }
-          if (!isWater(x, y + 1)) { water.fillStyle(0x234a60, 1); water.fillRect(px, py + S - 4, S, 4); }
-          if (r() < 0.12) { water.fillStyle(0x5d8ea8, 0.7); water.fillRect(px + 6 + r() * 14, py + 8 + r() * 14, 8, 2); }
+          // น้ำเป็นภาพทีละช่อง (ซ่อนนอกจอได้) แทนการวาดสี่เหลี่ยมหลายพันอันทุกเฟรม
+          const key = "water" + (isWater(x, y - 1) ? "" : "T") + (isWater(x, y + 1) ? "" : "B") + (r() < 0.12 ? "R" : "");
+          this.statics.push(this.add.image(px, py, key).setOrigin(0, 0).setDepth(-2.9e6));
         } else if (k === TT.TREE) {
           const ox = (r() - 0.5) * 8, oy = (r() - 0.5) * 6;
-          this.tileImgs.set(y * N + x, this.add.image(px + S / 2 + ox, py + S - 2 + oy, r() < 0.5 ? "tree0" : "tree1").setOrigin(0.5, 52 / 56).setDepth(py + S + oy));
+          const img = this.add.image(px + S / 2 + ox, py + S - 2 + oy, r() < 0.5 ? "tree0" : "tree1").setOrigin(0.5, 52 / 56).setDepth(py + S + oy);
+          this.tileImgs.set(y * N + x, img); this.statics.push(img);
         } else if (k === TT.ROCK) {
-          this.tileImgs.set(y * N + x, this.add.image(px + S / 2, py + S - 2, "boulder").setOrigin(0.5, 28 / 32).setDepth(py + S));
+          const img = this.add.image(px + S / 2, py + S - 2, "boulder").setOrigin(0.5, 28 / 32).setDepth(py + S);
+          this.tileImgs.set(y * N + x, img); this.statics.push(img);
         } else if (k === TT.GRASS && r() < 0.06) {
           const kind = r() < 0.7 ? "tuft" : "flower";
-          this.add.image(px + r() * S, py + r() * S, kind).setDepth(-2e6).setAlpha(0.9);
+          this.statics.push(this.add.image(px + r() * S, py + r() * S, kind).setDepth(-2e6).setAlpha(0.9));
         }
       }
     }
@@ -2759,6 +2836,8 @@ class GameScene extends Phaser.Scene {
         Toast.show("ของระดับมหากาพย์ดรอป!");
       } else if (e.type === "workersStuck" && e.team === this.team) {
         Banner.show("คนงานออกจากค่ายไม่ได้ · สร้างประตูไม้ในแนวกำแพง", "warn");
+      } else if (e.type === "repaired" && e.team === this.team) {
+        for (const b of this.state.buildings) if (b.team === this.team) { const img = this.buildViews.get(b.id); if (img) this.tweens.add({ targets: img, scale: { from: 1.12, to: 1 }, duration: 260 }); }
       } else if (e.type === "recalled") {
         Toast.show("กลับถึงค่ายแล้ว");
       } else if (e.type === "recallBroken") {
@@ -2793,7 +2872,7 @@ class GameScene extends Phaser.Scene {
           this.tileImgs.delete(e.idx);
           const N = this.state.map.n, S = DATA.tile, x = (e.idx % N + 0.5) * S, y = (((e.idx / N) | 0) + 0.5) * S;
           this.tweens.add({ targets: img, alpha: 0, duration: 250, onComplete: () => img.destroy() });
-          this.add.image(x, y + 6, e.kind === "tree" ? "stump" : "pebbles").setDepth(-2e6);
+          this.statics.push(this.add.image(x, y + 6, e.kind === "tree" ? "stump" : "pebbles").setDepth(-2e6));
         }
       } else if (e.type === "skill") {
         const h = this.state.heroes[0];
@@ -2910,7 +2989,20 @@ class GameScene extends Phaser.Scene {
     }
   }
 
+  cullStatics() {
+    const v = this.cameras.main.worldView, m = 96;
+    const x0 = v.x - m, y0 = v.y - m, x1 = v.right + m, y1 = v.bottom + m + 40;
+    const keep = [];
+    for (const img of this.statics) {
+      if (!img.active) continue;
+      keep.push(img);
+      img.visible = img.x > x0 && img.x < x1 && img.y > y0 && img.y < y1;
+    }
+    this.statics = keep;
+  }
+
   update(time, delta) {
+    if (!this.cullAt || time - this.cullAt > 120) { this.cullAt = time; this.cullStatics(); }
     // ส่งคำสั่งทุกเฟรม แล้วประมวลผลตรรกะเกมเป็นจังหวะคงที่
     const v = Input.vector();
     Core.applyCommand(this.state, { type: "move", heroId: this.localHero, x: v.x, y: v.y });
@@ -3155,6 +3247,11 @@ function recall() {
   };
   for (const b of document.querySelectorAll("#menu [data-act], #down [data-act]")) b.addEventListener("click", () => act(b.dataset.act));
   document.getElementById("result-new").addEventListener("click", () => restart());
+  document.getElementById("result-copy").addEventListener("click", () => {
+    const ta = document.getElementById("result-text");
+    const fallback = () => { ta.focus(); ta.select(); Toast.show("เลือกข้อความแล้ว กดคัดลอกเองได้เลย"); };
+    try { navigator.clipboard.writeText(ta.value).then(() => Toast.show("คัดลอกแล้ว"), fallback); } catch (_) { fallback(); }
+  });
   document.getElementById("start-btn").addEventListener("click", () => {
     Title.hide();
     const seed = Title.seed();
