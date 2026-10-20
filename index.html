@@ -129,9 +129,10 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .build-toggle span { font-family: var(--font-pixel); font-size: 9px; color: var(--ink-dim); }
 .build-toggle.on { border-color: #6fb6e8; color: #6fb6e8; }
 .build-toggle:focus-visible, .build-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.build-menu { position: static; pointer-events: auto; padding: 6px; display: grid; gap: 6px; }
+.build-menu { position: static; pointer-events: auto; padding: 6px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-height: calc(100vh - 160px); overflow-y: auto; }
+.build-item.locked { opacity: 0.45; cursor: not-allowed; }
 .build-item {
-  display: grid; text-align: left; gap: 0; min-width: 150px; padding: 7px 10px;
+  display: grid; text-align: left; gap: 0; min-width: 0; width: 158px; padding: 7px 10px;
   background: transparent; color: var(--ink); border: 1px solid var(--panel-line); border-radius: 5px;
   font-family: var(--font-ui); cursor: pointer; touch-action: manipulation;
 }
@@ -203,6 +204,28 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .inv-stat li.worse b, .inv-stat li.worse span { color: #ff8a73; }
 .inv-stat li.better b { color: #9be08a; }
 .inv-vs { font-size: 11.5px; color: var(--ink-dim); }
+.bpanel {
+  position: fixed; z-index: 5; display: grid; gap: 9px; pointer-events: auto;
+  right: calc(env(safe-area-inset-right, 0px) + 118px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  width: min(320px, calc(100vw - 134px)); max-height: calc(100vh - 32px); overflow-y: auto;
+  background: #161b13; border: 1px solid var(--panel-line); border-radius: 8px; padding: 12px;
+}
+.bp-hp i { background: var(--accent); }
+.bp-body { display: grid; gap: 8px; font-size: 13px; }
+.bp-stats { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; margin: 0; }
+.bp-stats dt { color: var(--ink-dim); }
+.bp-stats dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.bp-stats dd em { font-style: normal; color: #9be08a; font-weight: 600; }
+.bp-sec { font-size: 12px; color: var(--accent); margin-top: 2px; }
+.bp-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.bp-row small { display: block; color: var(--ink-dim); font-size: 11.5px; }
+.bp-row .btn, .bp-act .btn { font-size: 12.5px; padding: 6px 9px; white-space: nowrap; }
+.bp-act { display: grid; gap: 6px; }
+.bp-note { font-size: 12px; color: var(--ink-dim); margin: 0; }
+.btn.poor { opacity: 0.55; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.seg .btn.on { background: rgba(111, 182, 232, 0.18); border-color: #6fb6e8; color: #cfe6f7; }
 .loot-tip {
   position: fixed; z-index: 6; pointer-events: none; width: 250px;
   background: #161b13; border: 1px solid var(--panel-line); border-radius: 6px; padding: 9px 11px;
@@ -408,6 +431,10 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 @media (prefers-reduced-motion: reduce) { #minimap, .hint { transition: none; } }
 @media (max-height: 560px) { .quest-list li:not(.now) { display: none; } .meter.xp { display: none; } }
 @media (max-width: 560px) { .quest-list li:not(.now) { display: none; } .quest { padding: 7px 9px; } }
+@media (max-width: 560px) {
+  .build-menu { grid-template-columns: minmax(0, 1fr); max-height: calc(100vh - 220px); }
+  .build-item { width: 168px; }
+}
 @media (max-height: 460px) {
   #minimap { width: 96px; height: 96px; }
   .map-panel { padding: 6px; gap: 5px; }
@@ -439,7 +466,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
     <div class="res">
       <span class="res-item" title="ไม้"><i class="ico wood"></i>ไม้ <b id="res-wood">0</b></span>
       <span class="res-item" title="หิน"><i class="ico stone"></i>หิน <b id="res-stone">0</b></span>
-      <span class="res-item" title="คนงาน"><i class="ico worker"></i>คนงาน <b id="res-workers">0/6</b></span>
+      <span class="res-item" title="ประชากร (คนงาน + ทหาร + หมอ)"><i class="ico worker"></i>ประชากร <b id="res-workers">0/4</b></span>
     </div>
   </div>
 
@@ -480,6 +507,12 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 
 <div class="inv-detail loot-tip" id="loot-tip" hidden></div>
 
+<div class="bpanel" id="bpanel" hidden>
+  <div class="inv-head"><b id="bp-name">อาคาร</b><span id="bp-lv"></span><button type="button" class="btn" id="bp-close" aria-label="ปิด">ปิด</button></div>
+  <div class="meter bp-hp"><i id="bp-hp-fill"></i><span id="bp-hp-text"></span></div>
+  <div class="bp-body" id="bp-body"></div>
+</div>
+
 <div class="inv" id="inv" hidden>
   <div class="inv-head"><b>กระเป๋า</b><span id="inv-count">0 / 12</span><button type="button" class="btn" id="inv-close" aria-label="ปิดกระเป๋า">ปิด</button></div>
   <div class="inv-stats" id="inv-stats"></div>
@@ -493,6 +526,9 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
     <button type="button" class="build-item" data-build="wall"><b>กำแพงไม้</b><span class="cost"></span><span class="note">ลากเพื่อวางต่อกัน</span></button>
     <button type="button" class="build-item" data-build="gate"><b>ประตูไม้</b><span class="cost"></span><span class="note">คนงานผ่านได้ Monster ผ่านไม่ได้</span></button>
     <button type="button" class="build-item" data-build="tower"><b>ป้อมธนู</b><span class="cost"></span><span class="note">ยิง Monster เอง</span></button>
+    <button type="button" class="build-item" data-build="barracks"><b>ค่ายทหาร</b><span class="cost"></span><span class="note">จ้างพลธนู นักดาบ</span></button>
+    <button type="button" class="build-item" data-build="infirmary"><b>สถานพยาบาล</b><span class="cost"></span><span class="note">จ้างหมอรักษาคนเจ็บ</span></button>
+    <button type="button" class="build-item" data-build="workshop"><b>Workshop</b><span class="cost"></span><span class="note">พัฒนาอาวุธ Hero และทหาร</span></button>
     <button type="button" class="build-item" id="repair"><b>ซ่อมทั้งหมด</b><span class="cost" id="repair-cost">ไม่มีอะไรเสียหาย</span><span class="note">กำแพง ป้อม ประตู และค่าย</span></button>
     <button type="button" class="build-item" id="train"><b>ฝึกคนงาน</b><span class="cost"></span><span class="note">เก็บไม้/หินให้เอง</span></button>
   </div>
@@ -661,34 +697,68 @@ const DATA = {
   monsters: {
     zombie: { name: "ซอมบี้", hp: 40, atk: 8, def: 1, as: 0.7, spd: 66, r: 13, aggro: 5, reach: 10 },
     wolf: { name: "หมาป่า", hp: 24, atk: 4.5, def: 0, as: 1.1, spd: 185, r: 12, aggro: 6, reach: 8 },
-    boss: { name: "ราชาซอมบี้", hp: 650, atk: 13, def: 4, as: 0.55, spd: 56, r: 15, aggro: 6, reach: 18 },   // r = ขนาดชน (ภาพใหญ่กว่านี้)
+    boss: { name: "ราชาซอมบี้", hp: 520, atk: 12, def: 4, as: 0.55, spd: 56, r: 15, aggro: 6, reach: 18 },   // r = ขนาดชน (ภาพใหญ่กว่านี้)
   },
-  stockStart: { wood: 40, stone: 10 },
+  stockStart: { wood: 60, stone: 30 },
   resources: {                      // ไม้จากต้นไม้, หินจากก้อนหิน
-    tree: { give: "wood", amount: 4, sec: 0.7 },
-    rock: { give: "stone", amount: 5, sec: 1.0 },
+    tree: { give: "wood", amount: 9, sec: 0.6 },
+    rock: { give: "stone", amount: 12, sec: 0.8 },
   },
   buildRadius: 13,                  // เขตที่สร้างได้รอบค่าย (ช่อง)
   repairShare: 0.3,                 // ซ่อมเต็มหลอด = 30% ของราคาสร้าง
+  // ค่าต่อเลเวล: ตัวคูณ HP/ATK, เพิ่มความเร็วยิง, เพิ่มระยะ และราคาอัปเกรดไปเลเวลนั้น
   buildings: {
-    camp: { name: "ค่ายพักแรม", hp: 1500, def: 6, vision: 9, repairCost: { wood: 60, stone: 30 } },
-    wall: { name: "กำแพงไม้", cost: { wood: 5 }, hp: 160, def: 4, vision: 0 },
-    gate: { name: "ประตูไม้", cost: { wood: 8 }, hp: 200, def: 4, vision: 0 },
-    tower: { name: "ป้อมธนู", cost: { wood: 25, stone: 12 }, hp: 240, def: 4, atk: 12, as: 1.1, rng: 220, vision: 7 },
+    camp: {
+      name: "บ้านหลัก", hp: 1500, def: 6, vision: 9, repairCost: { wood: 60, stone: 30 }, maxLv: 5,
+      levels: [
+        { pop: 5, radius: 13, hpMul: 1 },
+        { pop: 7, radius: 14, hpMul: 1.4, cost: { wood: 90, stone: 30 } },
+        { pop: 10, radius: 15, hpMul: 1.9, cost: { wood: 180, stone: 70 } },
+        { pop: 14, radius: 16, hpMul: 2.6, cost: { wood: 300, stone: 120 } },
+        { pop: 18, radius: 17, hpMul: 3.5, cost: { wood: 450, stone: 200 } },
+      ],
+    },
+    wall: {
+      name: "กำแพง", cost: { wood: 5 }, hp: 160, def: 4, vision: 0, maxLv: 3,
+      levels: [{ name: "กำแพงไม้", hpMul: 1 }, { name: "กำแพงหิน", hpMul: 2, def: 7, cost: { wood: 6, stone: 5 } }, { name: "กำแพงเหล็ก", hpMul: 3.4, def: 11, cost: { wood: 12, stone: 10 } }],
+    },
+    gate: {
+      name: "ประตู", cost: { wood: 8 }, hp: 200, def: 4, vision: 0, maxLv: 3,
+      levels: [{ name: "ประตูไม้", hpMul: 1 }, { name: "ประตูหิน", hpMul: 2, def: 7, cost: { wood: 8, stone: 6 } }, { name: "ประตูเหล็ก", hpMul: 3.4, def: 11, cost: { wood: 14, stone: 12 } }],
+    },
+    tower: {
+      name: "ป้อมธนู", cost: { wood: 25, stone: 12 }, hp: 240, def: 4, atk: 12, as: 1.1, rng: 220, vision: 7, maxLv: 3,
+      levels: [{ hpMul: 1, atkMul: 1 }, { hpMul: 1.6, atkMul: 1.8, asMul: 1.15, rngAdd: 20, cost: { wood: 45, stone: 18 } }, { hpMul: 2.4, atkMul: 3, asMul: 1.3, rngAdd: 40, cost: { wood: 80, stone: 35 } }],
+    },
+    barracks: { name: "ค่ายทหาร", cost: { wood: 70, stone: 20 }, hp: 450, def: 5, vision: 5, size: 2, needCamp: 2, hires: ["archer", "swordsman"] },
+    infirmary: { name: "สถานพยาบาล", cost: { wood: 60, stone: 15 }, hp: 350, def: 4, vision: 5, size: 2, needCamp: 2, hires: ["medic"] },
+    workshop: { name: "Workshop", cost: { wood: 90, stone: 30 }, hp: 400, def: 5, vision: 5, size: 2, needCamp: 3 },
   },
-  worker: { name: "คนงาน", cost: { wood: 15 }, max: 6, hp: 40, spd: 115, r: 9, carry: 5, gatherSec: 0.9, range: 19, flee: 4, avoid: 5, vision: 4 },
+  // ยูนิตช่วยเหลือ (ใช้ประชากรร่วมกับคนงาน)
+  units: {
+    archer: { name: "พลธนู", cost: { wood: 25, stone: 5 }, hp: 70, atk: 9, def: 1, as: 1, rng: 200, spd: 112, r: 10, vision: 6, leash: 10 },
+    swordsman: { name: "นักดาบ", cost: { wood: 30, stone: 8 }, hp: 150, atk: 13, def: 4, as: 0.9, reach: 10, spd: 125, r: 11, vision: 5, leash: 10 },
+    medic: { name: "หมอ", cost: { wood: 30, stone: 5 }, hp: 60, def: 1, heal: 14, rng: 70, spd: 122, r: 10, vision: 6, roam: 26 },
+  },
+  research: {
+    heroWeapon: { name: "อาวุธ Hero", note: "พลังโจมตี Hero", max: 5, per: 0.15, cost: { wood: 45, stone: 15 } },
+    unitWeapon: { name: "อาวุธทหาร", note: "พลังโจมตีพลธนูและนักดาบ", max: 5, per: 0.25, cost: { wood: 40, stone: 15 } },
+    unitArmor: { name: "เกราะทหาร", note: "พลังชีวิตและป้องกันของยูนิตทั้งหมด", max: 5, per: 0.25, cost: { wood: 40, stone: 18 } },
+  },
+  worker: { name: "คนงาน", cost: { wood: 15 }, max: 6, hp: 40, spd: 120, r: 9, carry: 8, gatherSec: 0.6, range: 19, flee: 4, avoid: 5, vision: 4 },
   cycle: { daySec: 240, nightSec: 120, warnSec: 30, nights: 5, skipTo: 10 },   // กลางวัน 4 นาที กลางคืน 2 นาที
   waves: {
     count: [2, 3, 3, 3, 3],             // จำนวนเวฟในแต่ละคืน (คืนหลังจากนี้ใช้ค่าสุดท้าย)
-    base: 6, perNight: 4, perWave: 3,   // ขนาดเวฟ = base + perNight×คืน + perWave×ลำดับเวฟ
-    wolfFrom: 2, wolfShare: 0.3, lvPerNight: 2, dist: [32, 38], batches: 5, batchEvery: 2.5, nextWarn: 10,
+    base: 8, perNight: 1, perWave: 2,   // ขนาดเวฟ = base + perNight×คืน + perWave×ลำดับเวฟ (ความโหดมาจากตัวคูณด้านล่าง)
+    wolfFrom: 2, wolfShare: 0.3, lvPerNight: 2, dist: [32, 38], batches: 5, batchEvery: 2, nextWarn: 10,
+    basePower: 0.4, nightMul: 2, waveMul: 1.12,   // ความโหด (HP และพลังโจมตี): คืนแรก x0.4 แล้ว x2 ทุกคืน, แต่ละเวฟในคืนเดียวกัน x1.12
   },
   night: {                              // กลางคืน Monster ทั่วแผนที่ดุร้ายขึ้น
     aggro: 1.6, spd: 1.15, atk: 1.25,
-    roamers: { base: 40, perNight: 15, lvBonus: 3, dist: [15, 50] },
+    roamers: { base: 50, perNight: 20, lvBonus: 3, dist: [15, 50], mulPerNight: 0.5 },
   },
   boss: { lvBase: 2, lvPerNight: 2, drops: [2, 3], minRarity: 1, epicChance: 0.25, summonEvery: 15, summonCount: 2 },
-  spawn: { population: 450, safeRadius: 14, zoneDensity: [1, 0.75, 0.55, 0.4], leash: 16, refillEvery: 4, sleepRadius: 26 },
+  spawn: { population: 520, safeRadius: 14, zoneDensity: [1, 0.75, 0.55, 0.4], leash: 16, refillEvery: 2, sleepRadius: 26 },
 };
 
 /* ===== core/ : ตรรกะเกม ไม่ยุ่งกับ Phaser (ย้ายไปเซิร์ฟเวอร์ได้) ===== */
@@ -758,8 +828,8 @@ const Core = (() => {
         }
       }
     };
-    placeCluster(T.ROCK, 3, 6);
-    placeCluster(T.TREE, 2, 8);
+    placeCluster(T.ROCK, 5, 8);
+    placeCluster(T.TREE, 6, 10);
     for (let y = c - 1; y <= c; y++) for (let x = c - 1; x <= c; x++) t[y * N + x] = T.CAMP;   // กระโจม
     return { n: N, t };
   }
@@ -775,6 +845,7 @@ const Core = (() => {
       heroes: [],
       monsters: [], arrows: [], events: [], kills: {}, loot: [],
       units: [], buildings: [], stock: { 1: { ...DATA.stockStart } }, resLeft: {}, claims: {}, mapVersion: 0,
+      research: { 1: { heroWeapon: 0, unitWeapon: 0, unitArmor: 0 } }, soldierMode: { 1: "guard" },
       clock: 0, day: 1, wave: null, field: null, fieldVersion: -1, fieldTick: -999, buildAt: {}, result: null, endless: false,
       spawnTimer: 0,
       fog: {}, fogKey: {}, fogVis: {}, explored: {}, fogVersion: 0,
@@ -805,7 +876,7 @@ const Core = (() => {
 
   function makeBuilding(st, type, team, tx, ty, size) {
     const b = DATA.buildings[type], S = DATA.tile;
-    size = size || 1;
+    size = size || b.size || 1;
     const id = st.nextId++;
     for (let y = ty; y < ty + size; y++) for (let x = tx; x < tx + size; x++) {
       st.map.t[y * st.map.n + x] = type === "camp" ? T.CAMP : type === "gate" ? T.GATE : T.BUILD;
@@ -814,8 +885,63 @@ const Core = (() => {
     return {
       id, kind: "building", type, team, tx, ty, size,
       x: (tx + size / 2) * S, y: (ty + size / 2) * S, r: (size * S) / 2,
-      hp: b.hp, maxHp: b.hp, atk: b.atk || 0, as: b.as || 0, rng: b.rng || 0, crit: 0.1, def: b.def || 2, atkCd: 0, dead: false,
+      hp: b.hp, maxHp: b.hp, atk: b.atk || 0, as: b.as || 0, rng: b.rng || 0, crit: 0.1, def: b.def || 2, atkCd: 0, dead: false, lv: 1,
     };
+  }
+
+  /* ----- เลเวลสิ่งก่อสร้าง ----- */
+  function applyLevel(b) {
+    const D = DATA.buildings[b.type], L = D.levels ? D.levels[b.lv - 1] : null;
+    if (!L) return;
+    const ratio = b.hp / b.maxHp;
+    b.maxHp = Math.round(D.hp * (L.hpMul || 1));
+    b.hp = Math.min(b.maxHp, Math.round(b.maxHp * ratio) + Math.round(D.hp * 0.25));   // อัปเกรดแล้วซ่อมให้นิดหน่อย
+    b.def = L.def || D.def || 2;
+    if (b.type === "tower") { b.atk = D.atk * (L.atkMul || 1); b.as = D.as * (L.asMul || 1); b.rng = D.rng + (L.rngAdd || 0); }
+  }
+  function campOf(st, team) { return st.buildings.find((b) => b.type === "camp" && b.team === team); }
+  function campLevel(st, team) { const c = campOf(st, team); return c ? c.lv : 1; }
+  function popCap(st, team) { return DATA.buildings.camp.levels[campLevel(st, team) - 1].pop; }
+  function popUsed(st, team) { return st.units.filter((u) => u.team === team && !u.dead).length; }
+  function buildRadius(st, team) { return DATA.buildings.camp.levels[campLevel(st, team) - 1].radius; }
+  function upgradeCost(b) {
+    const D = DATA.buildings[b.type];
+    if (!D.levels || b.lv >= (D.maxLv || 1)) return null;
+    return D.levels[b.lv].cost;
+  }
+  function buildingName(b) {
+    const D = DATA.buildings[b.type], L = D.levels && D.levels[b.lv - 1];
+    return (L && L.name) || D.name;
+  }
+
+  function researchCost(key, lv) {
+    const c = DATA.research[key].cost, out = {};
+    for (const k in c) out[k] = Math.round(c[k] * lv * (1 + 0.25 * (lv - 1)));
+    return out;
+  }
+
+  function makeUnit(st, type, team, x, y) {
+    const d = DATA.units[type];
+    const u = {
+      id: st.nextId++, kind: "unit", type, team, x, y, px: x, py: y, r: d.r, spd: d.spd,
+      hp: d.hp, maxHp: d.hp, def: d.def || 0, atk: d.atk || 0, as: d.as || 0, rng: d.rng || 0, crit: 0.05,
+      face: Math.PI / 2, path: null, stuck: 0, moving: false, side: 1, atkCd: 0, target: null, repathAt: 0, dead: false,
+      post: null, job: type, healT: 0,
+    };
+    const a = rand(st) * Math.PI * 2, r = (4 + rand(st) * 3) * DATA.tile;
+    u.post = { x: st.camp.x + Math.cos(a) * r, y: st.camp.y + Math.sin(a) * r };
+    recalcUnit(st, u); u.hp = u.maxHp;
+    return u;
+  }
+
+  // ยูนิตได้โบนัสจากการวิจัยใน Workshop
+  function recalcUnit(st, u) {
+    const R = st.research[u.team] || {}, d = u.type === "worker" ? DATA.worker : DATA.units[u.type];
+    const ratio = u.maxHp ? u.hp / u.maxHp : 1;
+    const arm = (R.unitArmor || 0) * DATA.research.unitArmor.per, wpn = (R.unitWeapon || 0) * DATA.research.unitWeapon.per;
+    u.maxHp = Math.round(d.hp * (1 + arm)); u.hp = Math.max(1, Math.round(u.maxHp * ratio));
+    u.def = (d.def || 0) * (1 + arm);
+    if (d.atk) u.atk = d.atk * (1 + wpn);
   }
 
   function makeWorker(st, team, x, y) {
@@ -850,7 +976,7 @@ const Core = (() => {
       for (const [k, v] of Object.entries(it.stats)) { if (k === "as") asBonus += v; else st[k] += v; }
     }
     const ratio = h.maxHp ? h.hp / h.maxHp : 1;
-    h.atk = st.atk; h.def = st.def; h.crit = Math.min(0.75, st.crit); h.spd = st.spd; h.as = st.as * (1 + asBonus);
+    h.atk = st.atk * (1 + (h.wpnBonus || 0)); h.def = st.def; h.crit = Math.min(0.75, st.crit); h.spd = st.spd; h.as = st.as * (1 + asBonus);
     h.maxHp = Math.round(st.hp); h.hp = Math.min(h.maxHp, Math.max(1, Math.round(ratio * h.maxHp)));
   }
 
@@ -1168,6 +1294,12 @@ const Core = (() => {
     return null;
   }
 
+  function empower(m, mul) {
+    m.hp = Math.round(m.hp * mul); m.maxHp = Math.round(m.maxHp * mul); m.atk *= mul; m.power = mul;
+  }
+  function powerLevel(p) { return Math.max(1, Math.round(4 + Math.log2(p) * 4)); }   // เลเวลที่แสดง (ใช้คิด EXP และของดรอป)
+  function wavePower(wv) { const W = DATA.waves; return W.basePower * Math.pow(W.nightMul, wv.night - 1) * Math.pow(W.waveMul, wv.idx); }
+
   function spawnWaveBatch(st, wv) {
     const W = DATA.waves, S = DATA.tile;
     const n = Math.min(wv.toSpawn, Math.ceil(wv.total / W.batches));
@@ -1176,8 +1308,8 @@ const Core = (() => {
       const p = spawnPoint(st, wv.dir, 0.8);
       if (!p) continue;
       const type = wv.night >= W.wolfFrom && rand(st) < W.wolfShare ? "wolf" : "zombie";
-      const m = makeMonster(st, type, (p[0] + 0.5) * S, (p[1] + 0.5) * S, Math.round(1 + (wv.night - 1) * W.lvPerNight + wv.idx));
-      m.wave = true; m.mode = "siege";
+      const m = makeMonster(st, type, (p[0] + 0.5) * S, (p[1] + 0.5) * S, 3);
+      m.wave = true; m.mode = "siege"; empower(m, wavePower(wv)); m.lv = powerLevel(m.power);
       st.monsters.push(m);
       wv.toSpawn--; spawned++;
     }
@@ -1189,8 +1321,8 @@ const Core = (() => {
     let p = spawnPoint(st, wv.dir, 0.3);
     for (let k = 1; !p && k <= 8; k++) p = spawnPoint(st, wv.dir + k * 0.7, 0.9);   // ทิศนี้ไม่มีที่ว่าง ลองทิศข้างเคียง
     if (!p) return false;
-    const m = makeMonster(st, "boss", (p[0] + 0.5) * S, (p[1] + 0.5) * S, B.lvBase + B.lvPerNight * (wv.night - 1));
-    m.wave = true; m.mode = "siege"; m.boss = true; m.summonT = B.summonEvery;
+    const m = makeMonster(st, "boss", (p[0] + 0.5) * S, (p[1] + 0.5) * S, 3);
+    m.wave = true; m.mode = "siege"; m.boss = true; m.summonT = B.summonEvery; empower(m, wavePower(wv)); m.lv = powerLevel(m.power) + 2;
     st.monsters.push(m);
     st.events.push({ type: "bossSpawn", id: m.id, night: wv.night, dirName: wv.dirName, lv: m.lv });
     return true;
@@ -1210,7 +1342,7 @@ const Core = (() => {
       const x = (tx + 0.5) * S, y = (ty + 0.5) * S;
       const type = rand(st) < 0.45 ? "wolf" : "zombie";
       const m = makeMonster(st, type, x, y, Math.min(50, levelAt(d) + R.lvBonus));
-      m.nightSpawn = true;
+      m.nightSpawn = true; empower(m, 1 + R.mulPerNight * (st.day - 1));
       st.monsters.push(m); made++;
     }
   }
@@ -1223,8 +1355,8 @@ const Core = (() => {
     for (let i = 0; i < B.summonCount; i++) {
       const a = rand(st) * Math.PI * 2, x = m.x + Math.cos(a) * 40, y = m.y + Math.sin(a) * 40;
       if (blockedAt(st, x, y, 12)) continue;
-      const s = makeMonster(st, "zombie", x, y, Math.max(1, m.lv - 2));
-      s.wave = true; s.mode = "siege";
+      const s = makeMonster(st, "zombie", x, y, 3);
+      s.wave = true; s.mode = "siege"; empower(s, (m.power || 1) * 0.7); s.lv = powerLevel(s.power);
       st.monsters.push(s);
     }
     st.events.push({ type: "bossRoar", id: m.id, x: m.x, y: m.y });
@@ -1388,7 +1520,7 @@ const Core = (() => {
     st.spawnTimer -= dt;
     if (st.spawnTimer <= 0) {
       st.spawnTimer = DATA.spawn.refillEvery;
-      if (st.monsters.length < DATA.spawn.population) for (let k = 0; k < 10; k++) spawnPack(st, true);
+      if (st.monsters.length < DATA.spawn.population) for (let k = 0; k < 14; k++) spawnPack(st, true);
     }
   }
 
@@ -1505,6 +1637,7 @@ const Core = (() => {
     if (lineClear(st, h.x, h.y, end.x, end.y)) return [end];
     const tiles = findPath(st, Math.floor(h.x / S), Math.floor(h.y / S), goalTile[0], goalTile[1]);
     if (!tiles) return null;
+    if (!tiles.length) return [end];
     const pts = tiles.map((i) => ({ x: (i % N + 0.5) * S, y: (((i / N) | 0) + 0.5) * S }));
     pts[pts.length - 1] = end;
     // ตัดจุดที่มองเห็นกันได้ทิ้ง ให้เดินเป็นเส้นตรงขึ้น
@@ -1585,14 +1718,54 @@ const Core = (() => {
       st.events.push({ type: "repaired", team: h.team, n: cost.any });
       return true;
     }
-    if (cmd.type === "train") {
-      const w = DATA.worker;
-      if (st.units.filter((u) => u.team === h.team && u.type === "worker").length >= w.max) return "max";
-      if (!afford(st.stock[h.team], w.cost)) return "cost";
-      pay(st.stock[h.team], w.cost);
-      const u = makeWorker(st, h.team, st.camp.x + (rand(st) - 0.5) * 40, st.camp.y + 62);
+    if (cmd.type === "train") return applyCommand(st, { ...cmd, type: "hire", unit: "worker" });
+    if (cmd.type === "hire") {
+      const kind = cmd.unit, def = kind === "worker" ? DATA.worker : DATA.units[kind];
+      if (!def) return "blocked";
+      let from = campOf(st, h.team);
+      if (kind !== "worker") {
+        from = st.buildings.find((b) => b.team === h.team && DATA.buildings[b.type].hires && DATA.buildings[b.type].hires.includes(kind));
+        if (!from) return "needBuilding";
+      }
+      if (popUsed(st, h.team) >= popCap(st, h.team)) return "max";
+      if (!afford(st.stock[h.team], def.cost)) return "cost";
+      pay(st.stock[h.team], def.cost);
+      const ox = (rand(st) - 0.5) * 40, door = { x: from.x + ox, y: from.y + from.r + 14 };
+      const u = kind === "worker" ? makeWorker(st, h.team, door.x, door.y) : makeUnit(st, kind, h.team, door.x, door.y);
       st.units.push(u);
-      st.events.push({ type: "trained", id: u.id, x: u.x, y: u.y });
+      st.events.push({ type: "trained", id: u.id, x: u.x, y: u.y, unit: kind });
+      return true;
+    }
+    if (cmd.type === "upgrade") {
+      const b = st.buildings.find((e) => e.id === cmd.id && e.team === h.team);
+      if (!b) return "missing";
+      const cost = upgradeCost(b);
+      if (!cost) return "maxLv";
+      if (b.type !== "camp" && b.lv >= campLevel(st, h.team) + 1) return "needCamp";   // อัปเกรดได้ไม่เกินเลเวลบ้านหลัก + 1
+      if (!afford(st.stock[h.team], cost)) return "cost";
+      pay(st.stock[h.team], cost);
+      b.lv++; applyLevel(b);
+      if (b.type === "camp") { st.mapVersion++; }
+      st.events.push({ type: "upgraded", id: b.id, lv: b.lv, x: b.x, y: b.y, btype: b.type });
+      return true;
+    }
+    if (cmd.type === "research") {
+      const R = DATA.research[cmd.key], cur = st.research[h.team];
+      if (!R) return "blocked";
+      if (!st.buildings.some((b) => b.team === h.team && b.type === "workshop")) return "needBuilding";
+      if (cur[cmd.key] >= R.max) return "maxLv";
+      const cost = researchCost(cmd.key, cur[cmd.key] + 1);
+      if (!afford(st.stock[h.team], cost)) return "cost";
+      pay(st.stock[h.team], cost);
+      cur[cmd.key]++;
+      for (const e of st.heroes) if (e.team === h.team) { e.wpnBonus = cur.heroWeapon * DATA.research.heroWeapon.per; recalcStats(e); }
+      for (const u of st.units) if (u.team === h.team) recalcUnit(st, u);
+      st.events.push({ type: "researched", key: cmd.key, lv: cur[cmd.key] });
+      return true;
+    }
+    if (cmd.type === "soldierMode") {
+      st.soldierMode[h.team] = cmd.mode === "follow" ? "follow" : "guard";
+      for (const u of st.units) if (u.team === h.team && u.type !== "worker" && u.type !== "medic") { u.path = null; u.target = null; }
       return true;
     }
     return false;
@@ -1615,14 +1788,18 @@ const Core = (() => {
   const pay = (stock, cost) => { for (const k in cost) stock[k] -= cost[k]; };
 
   function canBuild(st, team, type, tx, ty) {
-    const N = st.map.n, S = DATA.tile, b = DATA.buildings[type];
+    const N = st.map.n, S = DATA.tile, b = DATA.buildings[type], size = (b && b.size) || 1;
     if (!b || !b.cost) return "blocked";
-    if (tx < 2 || ty < 2 || tx >= N - 2 || ty >= N - 2) return "far";
-    if (Math.hypot(tx + 0.5 - N / 2, ty + 0.5 - N / 2) > DATA.buildRadius) return "far";
-    if (st.map.t[ty * N + tx] !== T.GRASS) return "blocked";
-    const x0 = tx * S, y0 = ty * S;
+    if (b.needCamp && campLevel(st, team) < b.needCamp) return "locked";
+    if (tx < 2 || ty < 2 || tx + size > N - 2 || ty + size > N - 2) return "far";
+    const R = buildRadius(st, team);
+    for (let y = ty; y < ty + size; y++) for (let x = tx; x < tx + size; x++) {
+      if (Math.hypot(x + 0.5 - N / 2, y + 0.5 - N / 2) > R) return "far";
+      if (st.map.t[y * N + x] !== T.GRASS) return "blocked";
+    }
+    const x0 = tx * S, y0 = ty * S, w = size * S;
     const touches = (e) => {
-      const nx = Math.max(x0, Math.min(e.x, x0 + S)), ny = Math.max(y0, Math.min(e.y, y0 + S));
+      const nx = Math.max(x0, Math.min(e.x, x0 + w)), ny = Math.max(y0, Math.min(e.y, y0 + w));
       return (e.x - nx) ** 2 + (e.y - ny) ** 2 < (e.r + 1) ** 2;
     };
     if (st.heroes.some((e) => !e.dead && touches(e)) || st.units.some(touches) || st.monsters.some(touches)) return "occupied";
@@ -1683,7 +1860,7 @@ const Core = (() => {
   }
 
   function followPath(st, e, dt, spd) {
-    if (!e.path) return "none";
+    if (!e.path || !e.path.length) { e.path = null; return "none"; }
     let wp = e.path[0], d = Math.hypot(wp.x - e.x, wp.y - e.y);
     while (d < 3 && e.path.length > 1) { e.path.shift(); wp = e.path[0]; d = Math.hypot(wp.x - e.x, wp.y - e.y); }
     if (d < 3) { e.path = null; return "arrived"; }
@@ -1717,11 +1894,88 @@ const Core = (() => {
     return best;
   }
 
+  /* ----- ทหาร: เฝ้าฐาน (ประจำจุดรอบบ้านหลัก) หรือ ตาม Hero ----- */
+  function moveTowards(st, u, x, y, dt, spd) {
+    const d = Math.hypot(x - u.x, y - u.y);
+    if (d < 6) { u.path = null; return; }
+    if (u.path) { if (followPath(st, u, dt, spd) === "moving") return; }
+    if (st.tick >= u.repathAt) { u.repathAt = st.tick + 30; u.path = planPath(st, u, x, y); if (u.path) followPath(st, u, dt, spd); }
+  }
+
+  function stepSoldier(st, u, dt) {
+    const S = DATA.tile, d = DATA.units[u.type], follow = st.soldierMode[u.team] === "follow";
+    const hero = st.heroes.find((h) => h.team === u.team && !h.dead);
+    const anchor = follow && hero ? { x: hero.x + Math.cos(u.id) * 50, y: hero.y + Math.sin(u.id) * 50 } : u.post;
+    u.atkCd -= dt;
+    let tgt = u.target ? st.monsters.find((m) => m.id === u.target && !m.dead) : null;
+    const leash = d.leash * S * (follow ? 0.8 : 1);
+    if (tgt && Math.hypot(tgt.x - anchor.x, tgt.y - anchor.y) > leash) tgt = null;
+    if (!tgt) {
+      const seek = u.type === "archer" ? u.rng + 60 : 6 * S;
+      const e = nearestEnemy(st, u, seek);
+      tgt = e && e.kind === "monster" && Math.hypot(e.x - anchor.x, e.y - anchor.y) < leash ? e : null;
+    }
+    u.target = tgt ? tgt.id : null;
+    if (tgt) {
+      const dx = tgt.x - u.x, dy = tgt.y - u.y, dist = Math.hypot(dx, dy);
+      u.face = Math.atan2(dy, dx); u.path = null;
+      if (u.type === "archer") {
+        if (dist <= u.rng) { if (u.atkCd <= 0) { fireArrow(st, u, u.face, 1); u.atkCd = 1 / u.as; } }
+        else u.moving = steer(st, u, dx, dy, u.spd * dt) > 0;
+      } else {
+        if (dist <= u.r + tgt.r + d.reach) { if (u.atkCd <= 0) { u.atkCd = 1 / u.as; u.lunge = 1; damage(st, tgt, u, u.atk, 1); } }
+        else u.moving = steer(st, u, dx, dy, Math.min(u.spd * dt, dist - (u.r + tgt.r + d.reach) + 1)) > 0;
+      }
+      return;
+    }
+    moveTowards(st, u, anchor.x, anchor.y, dt, u.spd);
+  }
+
+  /* ----- หมอ: ออกไปรักษาคนเจ็บทั้งในและนอกเมือง ----- */
+  function stepMedic(st, u, dt) {
+    const S = DATA.tile, d = DATA.units.medic, home = st.buildings.find((b) => b.team === u.team && b.type === "infirmary") || campOf(st, u.team);
+    const roam = d.roam * S;
+    let pat = u.target ? findEntity(st, u.target) : null;
+    const hurt = (e) => !e.dead && !e.hidden && e.team === u.team && e !== u && e.hp < e.maxHp * 0.9 && Math.hypot(e.x - st.camp.x, e.y - st.camp.y) < roam;
+    if (pat && (!hurt(pat) && pat.hp >= pat.maxHp)) pat = null;
+    if (!pat || st.tick % 40 === 0) {
+      let best = null, bd = Infinity;
+      for (const e of [...st.heroes, ...st.units]) {
+        if (!hurt(e)) continue;
+        const score = Math.hypot(e.x - u.x, e.y - u.y) * (e.kind === "hero" ? 0.6 : 1) * (e.hp / e.maxHp + 0.3);
+        if (score < bd) { bd = score; best = e; }
+      }
+      if (best) pat = best;
+    }
+    if (u.hp < u.maxHp * 0.35) pat = null;   // หมอบาดเจ็บหนัก กลับบ้านก่อน
+    u.target = pat ? pat.id : null;
+    if (pat) {
+      const dist = Math.hypot(pat.x - u.x, pat.y - u.y);
+      if (dist <= d.rng) {
+        u.path = null; u.face = Math.atan2(pat.y - u.y, pat.x - u.x); u.healing = true;
+        const amt = d.heal * (1 + (st.research[u.team].unitArmor || 0) * 0.1) * dt;
+        pat.hp = Math.min(pat.maxHp, pat.hp + amt);
+        u.healT += amt;
+        if (u.healT >= 10) { st.events.push({ type: "heal", x: pat.x, y: pat.y - 18, n: Math.round(u.healT) }); u.healT = 0; }
+        return;
+      }
+      u.healing = false;
+      moveTowards(st, u, pat.x, pat.y, dt, u.spd);
+      return;
+    }
+    u.healing = false;
+    // ไม่มีใครเจ็บ: ฮีลตัวเองช้า ๆ แล้วรอที่สถานพยาบาล
+    u.hp = Math.min(u.maxHp, u.hp + u.maxHp * 0.03 * dt);
+    moveTowards(st, u, home.x + Math.cos(u.id) * 30, home.y + home.r + 16, dt, u.spd);
+  }
+
   function stepUnits(st, dt) {
     const S = DATA.tile, W = DATA.worker, door = { x: st.camp.x, y: st.camp.y + 62 };
     for (const u of st.units) {
       u.px = u.x; u.py = u.y; u.moving = false;
       if (u.dead) continue;
+      if (u.type === "archer" || u.type === "swordsman") { stepSoldier(st, u, dt); continue; }
+      if (u.type === "medic") { stepMedic(st, u, dt); continue; }
       const stock = st.stock[u.team];
       // ใกล้ค่ำหรือกลางคืน: กลับไปหลบในกระโจม
       if (st.wave) {
@@ -1819,7 +2073,7 @@ const Core = (() => {
     const teams = new Set(st.heroes.map((h) => h.team)); teams.add(st.camp.team);
     for (const team of teams) {
       const sources = st.heroes.filter((h) => h.team === team && !h.dead).map((h) => [Math.floor(h.x / S), Math.floor(h.y / S), DATA.vision.hero]);
-      for (const u of st.units) if (u.team === team && !u.hidden) sources.push([Math.floor(u.x / S), Math.floor(u.y / S), DATA.worker.vision]);
+      for (const u of st.units) if (u.team === team && !u.hidden) sources.push([Math.floor(u.x / S), Math.floor(u.y / S), (DATA.units[u.type] || DATA.worker).vision]);
       for (const b of st.buildings) {
         const v = DATA.buildings[b.type].vision;
         if (b.team === team && v) sources.push([Math.floor(b.x / S), Math.floor(b.y / S), v]);
@@ -1905,7 +2159,8 @@ const Core = (() => {
     st.tick++;
   }
 
-  return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, afford, phase, expToNext, repairCost };
+  return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, afford, phase, expToNext, repairCost,
+    popCap, popUsed, upgradeCost, buildingName, buildRadius, researchCost, campLevel };
 })();
 
 /* ===== input/ : คีย์บอร์ดและจอสัมผัส → เวกเตอร์เดิน ===== */
@@ -2003,7 +2258,9 @@ const ICON = {
 };
 const BUILD_ERR = {
   far: "สร้างได้เฉพาะในเขตค่าย (วงสีฟ้า)", blocked: "ตรงนี้สร้างไม่ได้", occupied: "มีคนหรือ Monster ยืนขวางอยู่",
-  cost: "ทรัพยากรไม่พอ", max: `คนงานเต็มแล้ว (สูงสุด ${DATA.worker.max} คน)`,
+  cost: "ทรัพยากรไม่พอ", max: "ประชากรเต็ม · อัปเกรดบ้านหลักเพื่อเพิ่มประชากร",
+  locked: "ต้องอัปเกรดบ้านหลักก่อน", needCamp: "อัปเกรดบ้านหลักก่อน (อาคารอื่นสูงกว่าบ้านหลักได้ไม่เกิน 1 เลเวล)",
+  maxLv: "ระดับสูงสุดแล้ว", needBuilding: "ต้องสร้างอาคารที่จ้างได้ก่อน", nothing: "ไม่มีอะไรต้องซ่อม",
 };
 const costText = (cost) => Object.entries(cost).map(([k, v]) => `${v} ${RES_NAME[k]}`).join(" · ");
 
@@ -2029,6 +2286,118 @@ const Banner = (() => {
       clearTimeout(timer); timer = setTimeout(() => { el.hidden = true; }, 4200);
     },
     hide() { el.hidden = true; },
+  };
+})();
+
+/* ===== แผงอาคาร: คลิกสิ่งก่อสร้างเพื่ออัปเกรด จ้างยูนิต วิจัย ===== */
+const BPanel = (() => {
+  const el = document.getElementById("bpanel"), body = document.getElementById("bp-body");
+  const scene = () => window.__game && window.__game.scene.getScene("game");
+  let sel = null, sig = "";
+  const UNLOCK = { 2: "ค่ายทหาร, สถานพยาบาล", 3: "Workshop" };
+
+  const btn = (act, label, cost, extra) => {
+    const sc = scene(), ok = !cost || Core.afford(sc.state.stock[sc.team], cost);
+    return `<button type="button" class="btn${ok ? "" : " poor"}${extra || ""}" data-act="${act}">${label}${cost ? " · " + costText(cost) : ""}</button>`;
+  };
+
+  function statsFor(st, b) {
+    const D = DATA.buildings[b.type], next = D.levels && D.levels[b.lv];
+    const rows = [];
+    if (b.type === "camp") {
+      const L = D.levels[b.lv - 1];
+      rows.push(["ประชากร", `${Core.popUsed(st, b.team)} / ${L.pop}${next ? ` <em>→ ${next.pop}</em>` : ""}`]);
+      rows.push(["เขตสร้าง", `${L.radius} ช่อง${next ? ` <em>→ ${next.radius}</em>` : ""}`]);
+      if (next && UNLOCK[b.lv + 1]) rows.push(["ปลดล็อก Lv " + (b.lv + 1), `<em>${UNLOCK[b.lv + 1]}</em>`]);
+    } else if (b.type === "tower") {
+      const n = next && { atk: D.atk * next.atkMul, as: D.as * (next.asMul || 1), rng: D.rng + (next.rngAdd || 0) };
+      rows.push(["ดาเมจ", `${Math.round(b.atk)}${n ? ` <em>→ ${Math.round(n.atk)}</em>` : ""}`]);
+      rows.push(["ยิง/วินาที", `${b.as.toFixed(2)}${n ? ` <em>→ ${n.as.toFixed(2)}</em>` : ""}`]);
+      rows.push(["ระยะ", `${b.rng}${n ? ` <em>→ ${n.rng}</em>` : ""}`]);
+    } else if (b.type === "wall" || b.type === "gate") {
+      rows.push(["พลังชีวิต", `${b.maxHp}${next ? ` <em>→ ${Math.round(D.hp * next.hpMul)}</em>` : ""}`]);
+      rows.push(["ป้องกัน", `${b.def}${next ? ` <em>→ ${next.def}</em>` : ""}`]);
+    }
+    return rows.length ? `<dl class="bp-stats">${rows.map(([a, v]) => `<dt>${a}</dt><dd>${v}</dd>`).join("")}</dl>` : "";
+  }
+
+  function render() {
+    const sc = scene(); if (!sc || !sel) return;
+    const st = sc.state, b = st.buildings.find((e) => e.id === sel);
+    if (!b) { close(); return; }
+    const D = DATA.buildings[b.type];
+    document.getElementById("bp-name").textContent = Core.buildingName(b);
+    document.getElementById("bp-lv").textContent = D.maxLv ? `Lv ${b.lv} / ${D.maxLv}` : "";
+    document.getElementById("bp-hp-fill").style.width = (b.hp / b.maxHp) * 100 + "%";
+    document.getElementById("bp-hp-text").textContent = `HP ${Math.ceil(b.hp)} / ${b.maxHp}`;
+    let html = statsFor(st, b);
+    const up = Core.upgradeCost(b), acts = [];
+    if (up) acts.push(btn("upgrade", `อัปเกรดเป็น Lv ${b.lv + 1}`, up, " primary"));
+    else if (D.maxLv) acts.push(`<p class="bp-note">ระดับสูงสุดแล้ว</p>`);
+    if (up && (b.type === "wall" || b.type === "gate")) {
+      const same = st.buildings.filter((e) => e.type === b.type && e.lv === b.lv && e.team === b.team).length;
+      if (same > 1) acts.push(btn("upgradeAll", `อัปเกรด${D.levels[b.lv - 1].name}ทั้งหมด (${same})`, null));
+    }
+    if (b.hp < b.maxHp) acts.push(btn("repair", "ซ่อมทุกอย่างที่เสียหาย", Core.repairCost(st, b.team).total));
+    html += `<div class="bp-act">${acts.join("")}</div>`;
+
+    const hireRow = (unit, def) => {
+      const n = st.units.filter((u) => u.team === b.team && u.type === unit).length;
+      const desc = unit === "worker" ? "เก็บไม้และหินให้เอง" : unit === "archer" ? `ยิงไกล ดาเมจ ${Math.round(def.atk * (1 + st.research[b.team].unitWeapon * DATA.research.unitWeapon.per))}` : unit === "swordsman" ? "ถึก ยืนรับหน้า" : "ออกไปรักษาคนเจ็บทั้งในและนอกเมือง";
+      return `<div class="bp-row"><div><b>${def.name}</b> × ${n}<small>${desc}</small></div>${btn("hire:" + unit, "จ้าง", def.cost)}</div>`;
+    };
+    if (b.type === "camp") {
+      html += `<div class="bp-sec">ประชากร ${Core.popUsed(st, b.team)} / ${Core.popCap(st, b.team)}</div>` + hireRow("worker", DATA.worker);
+    }
+    if (D.hires) {
+      html += `<div class="bp-sec">จ้างยูนิต · ประชากร ${Core.popUsed(st, b.team)} / ${Core.popCap(st, b.team)}</div>` + D.hires.map((u) => hireRow(u, DATA.units[u])).join("");
+      if (b.type === "barracks") {
+        const mode = st.soldierMode[b.team];
+        html += `<div class="bp-sec">คำสั่งทหาร</div><div class="seg"><button type="button" class="btn${mode === "guard" ? " on" : ""}" data-act="mode:guard">เฝ้าฐาน</button><button type="button" class="btn${mode === "follow" ? " on" : ""}" data-act="mode:follow">ตาม Hero</button></div>`;
+      }
+    }
+    if (b.type === "workshop") {
+      html += `<div class="bp-sec">พัฒนาอาวุธและเกราะ</div>` + Object.entries(DATA.research).map(([k, R]) => {
+        const lv = st.research[b.team][k];
+        const right = lv >= R.max ? `<span class="bp-note">สูงสุด</span>` : btn("research:" + k, `Lv ${lv + 1}`, Core.researchCost(k, lv + 1));
+        return `<div class="bp-row"><div><b>${R.name}</b> Lv ${lv}/${R.max}<small>${R.note} +${Math.round(R.per * 100)}% ต่อเลเวล (ตอนนี้ +${Math.round(R.per * lv * 100)}%)</small></div>${right}</div>`;
+      }).join("");
+    }
+    body.innerHTML = html;
+  }
+
+  el.addEventListener("click", (e) => {
+    const a = e.target.closest("[data-act]"); if (!a) return;
+    const sc = scene(), st = sc.state, b = st.buildings.find((x) => x.id === sel); if (!b) return;
+    const [act, arg] = a.dataset.act.split(":");
+    const send = (c) => Core.applyCommand(st, { heroId: sc.localHero, ...c });
+    let r = true;
+    if (act === "upgrade") r = send({ type: "upgrade", id: b.id });
+    else if (act === "upgradeAll") {
+      let n = 0;
+      for (const e of st.buildings.filter((x) => x.type === b.type && x.lv === b.lv && x.team === b.team)) { const rr = send({ type: "upgrade", id: e.id }); if (rr !== true) { r = n ? true : rr; break; } n++; }
+      if (n) Toast.show(`อัปเกรดแล้ว ${n} ชิ้น`);
+    } else if (act === "repair") r = send({ type: "repair" });
+    else if (act === "hire") r = send({ type: "hire", unit: arg });
+    else if (act === "research") r = send({ type: "research", key: arg });
+    else if (act === "mode") { r = send({ type: "soldierMode", mode: arg }); Toast.show(arg === "follow" ? "ทหารจะตาม Hero" : "ทหารกลับไปเฝ้าฐาน"); }
+    if (r !== true) Toast.show(BUILD_ERR[r] || "ทำไม่ได้");
+    sig = ""; render();
+  });
+  document.getElementById("bp-close").addEventListener("click", () => close());
+
+  function open(id) { sel = id; sig = ""; if (Inventory && Inventory.isOpen()) Inventory.close(); el.hidden = false; render(); }
+  function close() { sel = null; el.hidden = true; }
+  return {
+    open, close, selected: () => sel, isOpen: () => !el.hidden,
+    tick() {
+      if (!sel) return;
+      const sc = scene(); if (!sc) return;
+      const st = sc.state, b = st.buildings.find((e) => e.id === sel);
+      if (!b) { close(); return; }
+      const s2 = [b.lv, Math.ceil(b.hp), st.stock[sc.team].wood, st.stock[sc.team].stone, st.units.length, JSON.stringify(st.research[sc.team]), st.soldierMode[sc.team]].join("|");
+      if (s2 !== sig) { sig = s2; render(); }
+    },
   };
 })();
 
@@ -2119,7 +2488,7 @@ const Inventory = (() => {
   });
   document.getElementById("inv-close").addEventListener("click", () => close());
 
-  function open() { el.hidden = false; btn.classList.remove("new"); btn.setAttribute("aria-expanded", "true"); sig = ""; render(); }
+  function open() { if (BPanel.isOpen()) BPanel.close(); el.hidden = false; btn.classList.remove("new"); btn.setAttribute("aria-expanded", "true"); sig = ""; render(); }
   function close() { el.hidden = true; btn.setAttribute("aria-expanded", "false"); try { document.getElementById("game").focus({ preventScroll: true }); } catch (_) {} }
   btn.addEventListener("click", () => { btn.blur(); el.hidden ? open() : close(); });
   return {
@@ -2299,7 +2668,14 @@ const Build = (() => {
     toggle: () => setOpen(!open),
     close: () => setOpen(false),
     refresh(stock) {
-      for (const b of dock.querySelectorAll("[data-build]")) b.classList.toggle("poor", !Core.afford(stock, DATA.buildings[b.dataset.build].cost));
+      const sc0 = scene(), clv = sc0 ? Core.campLevel(sc0.state, sc0.team) : 1;
+      for (const b of dock.querySelectorAll("[data-build]")) {
+        const D = DATA.buildings[b.dataset.build], locked = D.needCamp && clv < D.needCamp;
+        b.classList.toggle("poor", !Core.afford(stock, D.cost));
+        b.classList.toggle("locked", !!locked); b.disabled = !!locked;
+        if (locked) b.querySelector(".note").textContent = `ต้องมีบ้านหลัก Lv ${D.needCamp}`;
+        else if (D.needCamp) b.querySelector(".note").textContent = { barracks: "จ้างพลธนู นักดาบ", infirmary: "จ้างหมอรักษาคนเจ็บ", workshop: "พัฒนาอาวุธ Hero และทหาร" }[b.dataset.build];
+      }
       train.classList.toggle("poor", !Core.afford(stock, DATA.worker.cost));
       const sc = scene();
       if (sc && !dock.hidden) {
@@ -2336,7 +2712,8 @@ class GameScene extends Phaser.Scene {
     this.buildMode = null;
     this.ghost = this.add.graphics().setDepth(7.9e6);
     this.zoneRing = this.add.graphics().setDepth(-2.45e6).setVisible(false);
-    { const c = this.state.map.n / 2 * DATA.tile; this.zoneRing.lineStyle(2, 0x6fb6e8, 0.6); this.zoneRing.strokeCircle(c, c, DATA.buildRadius * DATA.tile); this.zoneRing.fillStyle(0x6fb6e8, 0.06); this.zoneRing.fillCircle(c, c, DATA.buildRadius * DATA.tile); }
+    this.selRing = this.add.graphics().setDepth(7.95e6);
+    this.drawZoneRing();
     this.bars = this.add.graphics().setDepth(8e6);
 
     this.nightLayer = this.add.rectangle(0, 0, w, h, 0x0a1226).setOrigin(0, 0).setDepth(7.5e6).setAlpha(0);
@@ -2369,9 +2746,21 @@ class GameScene extends Phaser.Scene {
         this.tryPlace(p, true);
         return;
       }
-      if (!p.wasTouch && p.leftButtonDown()) { this.hold.on = true; this.sendMoveTo(p, true); }
+      if (!p.wasTouch && p.leftButtonDown()) {
+        const b = this.buildingAt(p);
+        if (b && b.team === this.team) { BPanel.open(b.id); return; }
+        this.hold.on = true; this.sendMoveTo(p, true);
+      }
+      if (p.wasTouch) this.tap = { x: p.x, y: p.y, t: this.time.now };
     });
-    this.input.on("pointerup", () => { this.hold.on = false; });
+    this.input.on("pointerup", (p) => {
+      this.hold.on = false;
+      if (p.wasTouch && this.tap && this.time.now - this.tap.t < 300 && Math.hypot(p.x - this.tap.x, p.y - this.tap.y) < 12 && !this.buildMode) {
+        const b = this.buildingAt(p);
+        if (b && b.team === this.team) BPanel.open(b.id);
+      }
+      this.tap = null;
+    });
     this.input.on("gameout", () => { this.hold.on = false; });
 
     HUD.reset(this.state);
@@ -2486,6 +2875,100 @@ class GameScene extends Phaser.Scene {
       });
       g.fillStyle = "#4a321c"; g.fillRect(0, 30, 34, 3);
     });
+    // กำแพงเลเวล 2 (หิน) และ 3 (หิน + แถบเหล็ก + หนาม)
+    const stoneWall = (key, iron) => canvasTexture(this, key, 34, 46, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.3)"; g.fillRect(0, 38, 34, 7);
+      g.fillStyle = iron ? "#6d6f74" : "#8b8878"; g.fillRect(0, 8, 34, 34);
+      g.fillStyle = iron ? "#55575c" : "#6f6c5f";
+      for (let row = 0; row < 4; row++) for (let col = 0; col < 3; col++) {
+        const ox = row % 2 ? 6 : 0; g.fillRect(col * 12 + ox - 1, 9 + row * 8 + 6, 11, 1.5); g.fillRect(col * 12 + ox + 10, 9 + row * 8, 1.5, 7);
+      }
+      g.fillStyle = iron ? "#7f8186" : "#a29f8e"; for (let x = 0; x < 34; x += 9) g.fillRect(x, 3, 6, 6);
+      if (iron) {
+        g.fillStyle = "#33353a"; g.fillRect(0, 18, 34, 3); g.fillRect(0, 32, 34, 3);
+        g.fillStyle = "#c9ccd2"; for (let x = 3; x < 34; x += 9) { g.beginPath(); g.moveTo(x, 3); g.lineTo(x + 2.5, -1); g.lineTo(x + 5, 3); g.closePath(); g.fill(); }
+      }
+    });
+    stoneWall("wall2", false); stoneWall("wall3", true);
+    const stoneGate = (key, iron) => canvasTexture(this, key, 34, 46, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.3)"; g.fillRect(0, 38, 34, 7);
+      g.fillStyle = iron ? "#6d6f74" : "#8b8878"; g.fillRect(0, 2, 7, 40); g.fillRect(27, 2, 7, 40); g.fillRect(0, 2, 34, 6);
+      g.fillStyle = iron ? "#4b4d52" : "#8a6038"; g.fillRect(7, 9, 20, 33);
+      g.strokeStyle = iron ? "#2b2d31" : "#4a321c"; g.lineWidth = 2;
+      for (let y = 14; y < 42; y += 7) { g.beginPath(); g.moveTo(7, y); g.lineTo(27, y); g.stroke(); }
+      g.fillStyle = "#6fb6e8"; g.fillRect(15, 0, 4, 4);
+    });
+    stoneGate("gate2", false); stoneGate("gate3", true);
+    // ป้อมเลเวล 2 (ฐานหิน) และ 3 (หิน หลังคาเหล็ก ธงใหญ่)
+    const stoneTower = (key, lv3) => canvasTexture(this, key, 48, 84, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.3)"; g.beginPath(); g.ellipse(24, 78, 21, 5, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#8b8878"; g.fillRect(9, 40, 30, 38);
+      g.fillStyle = "#6f6c5f"; for (let y = 46; y < 78; y += 8) g.fillRect(9, y, 30, 1.5);
+      g.fillStyle = lv3 ? "#6d6f74" : "#8a6038"; g.fillRect(5, 26, 38, 16);
+      g.fillStyle = "#2a1f12"; g.fillRect(12, 30, 6, 7); g.fillRect(30, 30, 6, 7);
+      g.fillStyle = lv3 ? "#3f4146" : "#b5452f"; g.beginPath(); g.moveTo(1, 27); g.lineTo(24, 4); g.lineTo(47, 27); g.closePath(); g.fill();
+      g.fillStyle = lv3 ? "#5a5d63" : "#d4644a"; g.beginPath(); g.moveTo(1, 27); g.lineTo(24, 4); g.lineTo(24, 27); g.closePath(); g.fill();
+      g.fillStyle = "#3b2c18"; g.fillRect(23, 0, 2, 8);
+      g.fillStyle = "#6fb6e8"; g.fillRect(25, 0, lv3 ? 12 : 7, lv3 ? 6 : 4);
+    });
+    stoneTower("tower2", false); stoneTower("tower3", true);
+    // บ้านหลักเลเวล 3+: บ้านยาวไม้ หลังคาสูง มีธง
+    canvasTexture(this, "hall", 128, 104, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.3)"; g.beginPath(); g.ellipse(64, 96, 58, 9, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#8a6038"; g.fillRect(14, 48, 100, 46);
+      g.strokeStyle = "rgba(59,44,24,0.45)"; g.lineWidth = 1; for (let y = 54; y < 94; y += 7) { g.beginPath(); g.moveTo(14, y); g.lineTo(114, y); g.stroke(); }
+      g.fillStyle = "#5a3f24"; g.fillRect(14, 48, 6, 46); g.fillRect(108, 48, 6, 46);
+      g.fillStyle = "#2a1f12"; g.fillRect(54, 64, 20, 30);
+      g.fillStyle = "#f2c66b"; g.fillRect(28, 60, 12, 10); g.fillRect(88, 60, 12, 10);
+      g.fillStyle = "#6b3a24"; g.beginPath(); g.moveTo(4, 52); g.lineTo(64, 12); g.lineTo(124, 52); g.closePath(); g.fill();
+      g.fillStyle = "#8a4a2e"; g.beginPath(); g.moveTo(4, 52); g.lineTo(64, 12); g.lineTo(64, 52); g.closePath(); g.fill();
+      g.strokeStyle = "#3b2c18"; g.lineWidth = 3; g.beginPath(); g.moveTo(64, 14); g.lineTo(64, 0); g.stroke();
+      g.fillStyle = "#6fb6e8"; g.beginPath(); g.moveTo(65, 0); g.lineTo(86, 5); g.lineTo(65, 10); g.closePath(); g.fill();
+    });
+    // ค่ายทหาร: โรงไม้หลังคาแดง ป้ายดาบไขว้
+    canvasTexture(this, "barracks", 72, 72, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.3)"; g.fillRect(2, 62, 68, 8);
+      g.fillStyle = "#8a6038"; g.fillRect(6, 30, 60, 34);
+      g.fillStyle = "#2a1f12"; g.fillRect(28, 42, 16, 22);
+      g.fillStyle = "#9b3a2c"; g.beginPath(); g.moveTo(0, 32); g.lineTo(36, 6); g.lineTo(72, 32); g.closePath(); g.fill();
+      g.strokeStyle = "#d8dbe0"; g.lineWidth = 3; g.lineCap = "round";
+      g.beginPath(); g.moveTo(26, 14); g.lineTo(46, 30); g.moveTo(46, 14); g.lineTo(26, 30); g.stroke();
+      g.fillStyle = "#6fb6e8"; g.fillRect(8, 36, 10, 8); g.fillRect(54, 36, 10, 8);
+    });
+    // สถานพยาบาล: เต็นท์ผ้าขาว เครื่องหมายบวกสีเขียว
+    canvasTexture(this, "infirmary", 72, 72, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.3)"; g.beginPath(); g.ellipse(36, 64, 32, 6, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#d9d3c2"; g.beginPath(); g.moveTo(36, 8); g.lineTo(70, 62); g.lineTo(2, 62); g.closePath(); g.fill();
+      g.fillStyle = "#bdb6a3"; g.beginPath(); g.moveTo(36, 8); g.lineTo(70, 62); g.lineTo(36, 62); g.closePath(); g.fill();
+      g.fillStyle = "#3f9a56"; g.fillRect(31, 26, 10, 26); g.fillRect(23, 34, 26, 10);
+      g.strokeStyle = "#6b5a33"; g.lineWidth = 2; g.beginPath(); g.moveTo(36, 8); g.lineTo(70, 62); g.lineTo(2, 62); g.closePath(); g.stroke();
+    });
+    // Workshop: โรงตีเหล็ก ปล่องควัน ทั่งตีเหล็กด้านหน้า
+    canvasTexture(this, "workshop", 72, 76, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.3)"; g.fillRect(2, 66, 68, 8);
+      g.fillStyle = "#6f6c5f"; g.fillRect(48, 4, 12, 30);
+      g.fillStyle = "#7a5634"; g.fillRect(6, 30, 60, 38);
+      g.fillStyle = "#4a321c"; g.beginPath(); g.moveTo(0, 32); g.lineTo(36, 12); g.lineTo(72, 32); g.closePath(); g.fill();
+      g.fillStyle = "#e2702a"; g.fillRect(14, 44, 14, 14); g.fillStyle = "#ffcf6b"; g.fillRect(17, 48, 8, 8);
+      g.fillStyle = "#3a3c41"; g.fillRect(40, 54, 22, 6); g.fillRect(46, 60, 10, 8); g.fillRect(36, 54, 6, 3);
+    });
+    // ยูนิต: พลธนู, นักดาบ, หมอ (หันขวา)
+    canvasTexture(this, "u_archer", 30, 30, (g) => {
+      g.strokeStyle = "#c9a46a"; g.lineWidth = 2; g.beginPath(); g.arc(17, 15, 9, -1.1, 1.1); g.stroke();
+      g.fillStyle = "#2c5f86"; g.beginPath(); g.arc(13, 15, 9, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#5b8f3c"; g.beginPath(); g.arc(13, 15, 6, 0, Math.PI * 2); g.fill();
+    });
+    canvasTexture(this, "u_sword", 32, 32, (g) => {
+      g.fillStyle = "#d8dbe0"; g.fillRect(17, 6, 12, 3);
+      g.fillStyle = "#2c5f86"; g.beginPath(); g.arc(14, 16, 10, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#9aa0a8"; g.beginPath(); g.arc(14, 16, 7, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#6fb6e8"; g.beginPath(); g.ellipse(20, 23, 5, 7, 0.3, 0, Math.PI * 2); g.fill();
+    });
+    canvasTexture(this, "u_medic", 30, 30, (g) => {
+      g.fillStyle = "#2c5f86"; g.beginPath(); g.arc(14, 15, 9, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#e8e3d3"; g.beginPath(); g.arc(14, 15, 7, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#3f9a56"; g.fillRect(12, 10, 4, 10); g.fillRect(9, 13, 10, 4);
+    });
     // ประตูไม้: โครงเสาสองข้าง บานไม้มีคานไขว้
     canvasTexture(this, "gate", 34, 46, (g) => {
       g.fillStyle = "rgba(0,0,0,0.28)"; g.fillRect(0, 38, 34, 7);
@@ -2594,13 +3077,14 @@ class GameScene extends Phaser.Scene {
     g.fillStyle(0x6b5a33, 0.4); g.fillCircle(x, y + 10, DATA.campRadius);
     g.fillStyle(0x7a6740, 0.35); g.fillCircle(x, y + 10, 104);
     g.lineStyle(2, 0xe2b04a, 0.35); g.strokeCircle(x, y + 10, DATA.campRadius);
-    this.add.image(x, y + 30, "tent").setOrigin(0.5, 88 / 96).setDepth(y + 30);
+    this.campImg = this.add.image(x, y + 30, "tent").setOrigin(0.5, 88 / 96).setDepth(y + 30);
     this.fire = { x: x + 64, y: y + 54 };
     this.add.image(this.fire.x, this.fire.y, "firepit").setDepth(this.fire.y - 2);
     this.fireGlow = this.add.graphics().setDepth(-2.4e6).setBlendMode(Phaser.BlendModes.ADD);
     this.flame = this.add.graphics().setDepth(this.fire.y - 1);
-    this.add.text(x, y + 40, "ค่ายพักแรม", { fontFamily: "Sarabun, sans-serif", fontSize: "15px", fontStyle: "bold", color: "#efe8d2", stroke: "#1c2618", strokeThickness: 4 })
+    this.campLabel = this.add.text(x, y + 40, "บ้านหลัก Lv 1", { fontFamily: "Sarabun, sans-serif", fontSize: "15px", fontStyle: "bold", color: "#efe8d2", stroke: "#1c2618", strokeThickness: 4 })
       .setOrigin(0.5, 0).setDepth(y + 31).setResolution(2);
+    this.campLv = 1;
   }
 
   drawFire(time) {
@@ -2716,6 +3200,27 @@ class GameScene extends Phaser.Scene {
 
   castSkill() { Core.applyCommand(this.state, { type: "skill", heroId: this.localHero }); }
 
+  drawZoneRing() {
+    const c = this.state.map.n / 2 * DATA.tile, R = Core.buildRadius(this.state, this.team) * DATA.tile;
+    this.zoneRing.clear();
+    this.zoneRing.lineStyle(2, 0x6fb6e8, 0.6); this.zoneRing.strokeCircle(c, c, R);
+    this.zoneRing.fillStyle(0x6fb6e8, 0.06); this.zoneRing.fillCircle(c, c, R);
+  }
+
+  buildingAt(p) {
+    const [tx, ty] = this.pointerTile(p), N = this.state.map.n;
+    const id = this.state.buildAt[ty * N + tx];
+    return id ? this.state.buildings.find((b) => b.id === id) : null;
+  }
+
+  drawSelection(time) {
+    const g = this.selRing; g.clear();
+    const id = BPanel.selected(); if (!id) return;
+    const b = this.state.buildings.find((e) => e.id === id); if (!b) { BPanel.close(); return; }
+    const S = DATA.tile, a = 0.6 + Math.sin(time / 200) * 0.25;
+    g.lineStyle(2, 0xffd166, a); g.strokeRect(b.tx * S - 2, b.ty * S - 2, b.size * S + 4, b.size * S + 4);
+  }
+
   setBuildMode(kind) {
     this.buildMode = kind;
     this.zoneRing.setVisible(!!kind);
@@ -2734,7 +3239,7 @@ class GameScene extends Phaser.Scene {
     this.hold.lastTile = key;
     const res = Core.applyCommand(this.state, { type: "build", heroId: this.localHero, kind: this.buildMode, tx, ty });
     if (res !== true && fresh) Toast.show(BUILD_ERR[res] || "ตรงนี้สร้างไม่ได้");
-    if (res === true && this.buildMode === "tower") Build.close();     // ป้อมวางทีละอัน, กำแพงลากต่อได้
+    if (res === true && this.buildMode !== "wall" && this.buildMode !== "gate") Build.close();     // อาคารวางทีละหลัง, กำแพงลากต่อได้
   }
 
   drawGhost() {
@@ -2742,10 +3247,10 @@ class GameScene extends Phaser.Scene {
     if (!this.buildMode) return;
     const p = this.input.activePointer;
     if (p.wasTouch && !p.isDown) return;
-    const [tx, ty] = this.pointerTile(p), S = DATA.tile;
+    const [tx, ty] = this.pointerTile(p), S = DATA.tile, sz = (DATA.buildings[this.buildMode].size || 1) * S;
     const ok = !Core.canBuild(this.state, this.team, this.buildMode, tx, ty);
-    this.ghost.fillStyle(ok ? 0x7fcf6a : 0xd9573f, 0.35); this.ghost.fillRect(tx * S, ty * S, S, S);
-    this.ghost.lineStyle(2, ok ? 0x7fcf6a : 0xd9573f, 0.9); this.ghost.strokeRect(tx * S, ty * S, S, S);
+    this.ghost.fillStyle(ok ? 0x7fcf6a : 0xd9573f, 0.35); this.ghost.fillRect(tx * S, ty * S, sz, sz);
+    this.ghost.lineStyle(2, ok ? 0x7fcf6a : 0xd9573f, 0.9); this.ghost.strokeRect(tx * S, ty * S, sz, sz);
     if (this.buildMode === "tower") { this.ghost.lineStyle(1, 0xefe8d2, 0.35); this.ghost.strokeCircle(tx * S + S / 2, ty * S + S / 2, DATA.buildings.tower.rng); }
   }
 
@@ -2757,7 +3262,7 @@ class GameScene extends Phaser.Scene {
       if (!v) {
         const root = this.add.container(u.x, u.y);
         const shadow = this.add.image(0, 8, "shadow").setScale(0.6);
-        const body = this.add.image(0, 0, "worker");
+        const body = this.add.image(0, 0, { archer: "u_archer", swordsman: "u_sword", medic: "u_medic" }[u.type] || "worker");
         const load = this.add.image(-6, -8, "pebbles").setScale(0.7).setVisible(false);
         root.add([shadow, body, load]);
         v = { root, body, load };
@@ -2768,22 +3273,36 @@ class GameScene extends Phaser.Scene {
       v.body.rotation = Phaser.Math.Angle.RotateTo(v.body.rotation, u.face, 0.3);
       v.body.y = u.moving ? Math.sin(time / 60 + u.id) * 1.5 : 0;
       if (u.job === "gather") v.body.x = Math.sin(time / 90) * 2; else v.body.x = 0;
-      v.load.setVisible(u.carry > 0).setTexture(u.carryType === "stone" ? "pebbles" : "stump");
+      if (u.type === "worker") v.load.setVisible(u.carry > 0).setTexture(u.carryType === "stone" ? "pebbles" : "stump");
+      if (u.type === "swordsman" && u.lunge) { v.body.x = Math.cos(u.face) * u.lunge * 5; u.lunge = Math.max(0, u.lunge - 0.15); }
       v.x = x; v.y = y;
     }
     for (const [id, v] of this.unitViews) if (!seen.has(id)) { v.root.destroy(); this.unitViews.delete(id); }
   }
 
+  buildingTexture(b) {
+    if (b.type === "wall" || b.type === "gate" || b.type === "tower") return b.lv > 1 ? b.type + b.lv : b.type;
+    return b.type;
+  }
+
   syncBuildings() {
     const seen = new Set();
     for (const b of this.state.buildings) {
-      if (b.type === "camp") continue;
+      if (b.type === "camp") {
+        if (b.lv !== this.campLv) {
+          this.campLv = b.lv;
+          this.campImg.setTexture(b.lv >= 3 ? "hall" : "tent").setOrigin(0.5, b.lv >= 3 ? 96 / 104 : 88 / 96).setScale(b.lv >= 5 ? 1.12 : b.lv === 4 ? 1.05 : 1);
+          this.campLabel.setText(`บ้านหลัก Lv ${b.lv}`);
+          this.drawZoneRing();
+        }
+        continue;
+      }
       seen.add(b.id);
-      if (this.buildViews.has(b.id)) continue;
-      const S = DATA.tile, bx = b.tx * S + S / 2, by = b.ty * S + S;
-      const img = b.type === "tower"
-        ? this.add.image(bx, by + 4, "tower").setOrigin(0.5, 1).setDepth(by)
-        : this.add.image(bx, by + 2, b.type).setOrigin(0.5, 1).setDepth(by);
+      const tex = this.buildingTexture(b);
+      const have = this.buildViews.get(b.id);
+      if (have) { if (have.texture.key !== tex) have.setTexture(tex); continue; }
+      const S = DATA.tile, bx = (b.tx + b.size / 2) * S, by = (b.ty + b.size) * S;
+      const img = this.add.image(bx, by + (b.type === "tower" ? 4 : 2), tex).setOrigin(0.5, 1).setDepth(by);
       img.setScale(0.6); this.tweens.add({ targets: img, scale: 1, duration: 220, ease: "Back.easeOut" });
       this.buildViews.set(b.id, img);
     }
@@ -2836,6 +3355,17 @@ class GameScene extends Phaser.Scene {
         Toast.show("ของระดับมหากาพย์ดรอป!");
       } else if (e.type === "workersStuck" && e.team === this.team) {
         Banner.show("คนงานออกจากค่ายไม่ได้ · สร้างประตูไม้ในแนวกำแพง", "warn");
+      } else if (e.type === "upgraded") {
+        const img = this.buildViews.get(e.id);
+        if (img) this.tweens.add({ targets: img, scale: { from: 1.25, to: 1 }, duration: 320, ease: "Back.easeOut" });
+        this.popText(e.x, e.y - 30, `Lv ${e.lv}!`, "#ffd166", 16);
+        if (e.btype === "camp") Banner.show(`บ้านหลัก Lv ${e.lv} · ประชากรสูงสุด ${Core.popCap(this.state, this.team)} · เขตสร้างกว้างขึ้น`, "day");
+      } else if (e.type === "researched") {
+        Toast.show(`วิจัย ${DATA.research[e.key].name} Lv ${e.lv} แล้ว`);
+      } else if (e.type === "trained" && e.unit && e.unit !== "worker") {
+        Toast.show(`จ้าง${DATA.units[e.unit].name}แล้ว`);
+      } else if (e.type === "heal") {
+        if (this.visibleAt(e.x, e.y)) this.popText(e.x, e.y, "+" + e.n, "#7fe08a", 13);
       } else if (e.type === "repaired" && e.team === this.team) {
         for (const b of this.state.buildings) if (b.team === this.team) { const img = this.buildViews.get(b.id); if (img) this.tweens.add({ targets: img, scale: { from: 1.12, to: 1 }, duration: 260 }); }
       } else if (e.type === "recalled") {
@@ -3035,6 +3565,7 @@ class GameScene extends Phaser.Scene {
     this.drawBars();
     if (this.buildMode && this.hold.on && p.isDown && this.buildMode === "wall") this.tryPlace(p, false);
     this.drawGhost();
+    this.drawSelection(time);
     this.drawNight(time);
     this.drawWaveArrow(time);
     this.recallRing.clear();
@@ -3091,7 +3622,7 @@ const HUD = (() => {
     $("clock-fill").style.width = (night ? (st.clock - C.daySec) / C.nightSec : st.clock / C.daySec) * 100 + "%";
     $("skip").hidden = night || st.clock >= C.daySec - C.skipTo || !!st.result;
     const camp = st.buildings.find((b) => b.type === "camp");
-    const campHp = camp ? camp.hp : 0, campMax = DATA.buildings.camp.hp;
+    const campHp = camp ? camp.hp : 0, campMax = camp ? camp.maxHp : DATA.buildings.camp.hp;
     $("camp-fill").style.width = (campHp / campMax) * 100 + "%";
     $("camp-text").textContent = `ค่าย ${Math.ceil(campHp)} / ${campMax}`;
     const plan = st.nightPlan;
@@ -3111,7 +3642,8 @@ const HUD = (() => {
     }
     const stock = st.stock[team];
     $("res-wood").textContent = stock.wood; $("res-stone").textContent = stock.stone;
-    $("res-workers").textContent = `${st.units.filter((u) => u.team === team).length}/${DATA.worker.max}`;
+    $("res-workers").textContent = `${Core.popUsed(st, team)}/${Core.popCap(st, team)}`;
+    BPanel.tick();
     Build.refresh(stock);
 
     $("hp-fill").style.width = (me.hp / me.maxHp) * 100 + "%";
@@ -3200,6 +3732,7 @@ function recall() {
       if (Title.isOpen()) return;
       if (document.getElementById("build-toggle").classList.contains("on")) { Build.close(); return; }
       if (Inventory.isOpen()) { Inventory.close(); return; }
+      if (BPanel.isOpen()) { BPanel.close(); return; }
       Menu.toggle(); return;
     }
     if (kind === "recall") { recall(); return; }
@@ -3230,7 +3763,7 @@ function recall() {
   });
   window.__game = game;   // ให้แผงสร้างและการทดสอบเข้าถึงฉากเกมได้
   const restart = (seed) => {
-    Build.close(); Result.hide(); Banner.hide(); Menu.close(); Inventory.close();
+    Build.close(); Result.hide(); Banner.hide(); Menu.close(); Inventory.close(); BPanel.close();
     game.scene.getScene("game").scene.restart({ seed: seed || 1 + Math.floor(Math.random() * 999999) });
     try { document.getElementById("game").focus({ preventScroll: true }); } catch (_) {}
   };
