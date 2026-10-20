@@ -193,17 +193,26 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .inv-cell.empty { border-style: dashed; border-color: rgba(214, 196, 140, 0.15); cursor: default; color: var(--ink-dim); font-size: 10px; }
 .inv-cell.sel { box-shadow: 0 0 0 2px var(--ink); }
 .inv-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.inv-detail { border-top: 1px solid var(--panel-line); padding-top: 9px; display: grid; gap: 5px; min-height: 64px; }
+.inv-detail { border-top: 1px solid var(--panel-line); padding-top: 9px; display: grid; gap: 5px; align-content: start; }
+.inv > .inv-detail { min-height: 236px; }   /* สูงคงที่ ช่องกระเป๋าจะไม่ขยับตอนชี้เมาส์ */
 .inv-empty { margin: 0; font-size: 12px; color: var(--ink-dim); }
 .inv-name { font-size: 15px; font-weight: 700; }
 .inv-meta { font-size: 11.5px; color: var(--ink-dim); }
 .inv-stat { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 13px; }
 .inv-stat li { display: grid; grid-template-columns: 1fr auto 64px; gap: 8px; }
+.inv-stat li.worse b, .inv-stat li.worse span { color: #ff8a73; }
+.inv-stat li.better b { color: #9be08a; }
+.inv-vs { font-size: 11.5px; color: var(--ink-dim); }
+.loot-tip {
+  position: fixed; z-index: 6; pointer-events: none; width: 250px;
+  background: #161b13; border: 1px solid var(--panel-line); border-radius: 6px; padding: 9px 11px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
 .inv-stat span { color: var(--ink-dim); }
 .inv-stat b { font-variant-numeric: tabular-nums; text-align: right; }
 .inv-stat em { font-style: normal; font-size: 12px; font-variant-numeric: tabular-nums; }
-.inv-stat em.up { color: #7fcf6a; }
-.inv-stat em.down { color: #ff8a73; }
+.inv-stat em.better { color: #7fcf6a; }
+.inv-stat em.worse { color: #ff6b57; font-weight: 700; }
 .inv-act { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 3px; }
 .inv-act .btn { padding: 6px 6px; font-size: 12.5px; }
 
@@ -448,6 +457,8 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 
 <button type="button" class="bag-btn" id="bag-btn" aria-expanded="false" aria-controls="inv">กระเป๋า<span>I</span></button>
 
+<div class="inv-detail loot-tip" id="loot-tip" hidden></div>
+
 <div class="inv" id="inv" hidden>
   <div class="inv-head"><b>กระเป๋า</b><span id="inv-count">0 / 12</span><button type="button" class="btn" id="inv-close" aria-label="ปิดกระเป๋า">ปิด</button></div>
   <div class="inv-stats" id="inv-stats"></div>
@@ -459,6 +470,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 <div class="build-dock">
   <div class="build-menu hud" id="build-menu" hidden>
     <button type="button" class="build-item" data-build="wall"><b>กำแพงไม้</b><span class="cost"></span><span class="note">ลากเพื่อวางต่อกัน</span></button>
+    <button type="button" class="build-item" data-build="gate"><b>ประตูไม้</b><span class="cost"></span><span class="note">คนงานผ่านได้ Monster ผ่านไม่ได้</span></button>
     <button type="button" class="build-item" data-build="tower"><b>ป้อมธนู</b><span class="cost"></span><span class="note">ยิง Monster เอง</span></button>
     <button type="button" class="build-item" id="train"><b>ฝึกคนงาน</b><span class="cost"></span><span class="note">เก็บไม้/หินให้เอง</span></button>
   </div>
@@ -633,18 +645,22 @@ const DATA = {
   buildings: {
     camp: { name: "ค่ายพักแรม", hp: 1500, def: 6, vision: 9 },
     wall: { name: "กำแพงไม้", cost: { wood: 5 }, hp: 160, def: 4, vision: 0 },
+    gate: { name: "ประตูไม้", cost: { wood: 8 }, hp: 200, def: 4, vision: 0 },
     tower: { name: "ป้อมธนู", cost: { wood: 20, stone: 10 }, hp: 240, def: 4, atk: 12, as: 1.1, rng: 220, vision: 7 },
   },
   worker: { name: "คนงาน", cost: { wood: 15 }, max: 6, hp: 40, spd: 115, r: 9, carry: 5, gatherSec: 0.9, range: 16, flee: 4, vision: 4 },
   cycle: { daySec: 240, nightSec: 120, warnSec: 30, nights: 5, skipTo: 10 },   // กลางวัน 4 นาที กลางคืน 2 นาที
-  waves: { base: 4, perNight: 3, wolfFrom: 3, wolfShare: 0.3, lvPerNight: 1.5, dist: [32, 38], batches: 6, batchEvery: 3 },
-  spawn: { population: 240, safeRadius: 18, leash: 16, refillEvery: 4, sleepRadius: 26 },
+  waves: { base: 6, perNight: 4, wolfFrom: 3, wolfShare: 0.3, lvPerNight: 1.5, dist: [32, 38], batches: 6, batchEvery: 3 },
+  spawn: { population: 450, safeRadius: 14, zoneDensity: [1, 0.75, 0.55, 0.4], leash: 16, refillEvery: 4, sleepRadius: 26 },
 };
 
 /* ===== core/ : ตรรกะเกม ไม่ยุ่งกับ Phaser (ย้ายไปเซิร์ฟเวอร์ได้) ===== */
 const Core = (() => {
-  const T = { GRASS: 0, TREE: 1, ROCK: 2, WATER: 3, CAMP: 4, BUILD: 5 };
-  const BLOCK = [0, 1, 1, 1, 1, 1];
+  const T = { GRASS: 0, TREE: 1, ROCK: 2, WATER: 3, CAMP: 4, BUILD: 5, GATE: 6 };
+  const BLOCK = [0, 1, 1, 1, 1, 1, 1];
+  // ประตู: ทีมเจ้าของเดินผ่านได้ คนอื่น (Monster) ผ่านไม่ได้
+  let passTeam = 0;
+  function withTeam(team, fn) { const prev = passTeam; passTeam = team; try { return fn(); } finally { passTeam = prev; } }
 
   function rng(seed) {              // mulberry32: Seed เดิม = ผลสุ่มเดิม
     let a = seed >>> 0;
@@ -719,7 +735,7 @@ const Core = (() => {
     hero.equip.weapon = { id: st.nextId++, slot: "weapon", rarity: "common", rarityIdx: 0, ilv: 1, name: "ธนูไม้ฝึกหัด", stats: { atk: 2 } };
     recalcStats(hero); hero.hp = hero.maxHp;
     st.heroes.push(hero);
-    for (let i = 0; i < 400 && st.monsters.length < DATA.spawn.population; i++) spawnPack(st);
+    for (let i = 0; i < 3000 && st.monsters.length < DATA.spawn.population; i++) spawnPack(st);
     updateVision(st);
     return st;
   }
@@ -742,7 +758,7 @@ const Core = (() => {
     size = size || 1;
     const id = st.nextId++;
     for (let y = ty; y < ty + size; y++) for (let x = tx; x < tx + size; x++) {
-      st.map.t[y * st.map.n + x] = type === "camp" ? T.CAMP : T.BUILD;
+      st.map.t[y * st.map.n + x] = type === "camp" ? T.CAMP : type === "gate" ? T.GATE : T.BUILD;
       st.buildAt[y * st.map.n + x] = id;
     }
     return {
@@ -884,6 +900,7 @@ const Core = (() => {
       if (st.heroes.some((h) => Math.hypot(h.x / S - tx, h.y / S - ty) < 14)) return;
     }
     const z = zoneIndex(d);
+    if (rand(st) > DATA.spawn.zoneDensity[z]) return;      // โซนใกล้ค่ายหนาแน่นกว่า
     const wolfChance = [0.15, 0.6, 0.4, 0.5][z];
     const type = rand(st) < wolfChance ? "wolf" : "zombie";
     const count = type === "wolf" ? 2 + Math.floor(rand(st) * (z === 0 ? 2 : 3)) : 1 + Math.floor(rand(st) * 3);
@@ -1031,7 +1048,7 @@ const Core = (() => {
   function computeField(st) {
     const N = st.map.n, t = st.map.t, size = N * N;
     const dist = new Float64Array(size).fill(Infinity);
-    const cost = (k) => k === T.GRASS ? 1 : k === T.BUILD ? 9 : k === T.CAMP ? 0 : Infinity;
+    const cost = (k) => k === T.GRASS ? 1 : k === T.BUILD || k === T.GATE ? 9 : k === T.CAMP ? 0 : Infinity;
     const hIdx = [], hKey = [];
     const push = (i, k) => { let p = hIdx.length; hIdx.push(i); hKey.push(k); while (p > 0) { const q = (p - 1) >> 1; if (hKey[q] <= k) break; hIdx[p] = hIdx[q]; hKey[p] = hKey[q]; p = q; } hIdx[p] = i; hKey[p] = k; };
     const pop = () => { const top = hIdx[0], tk = hKey[0], li = hIdx.pop(), lk = hKey.pop(); if (hIdx.length) { let p = 0; for (;;) { let c = 2 * p + 1; if (c >= hIdx.length) break; if (c + 1 < hIdx.length && hKey[c + 1] < hKey[c]) c++; if (hKey[c] >= lk) break; hIdx[p] = hIdx[c]; hKey[p] = hKey[c]; p = c; } hIdx[p] = li; hKey[p] = lk; } return [top, tk]; };
@@ -1153,7 +1170,7 @@ const Core = (() => {
       return;
     }
     const k = st.map.t[best];
-    if (k === T.BUILD || k === T.CAMP) {
+    if (k === T.BUILD || k === T.GATE || k === T.CAMP) {
       const bld = findEntity(st, st.buildAt[best]);
       if (bld && !bld.dead) {
         m.face = Math.atan2(bld.y - m.y, bld.x - m.x);
@@ -1229,7 +1246,7 @@ const Core = (() => {
     st.spawnTimer -= dt;
     if (st.spawnTimer <= 0) {
       st.spawnTimer = DATA.spawn.refillEvery;
-      if (st.monsters.length < DATA.spawn.population) for (let k = 0; k < 6; k++) spawnPack(st, true);
+      if (st.monsters.length < DATA.spawn.population) for (let k = 0; k < 10; k++) spawnPack(st, true);
     }
   }
 
@@ -1239,7 +1256,15 @@ const Core = (() => {
     if (tx < 0 || ty < 0 || tx >= N || ty >= N) return T.TREE;
     return st.map.t[ty * N + tx];
   }
-  function walkable(st, tx, ty) { return !BLOCK[tileAt(st, tx, ty)]; }
+  function walkable(st, tx, ty) {
+    const k = tileAt(st, tx, ty);
+    if (k === T.GATE) {
+      if (!passTeam) return false;
+      const b = st.buildings.find((e) => e.id === st.buildAt[ty * st.map.n + tx]);
+      return !!b && b.team === passTeam;
+    }
+    return !BLOCK[k];
+  }
   function blockedAt(st, x, y, r) {
     const S = DATA.tile;
     for (let ty = Math.floor((y - r) / S); ty <= Math.floor((y + r) / S); ty++) {
@@ -1253,8 +1278,10 @@ const Core = (() => {
   }
   function moveSlide(st, h, dx, dy) {
     const r = h.r || DATA.heroRadius, x0 = h.x, y0 = h.y;
-    if (!blockedAt(st, h.x + dx, h.y, r)) h.x += dx;
-    if (!blockedAt(st, h.x, h.y + dy, r)) h.y += dy;
+    withTeam(h.team, () => {
+      if (!blockedAt(st, h.x + dx, h.y, r)) h.x += dx;
+      if (!blockedAt(st, h.x, h.y + dy, r)) h.y += dy;
+    });
     return Math.hypot(h.x - x0, h.y - y0);
   }
   function lineClear(st, ax, ay, bx, by) {
@@ -1326,7 +1353,8 @@ const Core = (() => {
     return best;
   }
 
-  function planPath(st, h, wx, wy) {
+  function planPath(st, h, wx, wy) { return withTeam(h.team, () => planPathInner(st, h, wx, wy)); }
+  function planPathInner(st, h, wx, wy) {
     const S = DATA.tile, N = st.map.n;
     const goalTile = nearestWalkable(st, Math.floor(wx / S), Math.floor(wy / S), wx, wy);
     if (!goalTile) return null;
@@ -1555,7 +1583,13 @@ const Core = (() => {
         const want = stock.wood <= stock.stone * 2 ? "tree" : "rock";
         let idx = findResource(st, u, want);
         if (idx < 0) idx = findResource(st, u, want === "tree" ? "rock" : "tree");
-        if (idx < 0) { u.wait = 40; continue; }
+        if (idx < 0) {
+          u.wait = 40;
+          if (st.tick - (st.stuckWarn || -9999) > 600 && st.badRes && Object.values(st.badRes).some((t) => t > st.tick)) {
+            st.stuckWarn = st.tick; st.events.push({ type: "workersStuck", team: u.team });
+          }
+          continue;
+        }
         const N = st.map.n;
         u.path = planPath(st, u, (idx % N + 0.5) * S, (((idx / N) | 0) + 0.5) * S);
         if (!u.path) { (st.badRes || (st.badRes = {}))[idx] = st.tick + 600; u.wait = 10; continue; }
@@ -1780,8 +1814,10 @@ function canvasTexture(scene, key, w, h, draw) {
   draw(tex.getContext(), w, h);
   tex.refresh();
 }
-const TILE_RGB = [[63, 90, 51], [31, 58, 28], [138, 135, 120], [47, 95, 122], [226, 176, 74], [154, 109, 64]];
+const TILE_RGB = [[63, 90, 51], [31, 58, 28], [138, 135, 120], [47, 95, 122], [226, 176, 74], [154, 109, 64], [111, 182, 232]];
 const RES_NAME = { wood: "ไม้", stone: "หิน" };
+const MOUSE = { x: -1, y: -1 };   // ตำแหน่งเมาส์จริงบนหน้าจอ (รวมตอนอยู่บนแผง HUD)
+for (const t of ["pointermove", "mousemove", "pointerover"]) window.addEventListener(t, (e) => { if (!e.pointerType || e.pointerType === "mouse") { MOUSE.x = e.clientX; MOUSE.y = e.clientY; } }, true);
 const RARITY_HEX = [0xe8e3d3, 0x5ea8ff, 0xc07cff];
 const RARITY_CSS = ["#e8e3d3", "#5ea8ff", "#c07cff"];
 const STAT_ORDER = ["atk", "hp", "def", "as", "crit", "spd"];
@@ -1853,24 +1889,56 @@ const Inventory = (() => {
     document.getElementById("inv-grid").innerHTML = grid;
 
     const d = document.getElementById("inv-detail");
-    if (!it) { d.innerHTML = `<p class="inv-empty">แตะของเพื่อดูรายละเอียด · ฆ่า Monster มีโอกาสดรอปของ ยิ่งไกลค่ายยิ่งดี</p>`; return; }
+    const show = hoverItem || it;
+    if (!show) { d.innerHTML = `<p class="inv-empty">ชี้หรือแตะของเพื่อดูรายละเอียด · ฆ่า Monster มีโอกาสดรอปของ ยิ่งไกลค่ายยิ่งดี</p>`; return; }
+    d.innerHTML = detailHTML(h, show, show === it);
+  }
+
+  // รายละเอียดไอเทม + เทียบกับของที่สวมอยู่: ต่ำกว่าเดิม = แดง, สูงกว่า = เขียว
+  function detailHTML(h, it, withActions) {
     const equipped = h.equip[it.slot] === it, cur = h.equip[it.slot];
     const keys = STAT_ORDER.filter((k) => k in it.stats || (!equipped && cur && k in cur.stats));
     const rows = keys.map((k) => {
       const v = it.stats[k] || 0, diff = equipped || !cur ? 0 : v - (cur.stats[k] || 0);
-      const cmp = !equipped && Math.abs(diff) > 0.001 ? `<em class="${diff > 0 ? "up" : "down"}">${diff > 0 ? "▲" : "▼"} ${fmtStat(k, diff).replace(/^[+-]/, "")}</em>` : "";
-      return `<li><span>${STAT_NAME[k]}</span><b>${v ? fmtStat(k, v) : "—"}</b>${cmp}</li>`;
+      const tone = !equipped && Math.abs(diff) > 0.001 ? (diff > 0 ? "better" : "worse") : "";
+      const cmp = tone ? `<em class="${tone}">${diff > 0 ? "▲" : "▼"} ${fmtStat(k, diff).replace(/^[+-]/, "")}</em>` : "<em></em>";
+      return `<li class="${tone}"><span>${STAT_NAME[k]}</span><b>${v ? fmtStat(k, v) : "—"}</b>${cmp}</li>`;
     }).join("");
     const salv = Object.entries(DATA.items.salvage[it.rarity]).map(([k, v]) => `${v} ${RES_NAME[k]}`).join(" ");
-    d.innerHTML = `<div class="inv-name" style="color:${RARITY_CSS[it.rarityIdx]}">${it.name}</div>
-      <div class="inv-meta">${DATA.items.rarity[it.rarityIdx].name} · Lv ไอเทม ${it.ilv} · ${it.slot === "weapon" ? "อาวุธ" : "เสื้อเกราะ"}${equipped ? " · สวมอยู่" : ""}</div>
+    const vs = equipped ? " · สวมอยู่" : cur ? "" : " · ช่องนี้ยังว่าง";
+    return `<div class="inv-name" style="color:${RARITY_CSS[it.rarityIdx]}">${it.name}</div>
+      <div class="inv-meta">${DATA.items.rarity[it.rarityIdx].name} · Lv ไอเทม ${it.ilv} · ${it.slot === "weapon" ? "อาวุธ" : "เสื้อเกราะ"}${vs}</div>
+      ${!equipped && cur ? `<div class="inv-vs">เทียบกับ <span style="color:${RARITY_CSS[cur.rarityIdx]}">${cur.name}</span> ที่สวมอยู่</div>` : ""}
       <ul class="inv-stat">${rows}</ul>
-      ${equipped ? "" : `<div class="inv-act"><button type="button" class="btn primary" data-act="equip">สวมใส่</button><button type="button" class="btn" data-act="salvage">ย่อย (+${salv})</button></div>`}`;
+      ${withActions && h.bag.includes(it) ? `<div class="inv-act"><button type="button" class="btn primary" data-act="equip">สวมใส่</button><button type="button" class="btn" data-act="salvage">ย่อย (+${salv})</button></div>` : ""}`;
   }
+
+  // ชี้เมาส์ที่ช่องในกระเป๋า: แสดงรายละเอียดชั่วคราว
+  let hoverItem = null;
+  const findItem = (id) => { const h = hero(); return h ? [h.equip.weapon, h.equip.armor, ...h.bag].find((i) => i && i.id === id) : null; };
+  el.addEventListener("pointerover", (e) => {
+    if (e.pointerType !== "mouse") return;
+    const c = e.target.closest(".inv-cell[data-id]");
+    const next = c ? findItem(Number(c.dataset.id)) : null;
+    if (next !== hoverItem && (c || !e.target.closest(".inv-detail"))) { hoverItem = next; render(); }
+  });
+  el.addEventListener("pointerleave", () => { if (hoverItem) { hoverItem = null; render(); } });
+
+  // ชี้เมาส์ที่ของบนพื้น: กล่องเทียบค่าลอยข้างเมาส์
+  const tip = document.getElementById("loot-tip");
+  function showTip(item, x, y) {
+    const h = hero(); if (!h) return;
+    tip.innerHTML = detailHTML(h, item, false) + '<div class="inv-meta">เดินทับเพื่อเก็บ</div>';
+    tip.hidden = false;
+    const w = tip.offsetWidth, hh = tip.offsetHeight;
+    tip.style.left = Math.min(window.innerWidth - w - 8, x + 16) + "px";
+    tip.style.top = Math.max(8, Math.min(window.innerHeight - hh - 8, y + 16)) + "px";
+  }
+  function hideTip() { tip.hidden = true; }
 
   el.addEventListener("click", (e) => {
     const c = e.target.closest("[data-id]");
-    if (c) { sel = Number(c.dataset.id); sig = ""; render(); return; }
+    if (c) { sel = Number(c.dataset.id); hoverItem = null; sig = ""; render(); return; }
     const a = e.target.closest("[data-act]");
     if (!a || !sel) return;
     const sc = scene();
@@ -1885,6 +1953,7 @@ const Inventory = (() => {
   function close() { el.hidden = true; btn.setAttribute("aria-expanded", "false"); try { document.getElementById("game").focus({ preventScroll: true }); } catch (_) {} }
   btn.addEventListener("click", () => { btn.blur(); el.hidden ? open() : close(); });
   return {
+    showTip, hideTip,
     toggle: () => (el.hidden ? open() : close()),
     close,
     isOpen: () => !el.hidden,
@@ -2223,6 +2292,16 @@ class GameScene extends Phaser.Scene {
       });
       g.fillStyle = "#4a321c"; g.fillRect(0, 30, 34, 3);
     });
+    // ประตูไม้: โครงเสาสองข้าง บานไม้มีคานไขว้
+    canvasTexture(this, "gate", 34, 46, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.28)"; g.fillRect(0, 38, 34, 7);
+      g.fillStyle = "#5a3f24"; g.fillRect(0, 2, 6, 40); g.fillRect(28, 2, 6, 40); g.fillRect(0, 2, 34, 5);
+      g.fillStyle = "#a07444"; g.fillRect(6, 9, 22, 32);
+      g.strokeStyle = "#6b4a2a"; g.lineWidth = 1;
+      for (let x = 11; x < 28; x += 5) { g.beginPath(); g.moveTo(x + 0.5, 9); g.lineTo(x + 0.5, 41); g.stroke(); }
+      g.strokeStyle = "#4a321c"; g.lineWidth = 3; g.beginPath(); g.moveTo(7, 12); g.lineTo(27, 38); g.moveTo(27, 12); g.lineTo(7, 38); g.stroke();
+      g.fillStyle = "#6fb6e8"; g.fillRect(15, 0, 4, 4);
+    });
     // ป้อมธนู: ฐานไม้ ห้องยิงด้านบน หลังคาแหลม
     canvasTexture(this, "tower", 44, 76, (g) => {
       g.fillStyle = "rgba(0,0,0,0.3)"; g.beginPath(); g.ellipse(22, 70, 19, 5, 0, 0, Math.PI * 2); g.fill();
@@ -2496,9 +2575,9 @@ class GameScene extends Phaser.Scene {
       seen.add(b.id);
       if (this.buildViews.has(b.id)) continue;
       const S = DATA.tile, bx = b.tx * S + S / 2, by = b.ty * S + S;
-      const img = b.type === "wall"
-        ? this.add.image(bx, by + 2, "wall").setOrigin(0.5, 1).setDepth(by)
-        : this.add.image(bx, by + 4, "tower").setOrigin(0.5, 1).setDepth(by);
+      const img = b.type === "tower"
+        ? this.add.image(bx, by + 4, "tower").setOrigin(0.5, 1).setDepth(by)
+        : this.add.image(bx, by + 2, b.type).setOrigin(0.5, 1).setDepth(by);
       img.setScale(0.6); this.tweens.add({ targets: img, scale: 1, duration: 220, ease: "Back.easeOut" });
       this.buildViews.set(b.id, img);
     }
@@ -2549,6 +2628,8 @@ class GameScene extends Phaser.Scene {
         Toast.show("กระเป๋าเต็ม · ย่อยของที่ไม่ใช้ก่อน (กด I)");
       } else if (e.type === "drop" && e.rarity === "epic" && this.visibleAt(e.x, e.y)) {
         Toast.show("ของระดับมหากาพย์ดรอป!");
+      } else if (e.type === "workersStuck" && e.team === this.team) {
+        Banner.show("คนงานออกจากค่ายไม่ได้ · สร้างประตูไม้ในแนวกำแพง", "warn");
       } else if (e.type === "recalled") {
         Toast.show("กลับถึงค่ายแล้ว");
       } else if (e.type === "recallBroken") {
@@ -2630,6 +2711,22 @@ class GameScene extends Phaser.Scene {
     for (const [id, img] of this.lootViews) if (!seen.has(id)) { img.destroy(); this.lootViews.delete(id); }
   }
 
+  hoverLoot() {
+    const p = this.input.activePointer;
+    if (p.wasTouch || this.buildMode || this.paused) { Inventory.hideTip(); return; }
+    const wp = p.positionToCamera(this.cameras.main);
+    let best = null, bd = 22;
+    for (const l of this.state.loot) {
+      if (!this.visibleAt(l.x, l.y)) continue;
+      const d = Math.hypot(l.x - wp.x, l.y - 6 - wp.y);
+      if (d < bd) { bd = d; best = l; }
+    }
+    const cx = MOUSE.x, cy = MOUSE.y;
+    const top = best && document.elementFromPoint(cx, cy);
+    if (best && top && top.tagName === "CANVAS") Inventory.showTip(best.item, cx, cy);
+    else Inventory.hideTip();
+  }
+
   syncArrows(a) {
     const seen = new Set();
     for (const ar of this.state.arrows) {
@@ -2700,6 +2797,7 @@ class GameScene extends Phaser.Scene {
     this.syncBuildings();
     this.syncArrows(a);
     this.syncLoot(time);
+    this.hoverLoot();
     this.drawBars();
     if (this.buildMode && this.hold.on && p.isDown && this.buildMode === "wall") this.tryPlace(p, false);
     this.drawGhost();
