@@ -218,7 +218,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 
 .banner {
   position: fixed; left: 50%; transform: translateX(-50%);
-  top: calc(env(safe-area-inset-top, 0px) + 22%);
+  top: calc(env(safe-area-inset-top, 0px) + 30%);
   padding: 10px 20px; border-radius: 6px; font-size: 17px; font-weight: 700; text-align: center;
   background: var(--panel); border: 1px solid var(--panel-line); pointer-events: none;
   max-width: calc(100vw - 32px); text-wrap: balance;
@@ -320,10 +320,21 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .quest.collapsed .quest-list { display: none; }
 .quest-done { font-size: 12.5px; color: #7fcf6a; }
 
+.boss-bar { padding: 7px 10px; display: grid; gap: 4px; border-color: rgba(224, 67, 58, 0.6); }
+.boss-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+.boss-row b { color: #ff8a73; }
+.boss-row span { color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.boss-meter { height: 8px; border-radius: 3px; background: rgba(0, 0, 0, 0.5); overflow: hidden; }
+.boss-meter i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #b82e24, #e0433a); transition: width 0.15s linear; }
+
 @media (min-width: 820px) {
   .hud-left > .clock {
     position: fixed; left: 50%; transform: translateX(-50%); width: 300px;
     top: calc(env(safe-area-inset-top, 0px) + 12px);
+  }
+  .hud-left > .boss-bar {
+    position: fixed; left: 50%; transform: translateX(-50%); width: 360px;
+    top: calc(env(safe-area-inset-top, 0px) + 126px);
   }
 }
 
@@ -437,6 +448,11 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
     </div>
   </div>
 
+  <div class="hud boss-bar" id="boss-bar" hidden>
+    <div class="boss-row"><b id="boss-name">ราชาซอมบี้</b><span id="boss-hp"></span></div>
+    <div class="boss-meter"><i id="boss-fill"></i></div>
+  </div>
+
   <div class="hud quest" id="quest">
     <div class="quest-head"><b>ภารกิจแนะนำ</b><button type="button" class="btn quest-toggle" id="quest-toggle" aria-expanded="true">ซ่อน</button></div>
     <ol class="quest-list" id="quest-list"></ol>
@@ -539,7 +555,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
     <ol class="howto-steps">
       <li><b>กลางวัน 4 นาที</b> เดินสำรวจ ยืนติดต้นไม้หรือก้อนหินเพื่อเก็บไม้/หิน ฆ่า Monster เพื่อเก็บ EXP และของดรอป</li>
       <li><b>ก่อนค่ำ 30 วินาที</b> จะมีประกาศว่า Monster จะบุกจากทิศไหน ลูกศรแดงรอบตัวชี้ทาง</li>
-      <li><b>กลางคืน 2 นาที</b> Monster เดินเข้าหาค่าย สร้างกำแพงขวางทางและป้อมธนูไว้ทิศนั้น</li>
+      <li><b>กลางคืน 2 นาที</b> Monster บุกค่ายหลายเวฟ คนละทิศ เวฟสุดท้ายมีบอส (ล้มได้ของดีหลายชิ้น) Monster ทั่วแผนที่ดุร้ายและเลเวลสูงขึ้น ระวังออกไปไกล</li>
       <li><b>รอดครบ 5 คืน</b> ชนะ · ค่ายพักแรมพังคือแพ้ · HP ฟื้นเฉพาะในเขตค่าย</li>
     </ol>
     <table class="howto-keys">
@@ -573,7 +589,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
       <button type="button" class="btn big" data-act="same">เริ่มใหม่แผนที่เดิม</button>
       <button type="button" class="btn big" data-act="title">กลับหน้าแรก</button>
     </div>
-    <div class="menu-ver">ต้นแบบ ขั้น 7 / 8</div>
+    <div class="menu-ver">ต้นแบบ ขั้น 7 / 8 · หลายเวฟและบอส</div>
     <div class="menu-keys">Esc เปิด/ปิดเมนู · H กลับฐาน · B สร้าง · Q สกิล · M แผนที่</div>
   </div>
 </div>
@@ -635,6 +651,7 @@ const DATA = {
   monsters: {
     zombie: { name: "ซอมบี้", hp: 40, atk: 8, def: 1, as: 0.7, spd: 66, r: 13, aggro: 5, reach: 10 },
     wolf: { name: "หมาป่า", hp: 24, atk: 4.5, def: 0, as: 1.1, spd: 185, r: 12, aggro: 6, reach: 8 },
+    boss: { name: "ราชาซอมบี้", hp: 480, atk: 12, def: 4, as: 0.55, spd: 56, r: 15, aggro: 6, reach: 18 },   // r = ขนาดชน (ภาพใหญ่กว่านี้)
   },
   stockStart: { wood: 40, stone: 10 },
   resources: {                      // ไม้จากต้นไม้, หินจากก้อนหิน
@@ -650,7 +667,16 @@ const DATA = {
   },
   worker: { name: "คนงาน", cost: { wood: 15 }, max: 6, hp: 40, spd: 115, r: 9, carry: 5, gatherSec: 0.9, range: 16, flee: 4, vision: 4 },
   cycle: { daySec: 240, nightSec: 120, warnSec: 30, nights: 5, skipTo: 10 },   // กลางวัน 4 นาที กลางคืน 2 นาที
-  waves: { base: 6, perNight: 4, wolfFrom: 3, wolfShare: 0.3, lvPerNight: 1.5, dist: [32, 38], batches: 6, batchEvery: 3 },
+  waves: {
+    count: [2, 3, 3, 3, 3],             // จำนวนเวฟในแต่ละคืน (คืนหลังจากนี้ใช้ค่าสุดท้าย)
+    base: 6, perNight: 3, perWave: 2,   // ขนาดเวฟ = base + perNight×คืน + perWave×ลำดับเวฟ
+    wolfFrom: 2, wolfShare: 0.3, lvPerNight: 1.5, dist: [32, 38], batches: 5, batchEvery: 2.5, nextWarn: 10,
+  },
+  night: {                              // กลางคืน Monster ทั่วแผนที่ดุร้ายขึ้น
+    aggro: 1.6, spd: 1.15, atk: 1.25,
+    roamers: { base: 40, perNight: 15, lvBonus: 3, dist: [15, 50] },
+  },
+  boss: { lvBase: 2, lvPerNight: 2, drops: [2, 3], minRarity: 1, epicChance: 0.4, summonEvery: 15, summonCount: 2 },
   spawn: { population: 450, safeRadius: 14, zoneDensity: [1, 0.75, 0.55, 0.4], leash: 16, refillEvery: 4, sleepRadius: 26 },
 };
 
@@ -844,6 +870,18 @@ const Core = (() => {
   }
 
   function maybeDrop(st, m) {
+    if (m.boss) {   // บอส: ดรอปแน่นอนหลายชิ้น อย่างน้อยระดับหายาก
+      const B = DATA.boss, n = B.drops[0] + Math.floor(rand(st) * (B.drops[1] - B.drops[0] + 1));
+      for (let i = 0; i < n; i++) {
+        const r = rand(st) < B.epicChance ? 2 : Math.max(B.minRarity, rollRarity(st, m.lv));
+        const item = makeItem(st, rand(st) < 0.55 ? "weapon" : "armor", r, m.lv + 2);
+        const a = (i / n) * Math.PI * 2;
+        st.loot.push({ id: st.nextId++, x: m.x + Math.cos(a) * 26, y: m.y + Math.sin(a) * 26, item, ttl: DATA.items.lootSec * 2 });
+        st.events.push({ type: "drop", x: m.x, y: m.y, rarity: item.rarity });
+      }
+      st.events.push({ type: "bossDown", id: m.id, x: m.x, y: m.y });
+      return;
+    }
     const chance = m.wave ? DATA.items.dropChance.wave : DATA.items.dropChance.normal;
     if (rand(st) >= chance) return;
     const item = makeItem(st, rand(st) < 0.55 ? "weapon" : "armor", rollRarity(st, m.lv), m.lv);
@@ -883,7 +921,7 @@ const Core = (() => {
     const hp = Math.round(b.hp * (1 + 0.15 * (lv - 1)));
     return {
       id: st.nextId++, kind: "monster", type, team: 0, lv, x, y, px: x, py: y, homeX: x, homeY: y, r: b.r,
-      hp, maxHp: hp, atk: b.atk * (1 + 0.08 * (lv - 1)), def: b.def + lv * 0.2, as: b.as, spd: b.spd,
+      hp, maxHp: hp, atk: b.atk * (1 + 0.08 * (lv - 1)), def: b.def + lv * 0.2, as: b.as, spd: b.spd, baseSpd: b.spd,
       face: rand(st) * Math.PI * 2, target: null, mode: "idle", wanderAt: 0, wx: x, wy: y,
       atkCd: 0, side: 1, moving: false, lunge: 0, dead: false,
     };
@@ -944,7 +982,7 @@ const Core = (() => {
       st.events.push({ type: "death", id: target.id, kind: target.kind, x: target.x, y: target.y });
       if (target.kind === "monster") {
         st.kills[attacker.team] = (st.kills[attacker.team] || 0) + 1;
-        giveExp(st, attacker.team, Math.round((8 + target.lv * 4) * (target.type === "wolf" ? 0.8 : 1)));
+        giveExp(st, attacker.team, Math.round((8 + target.lv * 4) * (target.type === "wolf" ? 0.8 : target.boss ? 12 : 1)));
         maybeDrop(st, target);
       }
       if (target.kind === "unit") {
@@ -1077,55 +1115,129 @@ const Core = (() => {
   const DIR_NAMES = ["ตะวันออก", "ตะวันออกเฉียงใต้", "ใต้", "ตะวันตกเฉียงใต้", "ตะวันตก", "ตะวันตกเฉียงเหนือ", "เหนือ", "ตะวันออกเฉียงเหนือ"];
   function dirName(a) { return DIR_NAMES[((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8]; }
 
-  function planWave(st) {
-    const W = DATA.waves, night = st.day, total = W.base + W.perNight * night;
-    const dir = rand(st) * Math.PI * 2;
-    return { night, dir, dirName: dirName(dir), total, toSpawn: total, spawnT: 0, started: false };
+  // วางแผนทั้งคืน: หลายเวฟ คนละทิศ เวฟสุดท้ายมีบอส
+  function planNight(st) {
+    const W = DATA.waves, C = DATA.cycle, night = st.day;
+    const count = W.count[Math.min(night, W.count.length) - 1];
+    const gap = C.nightSec / (count + 0.5);
+    const base = rand(st) * Math.PI * 2;
+    const waves = [];
+    for (let i = 0; i < count; i++) {
+      const dir = base + i * (Math.PI * 2 / count) + (rand(st) - 0.5) * 0.9;
+      const total = W.base + W.perNight * night + W.perWave * i;
+      waves.push({ night, idx: i, of: count, dir, dirName: dirName(dir), total, toSpawn: total, spawnT: 0,
+        at: C.daySec + i * gap, warned: i === 0, started: false, boss: i === count - 1, bossSpawned: false });
+    }
+    return { night, waves };
   }
 
-  function spawnWaveBatch(st) {
-    const W = DATA.waves, wv = st.wave, N = st.map.n, S = DATA.tile, c = N / 2;
+  function spawnPoint(st, dir, spread) {
+    const W = DATA.waves, N = st.map.n, c = N / 2;
     ensureField(st);
+    for (let tries = 0; tries < 24; tries++) {
+      const a = dir + (rand(st) - 0.5) * spread, d = W.dist[0] + rand(st) * (W.dist[1] - W.dist[0]);
+      const tx = Math.floor(c + Math.cos(a) * d), ty = Math.floor(c + Math.sin(a) * d);
+      if (tx < 3 || ty < 3 || tx >= N - 3 || ty >= N - 3) continue;
+      const i = ty * N + tx;
+      if (st.map.t[i] === T.GRASS && Number.isFinite(st.field[i])) return [tx, ty];
+    }
+    return null;
+  }
+
+  function spawnWaveBatch(st, wv) {
+    const W = DATA.waves, S = DATA.tile;
     const n = Math.min(wv.toSpawn, Math.ceil(wv.total / W.batches));
     let spawned = 0;
     for (let k = 0; k < n; k++) {
-      for (let tries = 0; tries < 20; tries++) {
-        const a = wv.dir + (rand(st) - 0.5) * 0.8, d = W.dist[0] + rand(st) * (W.dist[1] - W.dist[0]);
-        const tx = Math.floor(c + Math.cos(a) * d), ty = Math.floor(c + Math.sin(a) * d);
-        if (tx < 3 || ty < 3 || tx >= N - 3 || ty >= N - 3) continue;
-        const i = ty * N + tx;
-        if (st.map.t[i] !== T.GRASS || !Number.isFinite(st.field[i])) continue;
-        const type = wv.night >= W.wolfFrom && rand(st) < W.wolfShare ? "wolf" : "zombie";
-        const m = makeMonster(st, type, (tx + 0.5) * S, (ty + 0.5) * S, Math.round(1 + (wv.night - 1) * W.lvPerNight));
-        m.wave = true; m.mode = "siege";
-        st.monsters.push(m);
-        wv.toSpawn--; spawned++;
-        break;
-      }
+      const p = spawnPoint(st, wv.dir, 0.8);
+      if (!p) continue;
+      const type = wv.night >= W.wolfFrom && rand(st) < W.wolfShare ? "wolf" : "zombie";
+      const m = makeMonster(st, type, (p[0] + 0.5) * S, (p[1] + 0.5) * S, Math.round(1 + (wv.night - 1) * W.lvPerNight + wv.idx));
+      m.wave = true; m.mode = "siege";
+      st.monsters.push(m);
+      wv.toSpawn--; spawned++;
     }
     if (spawned === 0 && n > 0) wv.dir += 0.4;   // ทางนี้เกิดไม่ได้ (น้ำ/ป่าทึบ) ลองขยับทิศ
+  }
+
+  function spawnBoss(st, wv) {
+    const B = DATA.boss, S = DATA.tile;
+    let p = spawnPoint(st, wv.dir, 0.3);
+    for (let k = 1; !p && k <= 8; k++) p = spawnPoint(st, wv.dir + k * 0.7, 0.9);   // ทิศนี้ไม่มีที่ว่าง ลองทิศข้างเคียง
+    if (!p) return false;
+    const m = makeMonster(st, "boss", (p[0] + 0.5) * S, (p[1] + 0.5) * S, B.lvBase + B.lvPerNight * (wv.night - 1));
+    m.wave = true; m.mode = "siege"; m.boss = true; m.summonT = B.summonEvery;
+    st.monsters.push(m);
+    st.events.push({ type: "bossSpawn", id: m.id, night: wv.night, dirName: wv.dirName, lv: m.lv });
+    return true;
+  }
+
+  // Monster กลางคืน: เกิดเพิ่มรอบค่าย เลเวลสูงกว่าปกติ หายไปตอนเช้า
+  function spawnRoamers(st) {
+    const R = DATA.night.roamers, N = st.map.n, S = DATA.tile, c = N / 2;
+    const want = R.base + R.perNight * st.day;
+    let made = 0;
+    for (let tries = 0; tries < want * 8 && made < want; tries++) {
+      const a = rand(st) * Math.PI * 2, d = R.dist[0] + rand(st) * (R.dist[1] - R.dist[0]);
+      const tx = Math.floor(c + Math.cos(a) * d), ty = Math.floor(c + Math.sin(a) * d);
+      if (!walkable(st, tx, ty)) continue;
+      const fog = st.fog[1];
+      if (fog && fog[ty * N + tx] === 2) continue;           // ไม่โผล่ต่อหน้า
+      const x = (tx + 0.5) * S, y = (ty + 0.5) * S;
+      const type = rand(st) < 0.45 ? "wolf" : "zombie";
+      const m = makeMonster(st, type, x, y, Math.min(50, levelAt(d) + R.lvBonus));
+      m.nightSpawn = true;
+      st.monsters.push(m); made++;
+    }
+  }
+
+  function stepBossAbility(st, m, dt) {
+    const B = DATA.boss;
+    m.summonT -= dt;
+    if (m.summonT > 0) return;
+    m.summonT = B.summonEvery;
+    for (let i = 0; i < B.summonCount; i++) {
+      const a = rand(st) * Math.PI * 2, x = m.x + Math.cos(a) * 40, y = m.y + Math.sin(a) * 40;
+      if (blockedAt(st, x, y, 12)) continue;
+      const s = makeMonster(st, "zombie", x, y, Math.max(1, m.lv - 2));
+      s.wave = true; s.mode = "siege";
+      st.monsters.push(s);
+    }
+    st.events.push({ type: "bossRoar", id: m.id, x: m.x, y: m.y });
   }
 
   function stepClock(st, dt) {
     const C = DATA.cycle, W = DATA.waves;
     st.clock += dt;
-    if (!st.wave && st.clock >= C.daySec - C.warnSec) {
-      st.wave = planWave(st);
-      st.events.push({ type: "waveWarn", night: st.wave.night, dir: st.wave.dir, dirName: st.wave.dirName, total: st.wave.total });
+    if (!st.nightPlan && st.clock >= C.daySec - C.warnSec) {
+      st.nightPlan = planNight(st);
+      const w0 = st.nightPlan.waves[0];
+      st.wave = w0;
+      st.events.push({ type: "waveWarn", night: w0.night, idx: 0, of: w0.of, dir: w0.dir, dirName: w0.dirName, total: w0.total, boss: w0.boss });
     }
-    if (st.wave && !st.wave.started && st.clock >= C.daySec) {
-      st.wave.started = true;
-      st.events.push({ type: "night", night: st.wave.night });
-    }
-    if (st.wave && st.wave.started && st.wave.toSpawn > 0) {
-      st.wave.spawnT -= dt;
-      if (st.wave.spawnT <= 0) { st.wave.spawnT = W.batchEvery; spawnWaveBatch(st); }
+    if (st.nightPlan) {
+      for (const wv of st.nightPlan.waves) {
+        if (!wv.warned && st.clock >= wv.at - W.nextWarn) {
+          wv.warned = true; st.wave = wv;
+          st.events.push({ type: "waveWarn", night: wv.night, idx: wv.idx, of: wv.of, dir: wv.dir, dirName: wv.dirName, total: wv.total, boss: wv.boss });
+        }
+        if (!wv.started && st.clock >= wv.at) {
+          wv.started = true;
+          if (wv.idx === 0) { st.events.push({ type: "night", night: wv.night }); spawnRoamers(st); }
+          else st.events.push({ type: "waveStart", night: wv.night, idx: wv.idx, of: wv.of, boss: wv.boss });
+        }
+        if (wv.started && wv.toSpawn > 0) {
+          wv.spawnT -= dt;
+          if (wv.spawnT <= 0) { wv.spawnT = W.batchEvery; spawnWaveBatch(st, wv); }
+        }
+        if (wv.boss && wv.started && !wv.bossSpawned) wv.bossSpawned = spawnBoss(st, wv);
+      }
     }
     if (st.clock >= C.daySec + C.nightSec) {
       // รุ่งเช้า: Monster จากคืนนี้ที่เหลือโดนแดดเผา
-      for (const m of st.monsters) if (m.wave && !m.dead) { m.dead = true; st.events.push({ type: "death", id: m.id, kind: "monster", x: m.x, y: m.y, burn: true }); }
+      for (const m of st.monsters) if ((m.wave || m.nightSpawn) && !m.dead) { m.dead = true; st.events.push({ type: "death", id: m.id, kind: "monster", x: m.x, y: m.y, burn: true }); }
       giveExp(st, st.camp.team, DATA.levels.nightBonus * st.day);
-      st.day++; st.clock = 0; st.wave = null;
+      st.day++; st.clock = 0; st.wave = null; st.nightPlan = null;
       st.events.push({ type: "dawn", day: st.day });
       if (st.day > C.nights && !st.endless && !st.result) { st.result = "win"; st.events.push({ type: "result", result: "win" }); }
     }
@@ -1139,6 +1251,7 @@ const Core = (() => {
 
   function stepSiege(st, m, b, dt) {
     const S = DATA.tile, N = st.map.n;
+    if (m.boss) stepBossAbility(st, m, dt);
     // 1) มีคนอยู่ใกล้ → ไล่ตีก่อน (แต่ไม่ไล่ไกล)
     let tgt = m.target ? findEntity(st, m.target) : null;
     if (tgt && (tgt.dead || tgt.hidden || Math.hypot(tgt.x - m.x, tgt.y - m.y) > b.aggro * S * 2)) { m.target = null; tgt = null; }
@@ -1149,7 +1262,7 @@ const Core = (() => {
     if (tgt) {
       const dx = tgt.x - m.x, dy = tgt.y - m.y, d = Math.hypot(dx, dy);
       m.face = Math.atan2(dy, dx);
-      if (d <= m.r + tgt.r + b.reach) { if (m.atkCd <= 0) { m.atkCd = 1 / m.as; m.lunge = 1; damage(st, tgt, m, m.atk, 1); } }
+      if (d <= m.r + tgt.r + b.reach) { if (m.atkCd <= 0) { m.atkCd = 1 / m.as; m.lunge = 1; damage(st, tgt, m, m.atk * (m.atkMul || 1), 1); } }
       else m.moving = steer(st, m, dx, dy, Math.min(m.spd * dt, d - (m.r + tgt.r + b.reach) + 1)) > 0;
       return;
     }
@@ -1175,7 +1288,7 @@ const Core = (() => {
       if (bld && !bld.dead) {
         m.face = Math.atan2(bld.y - m.y, bld.x - m.x);
         if (distToBuilding(m, bld) <= m.r + b.reach) {
-          if (m.atkCd <= 0) { m.atkCd = 1 / m.as; m.lunge = 1; damage(st, bld, m, m.atk, 1); }
+          if (m.atkCd <= 0) { m.atkCd = 1 / m.as; m.lunge = 1; damage(st, bld, m, m.atk * (m.atkMul || 1), 1); }
           return;
         }
       }
@@ -1185,7 +1298,10 @@ const Core = (() => {
     m.moving = steer(st, m, gx - m.x, gy - m.y, m.spd * dt) > 0;
   }
 
+  const NIGHT_DEF = Object.fromEntries(Object.entries(DATA.monsters).map(([k, v]) => [k, { ...v, aggro: v.aggro * DATA.night.aggro }]));
+
   function stepMonsters(st, dt) {
+    const night = phase(st) === "night";
     const S = DATA.tile, sleep = DATA.spawn.sleepRadius * S, leash = DATA.spawn.leash * S;
     const awake = [];
     for (const m of st.monsters) {
@@ -1193,7 +1309,9 @@ const Core = (() => {
       if (m.dead) continue;
       if (!m.wave && !st.heroes.some((h) => Math.hypot(h.x - m.x, h.y - m.y) < sleep) && !st.units.some((u) => Math.hypot(u.x - m.x, u.y - m.y) < sleep)) continue;   // ไกลผู้เล่น: พักไว้ ประหยัดเครื่อง
       awake.push(m);
-      const b = DATA.monsters[m.type];
+      const b = night ? NIGHT_DEF[m.type] : DATA.monsters[m.type];
+      m.spd = m.baseSpd * (night ? DATA.night.spd : 1);
+      m.atkMul = night ? DATA.night.atk : 1;
       m.atkCd -= dt;
       if (m.wave) { stepSiege(st, m, b, dt); continue; }
       let tgt = m.target ? findEntity(st, m.target) : null;
@@ -1212,7 +1330,7 @@ const Core = (() => {
         const dx = tgt.x - m.x, dy = tgt.y - m.y, d = Math.hypot(dx, dy);
         m.face = Math.atan2(dy, dx);
         if (d <= m.r + tgt.r + b.reach) {
-          if (m.atkCd <= 0) { m.atkCd = 1 / m.as; m.lunge = 1; damage(st, tgt, m, m.atk, 1); }
+          if (m.atkCd <= 0) { m.atkCd = 1 / m.as; m.lunge = 1; damage(st, tgt, m, m.atk * (m.atkMul || 1), 1); }
         } else {
           m.moving = steer(st, m, dx, dy, Math.min(m.spd * dt, d - (m.r + tgt.r + b.reach) + 1)) > 0;
         }
@@ -2345,6 +2463,17 @@ class GameScene extends Phaser.Scene {
       g.strokeStyle = "#3b2c18"; g.lineWidth = 1.5; g.stroke();
       g.fillStyle = "#a88c62"; g.fillRect(10, 4, 4, 5);
     });
+    // ราชาซอมบี้: ตัวใหญ่ หันขวา แขนยาว มงกุฎทอง
+    canvasTexture(this, "boss", 64, 64, (g) => {
+      g.fillStyle = "#3d5229"; g.fillRect(34, 14, 26, 9); g.fillRect(34, 41, 26, 9);
+      g.fillStyle = "#c9c2a8"; [[58, 14], [58, 41]].forEach(([x, y]) => g.fillRect(x, y, 4, 9));
+      g.fillStyle = "#26331b"; g.beginPath(); g.arc(28, 32, 22, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#56703b"; g.beginPath(); g.arc(28, 32, 18, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#3f2c1b"; g.beginPath(); g.arc(22, 32, 12, Math.PI * 0.5, Math.PI * 1.5); g.fill();
+      g.fillStyle = "#e2b04a"; g.beginPath();
+      g.moveTo(16, 22); g.lineTo(20, 28); g.lineTo(16, 32); g.lineTo(20, 36); g.lineTo(16, 42); g.lineTo(26, 38); g.lineTo(26, 26); g.closePath(); g.fill();
+      g.fillStyle = "#ff4a32"; g.fillRect(37, 25, 5, 5); g.fillRect(37, 34, 5, 5);
+    });
     canvasTexture(this, "arrow", 26, 6, (g) => {
       g.fillStyle = "#d8c9a0"; g.fillRect(4, 2, 17, 2);
       g.fillStyle = "#efe8d2"; g.beginPath(); g.moveTo(26, 3); g.lineTo(20, 0); g.lineTo(20, 6); g.closePath(); g.fill();
@@ -2635,7 +2764,20 @@ class GameScene extends Phaser.Scene {
       } else if (e.type === "recallBroken") {
         Toast.show("ยกเลิกการกลับฐาน");
       } else if (e.type === "waveWarn") {
-        Banner.show(`คืนที่ ${e.night} ใกล้มาถึง · Monster ${e.total} ตัวจะบุกจากทิศ${e.dirName}`, "warn");
+        const tag = e.boss ? " · เวฟสุดท้ายมีบอส!" : "";
+        if (e.idx === 0) Banner.show(`คืนที่ ${e.night} ใกล้มาถึง · ${e.of} เวฟ · เวฟแรก ${e.total} ตัวบุกจากทิศ${e.dirName}${e.of === 1 ? tag : ""}`, "warn");
+        else Banner.show(`เวฟ ${e.idx + 1}/${e.of} อีก ${DATA.waves.nextWarn} วินาที · ${e.total} ตัวจากทิศ${e.dirName}${tag}`, "warn");
+      } else if (e.type === "waveStart") {
+        Banner.show(e.boss ? `เวฟสุดท้าย! ${DATA.monsters.boss.name} มาแล้ว` : `เวฟ ${e.idx + 1}/${e.of} บุกแล้ว!`, "night");
+      } else if (e.type === "bossSpawn") {
+        Toast.show(`${DATA.monsters.boss.name} Lv ${e.lv} ปรากฏทางทิศ${e.dirName}`);
+      } else if (e.type === "bossRoar") {
+        const ring = this.add.graphics().setPosition(e.x, e.y).setDepth(8.4e6);
+        ring.lineStyle(4, 0x8fbf5a, 0.9); ring.strokeCircle(0, 0, 30);
+        this.tweens.add({ targets: ring, alpha: 0, scale: 3, duration: 700, onComplete: () => ring.destroy() });
+        if (this.visibleAt(e.x, e.y)) this.cameras.main.shake(160, 0.004);
+      } else if (e.type === "bossDown") {
+        Banner.show(`ล้ม${DATA.monsters.boss.name}แล้ว! เก็บของดรอปได้เลย`, "day");
       } else if (e.type === "night") {
         Banner.show(`คืนที่ ${e.night} เริ่มแล้ว · ป้องกันค่ายไว้!`, "night");
       } else if (e.type === "dawn") {
@@ -2669,7 +2811,7 @@ class GameScene extends Phaser.Scene {
       let v = this.monViews.get(m.id);
       if (!v) {
         const root = this.add.container(m.x, m.y);
-        const shadow = this.add.image(0, m.r - 2, "shadow").setScale(m.type === "wolf" ? 1 : 0.85);
+        const shadow = this.add.image(0, m.boss ? 20 : m.r - 2, "shadow").setScale(m.boss ? 1.7 : m.type === "wolf" ? 1 : 0.85);
         const body = this.add.image(0, 0, m.type);
         root.add([shadow, body]);
         v = { root, body, flash: 0 };
@@ -2743,8 +2885,8 @@ class GameScene extends Phaser.Scene {
     const g = this.bars; g.clear();
     for (const m of this.state.monsters) {
       const v = this.monViews.get(m.id);
-      if (!v || !v.root.visible || (m.hp >= m.maxHp && !m.target)) continue;
-      const w = 30, x = v.x - w / 2, y = v.y - m.r - 12;
+      if (!v || !v.root.visible || (m.hp >= m.maxHp && !m.target && !m.boss)) continue;
+      const w = m.boss ? 60 : 30, x = v.x - w / 2, y = v.y - (m.boss ? 40 : m.r + 12);
       g.fillStyle(0x12160f, 0.85); g.fillRect(x - 1, y - 1, w + 2, 6);
       g.fillStyle(m.target ? 0xd9573f : 0xb3ab92, 1); g.fillRect(x, y, w * (m.hp / m.maxHp), 4);
     }
@@ -2860,9 +3002,21 @@ const HUD = (() => {
     const campHp = camp ? camp.hp : 0, campMax = DATA.buildings.camp.hp;
     $("camp-fill").style.width = (campHp / campMax) * 100 + "%";
     $("camp-text").textContent = `ค่าย ${Math.ceil(campHp)} / ${campMax}`;
-    const waveLeft = st.wave && st.wave.started ? st.wave.toSpawn + st.monsters.filter((m) => m.wave).length : 0;
-    $("wave-left").hidden = !waveLeft;
-    $("wave-left").textContent = `Monster คืนนี้เหลือ ${waveLeft} ตัว`;
+    const plan = st.nightPlan;
+    const startedWaves = plan ? plan.waves.filter((w) => w.started) : [];
+    const waveLeft = startedWaves.reduce((a, w) => a + w.toSpawn, 0) + st.monsters.filter((m) => m.wave).length;
+    const nextW = plan && plan.waves.find((w) => !w.started && st.clock >= C.daySec);
+    $("wave-left").hidden = !startedWaves.length;
+    $("wave-left").textContent = startedWaves.length
+      ? `เวฟ ${startedWaves.length}/${plan.waves.length} · เหลือ ${waveLeft} ตัว` + (nextW ? ` · เวฟถัดไป ${Math.ceil(nextW.at - st.clock)} วิ` : "")
+      : "";
+    const boss = st.monsters.find((m) => m.boss && !m.dead);
+    $("boss-bar").hidden = !boss;
+    if (boss) {
+      $("boss-name").textContent = `${DATA.monsters.boss.name} · Lv ${boss.lv}`;
+      $("boss-fill").style.width = (boss.hp / boss.maxHp) * 100 + "%";
+      $("boss-hp").textContent = `${Math.ceil(boss.hp)} / ${boss.maxHp}`;
+    }
     const stock = st.stock[team];
     $("res-wood").textContent = stock.wood; $("res-stone").textContent = stock.stone;
     $("res-workers").textContent = `${st.units.filter((u) => u.team === team).length}/${DATA.worker.max}`;
