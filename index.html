@@ -1,0 +1,1855 @@
+<title>Survival Hero Defense</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Silkscreen&display=swap">
+<style>
+/* Layout: full-screen game canvas, HUD panels floating at the corners, minimap top-right, joystick drawn where the thumb lands. */
+:root {
+  --ground: #1c2618;
+  --panel: rgba(18, 22, 16, 0.8);
+  --panel-line: rgba(214, 196, 140, 0.28);
+  --ink: #efe8d2;          /* parchment text */
+  --ink-dim: #b3ab92;
+  --accent: #e2b04a;       /* torch gold */
+  --team: #6fb6e8;         /* team 1 colour */
+  --font-ui: "Sarabun", system-ui, sans-serif;
+  --font-pixel: "Silkscreen", ui-monospace, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+#game {
+  position: fixed; inset: 0;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+  outline: none;
+}
+#game canvas { display: block; }
+
+.hud {
+  position: fixed; pointer-events: none;
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-radius: 6px;
+  backdrop-filter: blur(3px);
+}
+.hud-top {
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  left: calc(env(safe-area-inset-left, 0px) + 12px);
+  padding: 10px 14px 11px;
+  display: grid; gap: 6px;
+  max-width: min(300px, calc(100vw - 210px));
+}
+.brand { font-family: var(--font-pixel); font-size: 12px; letter-spacing: 0.06em; color: var(--accent); }
+.step { font-size: 13px; color: var(--ink-dim); }
+.step b { color: var(--ink); font-weight: 600; }
+.stats { display: grid; grid-template-columns: auto auto; gap: 2px 14px; font-size: 13px; margin: 0; }
+.stats dt { color: var(--ink-dim); }
+.stats dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; }
+.team-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--team); margin-right: 5px; vertical-align: 1px; }
+
+.map-panel {
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  right: calc(env(safe-area-inset-right, 0px) + 12px);
+  padding: 8px; display: grid; gap: 7px; justify-items: stretch;
+  pointer-events: auto;
+}
+#minimap {
+  width: 150px; height: 150px; display: block; cursor: pointer;
+  image-rendering: pixelated; border-radius: 3px;
+  transition: width 0.2s ease, height 0.2s ease;
+}
+.map-panel.big #minimap { width: min(340px, calc(100vw - 40px)); height: min(340px, calc(100vw - 40px)); }
+.map-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-dim); }
+.map-row .seed { font-family: var(--font-pixel); font-size: 10px; letter-spacing: 0.04em; }
+button.btn {
+  font: 600 12px var(--font-ui); color: var(--ink);
+  background: transparent; border: 1px solid var(--panel-line); border-radius: 4px;
+  padding: 3px 9px; cursor: pointer;
+}
+button.btn:hover { border-color: var(--accent); color: var(--accent); }
+button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.meters { display: grid; gap: 4px; }
+.meter { position: relative; height: 14px; border-radius: 3px; background: rgba(0, 0, 0, 0.45); overflow: hidden; }
+.meter i { position: absolute; inset: 0 auto 0 0; width: 100%; transition: width 0.15s linear; }
+.meter.hp i { background: #d63a32; }
+.meter.hp.low i { animation: hp-low 0.8s ease-in-out infinite alternate; }
+@keyframes hp-low { to { background: #ff6a55; } }
+.meter.hp.regen i { background: linear-gradient(90deg, #d63a32 80%, #ff8a73); }
+.camp-tag { font-size: 11px; font-weight: 600; color: #ff9d8c; }
+@media (prefers-reduced-motion: reduce) { .meter.hp.low i { animation: none; } }
+.meter.mp i { background: #5b8fd6; }
+.meter span { position: relative; display: block; font-size: 10.5px; line-height: 14px; padding-left: 6px; font-weight: 700; font-variant-numeric: tabular-nums; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7); }
+
+.skill {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  right: calc(env(safe-area-inset-right, 0px) + 16px);
+  width: 92px; height: 92px; border-radius: 50%;
+  display: grid; place-content: center; gap: 1px; text-align: center;
+  background: var(--panel); color: var(--ink);
+  border: 2px solid var(--accent); cursor: pointer; overflow: hidden;
+  font-family: var(--font-ui); touch-action: manipulation;
+}
+.skill:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.skill:active { transform: scale(0.96); }
+.skill-cd {
+  position: absolute; inset: 0; pointer-events: none;
+  background: conic-gradient(rgba(10, 12, 9, 0.72) calc(var(--cd, 0) * 360deg), transparent 0);
+}
+.skill-name { position: relative; font-size: 13px; font-weight: 700; }
+.skill-key { position: relative; font-family: var(--font-pixel); font-size: 9px; color: var(--ink-dim); }
+.skill.locked { border-color: var(--panel-line); }
+
+.res { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--ink-dim); }
+.res b { color: var(--ink); font-variant-numeric: tabular-nums; margin-left: 3px; }
+.ico { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 2px; vertical-align: 0; }
+.ico.wood { background: #9a6d40; }
+.ico.stone { background: #9b9a90; border-radius: 50%; }
+.ico.worker { background: #d9c27a; border-radius: 50%; }
+
+.build-dock {
+  position: fixed; display: flex; align-items: flex-end; gap: 10px;
+  right: calc(env(safe-area-inset-right, 0px) + 16px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
+}
+.build-toggle {
+  width: 64px; height: 64px; border-radius: 50%; display: grid; place-content: center; gap: 0;
+  background: var(--panel); color: var(--ink); border: 2px solid var(--panel-line);
+  font: 700 14px var(--font-ui); cursor: pointer; touch-action: manipulation;
+}
+.build-toggle span { font-family: var(--font-pixel); font-size: 9px; color: var(--ink-dim); }
+.build-toggle.on { border-color: #6fb6e8; color: #6fb6e8; }
+.build-toggle:focus-visible, .build-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.build-menu { position: static; pointer-events: auto; padding: 6px; display: grid; gap: 6px; }
+.build-item {
+  display: grid; text-align: left; gap: 0; min-width: 150px; padding: 7px 10px;
+  background: transparent; color: var(--ink); border: 1px solid var(--panel-line); border-radius: 5px;
+  font-family: var(--font-ui); cursor: pointer; touch-action: manipulation;
+}
+.build-item b { font-size: 14px; }
+.build-item .cost { font-size: 12px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.build-item .note { font-size: 11px; color: var(--ink-dim); }
+.build-item:hover { border-color: var(--accent); }
+.build-item.on { border-color: #6fb6e8; background: rgba(111, 182, 232, 0.14); }
+.build-item.poor .cost { color: #ff8a73; }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  background: var(--panel); border: 1px solid var(--panel-line); border-radius: 6px;
+  padding: 7px 14px; font-size: 14px; pointer-events: none; max-width: calc(100vw - 32px);
+}
+
+.down { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(40, 8, 6, 0.35); pointer-events: none; }
+.down-card { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 6px; padding: 14px 22px; text-align: center; }
+.down-title { font-size: 20px; font-weight: 700; color: #ff8a73; }
+.down-sub { font-size: 14px; color: var(--ink-dim); }
+.down-sub b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.hint {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  left: calc(env(safe-area-inset-left, 0px) + 14px);
+  max-width: calc(100vw - 140px);
+  padding: 9px 13px; font-size: 13px; color: var(--ink-dim);
+  transition: opacity 0.6s ease;
+}
+.hint kbd {
+  font-family: var(--font-pixel); font-size: 11px; color: var(--ink);
+  border: 1px solid var(--panel-line); border-bottom-width: 2px;
+  border-radius: 4px; padding: 1px 5px; margin-right: 2px;
+}
+.hint.faded { opacity: 0.25; }
+
+.joy {
+  position: fixed; pointer-events: none; border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.joy-base { width: 120px; height: 120px; border: 2px solid rgba(239, 232, 210, 0.35); background: rgba(18, 22, 16, 0.35); }
+.joy-knob { width: 54px; height: 54px; background: rgba(226, 176, 74, 0.85); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4); }
+
+.err { position: fixed; inset: 0; display: grid; place-items: center; padding-inline: 16px; text-align: center; font-size: 15px; }
+
+@media (max-width: 560px) {
+  .hud-top { padding: 8px 10px 9px; max-width: calc(100vw - 150px); }
+  .stats { font-size: 12px; gap: 1px 10px; }
+  #minimap { width: 104px; height: 104px; }
+  .map-row .seed { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { #minimap, .hint { transition: none; } }
+</style>
+
+<div id="game" tabindex="0" aria-label="พื้นที่เกม คลิกที่พื้นเพื่อเดิน หรือใช้ WASD และปุ่มลูกศร"></div>
+
+<div class="hud hud-top">
+  <div class="brand">SURVIVAL HERO DEFENSE</div>
+  <div class="step">ต้นแบบ <b>ขั้น 4 / 8</b> · ทรัพยากรและฐาน</div>
+  <div class="res">
+    <span class="res-item"><i class="ico wood"></i>ไม้ <b id="res-wood">0</b></span>
+    <span class="res-item"><i class="ico stone"></i>หิน <b id="res-stone">0</b></span>
+    <span class="res-item"><i class="ico worker"></i>คนงาน <b id="res-workers">0/6</b></span>
+  </div>
+  <div class="meters">
+    <div class="meter hp"><i id="hp-fill"></i><span id="hp-text">120 / 120</span></div>
+    <div class="camp-tag" id="camp-tag" hidden>อยู่ในเขตค่าย · HP กำลังฟื้น</div>
+    <div class="meter mp"><i id="mp-fill"></i><span id="mp-text">100 / 100</span></div>
+  </div>
+  <dl class="stats">
+    <dt>Hero</dt><dd><span class="team-dot"></span>Archer · ทีม 1</dd>
+    <dt>พื้นที่</dt><dd id="zone">ทุ่งหญ้า</dd>
+    <dt>ห่างค่าย</dt><dd id="dist">0 ช่อง</dd>
+    <dt>สำรวจแล้ว</dt><dd id="explored">0%</dd>
+    <dt>กำจัดแล้ว</dt><dd id="kills">0 ตัว</dd>
+  </dl>
+</div>
+
+<div class="hud map-panel" id="map-panel">
+  <canvas id="minimap" width="200" height="200" tabindex="0" aria-label="มินิแมพ กดเพื่อขยาย"></canvas>
+  <div class="map-row">
+    <span class="seed" id="seed">SEED 0</span>
+    <button class="btn" id="new-map" type="button">แผนที่ใหม่</button>
+  </div>
+</div>
+
+<div class="hud hint" id="hint">
+  <span id="hint-keys"><kbd>WASD</kbd> หรือ<kbd>คลิก</kbd>เพื่อเดิน · ยืนติดต้นไม้/หินเพื่อเก็บ · <kbd>B</kbd> สร้าง · <kbd>Q</kbd> สกิล · <kbd>M</kbd> แผนที่</span>
+</div>
+
+<div class="build-dock">
+  <div class="build-menu hud" id="build-menu" hidden>
+    <button type="button" class="build-item" data-build="wall"><b>กำแพงไม้</b><span class="cost"></span><span class="note">ลากเพื่อวางต่อกัน</span></button>
+    <button type="button" class="build-item" data-build="tower"><b>ป้อมธนู</b><span class="cost"></span><span class="note">ยิง Monster เอง</span></button>
+    <button type="button" class="build-item" id="train"><b>ฝึกคนงาน</b><span class="cost"></span><span class="note">เก็บไม้/หินให้เอง</span></button>
+  </div>
+  <button type="button" class="build-toggle" id="build-toggle" aria-expanded="false">สร้าง<span>B</span></button>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<button class="skill" id="skill" type="button" aria-label="สกิลยิงกระจาย (ปุ่ม Q)">
+  <span class="skill-cd" id="skill-cd"></span>
+  <span class="skill-name">ยิงกระจาย</span>
+  <span class="skill-key">Q · 20 MP</span>
+</button>
+
+<div class="down" id="down" hidden>
+  <div class="down-card">
+    <div class="down-title">Hero ล้มแล้ว</div>
+    <div class="down-sub">ฟื้นที่ค่ายพักแรมใน <b id="down-sec">10</b> วินาที</div>
+  </div>
+</div>
+
+<div class="joy joy-base" id="joy-base" hidden></div>
+<div class="joy joy-knob" id="joy-knob" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/4.0.0/phaser.min.js"></script>
+<script>
+"use strict";
+
+/* ===== data/ : ตัวเลขเกม (ปรับสมดุลตรงนี้) ===== */
+const DATA = {
+  tile: 32,
+  mapTiles: 200,
+  tickMs: 50,                       // ตรรกะเกม 20 ครั้ง/วินาที
+  heroRadius: 11,
+  vision: { hero: 7, camp: 9 },     // ระยะมองเห็น (ช่อง)
+  campClear: 7,                     // รัศมีพื้นโล่งรอบค่าย (ช่อง)
+  campRadius: 150,                  // เขตค่าย (พิกเซล): อยู่ในนี้ HP ฟื้น
+  zones: [                          // แบ่งตามระยะจากค่าย
+    { name: "ทุ่งหญ้า", upTo: 30 },
+    { name: "ป่าลึก", upTo: 60 },
+    { name: "หุบเขาหิน", upTo: 80 },
+    { name: "ดินแดนรกร้าง", upTo: Infinity },
+  ],
+  zoneLevels: [[1, 10], [10, 20], [20, 35], [35, 50]],
+  classes: {
+    archer: { hp: 120, mp: 100, atk: 14, def: 3, as: 1.4, spd: 170, rng: 220, crit: 0.15, skill: "volley" },
+  },
+  hero: { mpRegen: 6, campRegenPct: 0.1, respawnSec: 10, arrowSpeed: 640, arrowLife: 0.5 },
+  skills: {
+    volley: { name: "ยิงกระจาย", mp: 20, cd: 6, arrows: 7, spread: 0.95, dmgMul: 0.8 },
+  },
+  monsters: {
+    zombie: { name: "ซอมบี้", hp: 40, atk: 8, def: 1, as: 0.7, spd: 66, r: 13, aggro: 5, reach: 10 },
+    wolf: { name: "หมาป่า", hp: 24, atk: 4.5, def: 0, as: 1.1, spd: 185, r: 12, aggro: 6, reach: 8 },
+  },
+  stockStart: { wood: 40, stone: 10 },
+  resources: {                      // ไม้จากต้นไม้, หินจากก้อนหิน
+    tree: { give: "wood", amount: 4, sec: 0.7 },
+    rock: { give: "stone", amount: 3, sec: 1.0 },
+  },
+  buildRadius: 13,                  // เขตที่สร้างได้รอบค่าย (ช่อง)
+  buildings: {
+    camp: { name: "ค่ายพักแรม", hp: 800, vision: 9 },
+    wall: { name: "กำแพงไม้", cost: { wood: 5 }, hp: 150, vision: 0 },
+    tower: { name: "ป้อมธนู", cost: { wood: 20, stone: 10 }, hp: 220, atk: 10, as: 1, rng: 210, vision: 7 },
+  },
+  worker: { name: "คนงาน", cost: { wood: 15 }, max: 6, hp: 40, spd: 115, r: 9, carry: 5, gatherSec: 0.9, range: 16, flee: 4, vision: 4 },
+  spawn: { population: 240, safeRadius: 18, leash: 16, refillEvery: 4, sleepRadius: 26 },
+};
+
+/* ===== core/ : ตรรกะเกม ไม่ยุ่งกับ Phaser (ย้ายไปเซิร์ฟเวอร์ได้) ===== */
+const Core = (() => {
+  const T = { GRASS: 0, TREE: 1, ROCK: 2, WATER: 3, CAMP: 4, BUILD: 5 };
+  const BLOCK = [0, 1, 1, 1, 1, 1];
+
+  function rng(seed) {              // mulberry32: Seed เดิม = ผลสุ่มเดิม
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function hash(ix, iy, s) {
+    let h = (Math.imul(ix, 374761393) + Math.imul(iy, 668265263) + Math.imul(s, 1442695041)) | 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  }
+  function vnoise(s, x, y) {
+    const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
+    const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+    const a = hash(ix, iy, s), b = hash(ix + 1, iy, s), c = hash(ix, iy + 1, s), d = hash(ix + 1, iy + 1, s);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  }
+  const fbm = (s, x, y) => vnoise(s, x, y) * 0.6 + vnoise(s + 1, x * 2, y * 2) * 0.28 + vnoise(s + 2, x * 4, y * 4) * 0.12;
+
+  function zoneIndex(distTiles) { return DATA.zones.findIndex((z) => distTiles < z.upTo); }
+
+  function genMap(seed) {
+    const N = DATA.mapTiles, t = new Uint8Array(N * N), r = rng(seed ^ 0x9e3779b9), c = N / 2;
+    // ค่าตามโซน: ทุ่งหญ้า, ป่าลึก, หุบเขาหิน, รกร้าง
+    const waterTh = [0.32, 0.31, 0.27, 0.24];
+    const treeTh = [0.66, 0.57, 0.71, 0.8];
+    const treeRand = [0.02, 0.06, 0.012, 0.004];
+    const rockTh = [0.76, 0.75, 0.63, 0.67];
+    const rockRand = [0.006, 0.008, 0.03, 0.025];
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const i = y * N + x;
+        if (x < 2 || y < 2 || x >= N - 2 || y >= N - 2) { t[i] = T.TREE; continue; }
+        const d = Math.hypot(x + 0.5 - c, y + 0.5 - c);
+        const rt = r(), rr = r();
+        if (d < DATA.campClear) continue;
+        const z = zoneIndex(d);
+        if (fbm(seed + 11, x / 22, y / 22) < waterTh[z]) t[i] = T.WATER;
+        else if (fbm(seed + 23, x / 9, y / 9) > treeTh[z] || rt < treeRand[z]) t[i] = T.TREE;
+        else if (fbm(seed + 37, x / 7, y / 7) > rockTh[z] || rr < rockRand[z]) t[i] = T.ROCK;
+      }
+    }
+    for (let y = c - 1; y <= c; y++) for (let x = c - 1; x <= c; x++) t[y * N + x] = T.CAMP;   // กระโจม
+    return { n: N, t };
+  }
+
+  function createState(seed) {
+    const map = genMap(seed);
+    const size = DATA.tile * map.n;
+    const camp = { x: size / 2, y: size / 2, team: 1 };
+    const st = {
+      seed, tick: 0, map, rs: (seed ^ 0x51ed27) >>> 0, nextId: 1,
+      world: { w: size, h: size },
+      camp,
+      heroes: [],
+      monsters: [], arrows: [], events: [], kills: {},
+      units: [], buildings: [], stock: { 1: { ...DATA.stockStart } }, resLeft: {}, claims: {}, mapVersion: 0,
+      spawnTimer: 0,
+      fog: {}, fogKey: {}, fogVis: {}, explored: {}, fogVersion: 0,
+    };
+    const c = map.n / 2;
+    st.buildings.push(makeBuilding(st, "camp", 1, c - 1, c - 1, 2));
+    st.heroes.push(makeHero(st, "p1", 1, "archer", camp.x, camp.y + 90));
+    for (let i = 0; i < 400 && st.monsters.length < DATA.spawn.population; i++) spawnPack(st);
+    updateVision(st);
+    return st;
+  }
+
+  // สุ่มเลขแบบเก็บไว้ในสถานะเกม (ทุกเครื่องได้ผลเดียวกัน)
+  function rand(st) {
+    st.rs = (st.rs + 0x6d2b79f5) >>> 0;
+    let t = st.rs;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  function findEntity(st, id) {
+    return st.heroes.find((e) => e.id === id) || st.units.find((e) => e.id === id) || st.buildings.find((e) => e.id === id) || null;
+  }
+
+  function makeBuilding(st, type, team, tx, ty, size) {
+    const b = DATA.buildings[type], S = DATA.tile;
+    size = size || 1;
+    for (let y = ty; y < ty + size; y++) for (let x = tx; x < tx + size; x++) st.map.t[y * st.map.n + x] = type === "camp" ? T.CAMP : T.BUILD;
+    return {
+      id: st.nextId++, kind: "building", type, team, tx, ty, size,
+      x: (tx + size / 2) * S, y: (ty + size / 2) * S, r: (size * S) / 2,
+      hp: b.hp, maxHp: b.hp, atk: b.atk || 0, as: b.as || 0, rng: b.rng || 0, crit: 0, def: 2, atkCd: 0, dead: false,
+    };
+  }
+
+  function makeWorker(st, team, x, y) {
+    const w = DATA.worker;
+    return {
+      id: st.nextId++, kind: "unit", type: "worker", team, x, y, px: x, py: y, r: w.r, spd: w.spd,
+      hp: w.hp, maxHp: w.hp, def: 0, face: Math.PI / 2, path: null, stuck: 0, moving: false,
+      job: "seek", res: -1, carry: 0, carryType: null, gatherT: 0, wait: 0, dead: false,
+    };
+  }
+
+  function makeHero(st, id, team, cls, x, y) {
+    const c = DATA.classes[cls];
+    return {
+      id, kind: "hero", team, cls, x, y, px: x, py: y, r: DATA.heroRadius,
+      face: -Math.PI / 2, ix: 0, iy: 0, path: null, stuck: 0, moving: false,
+      spd: c.spd, hp: c.hp, maxHp: c.hp, mp: c.mp, maxMp: c.mp, atk: c.atk, def: c.def, as: c.as, rng: c.rng, crit: c.crit,
+      atkCd: 0, skillCd: 0, wantSkill: false, lastHurt: -999, dead: false, respawnAt: 0,
+    };
+  }
+
+  /* ----- Monster ----- */
+  function levelAt(distTiles) {
+    const z = zoneIndex(distTiles), [lo, hi] = DATA.zoneLevels[z];
+    const from = z === 0 ? DATA.spawn.safeRadius : DATA.zones[z - 1].upTo;
+    const to = Number.isFinite(DATA.zones[z].upTo) ? DATA.zones[z].upTo : 141;
+    return Math.round(lo + (hi - lo) * Math.min(1, Math.max(0, (distTiles - from) / (to - from))));
+  }
+
+  function makeMonster(st, type, x, y) {
+    const b = DATA.monsters[type], S = DATA.tile;
+    const lv = levelAt(Math.hypot(x - st.camp.x, y - st.camp.y) / S);
+    const hp = Math.round(b.hp * (1 + 0.15 * (lv - 1)));
+    return {
+      id: st.nextId++, kind: "monster", type, team: 0, lv, x, y, px: x, py: y, homeX: x, homeY: y, r: b.r,
+      hp, maxHp: hp, atk: b.atk * (1 + 0.08 * (lv - 1)), def: b.def + lv * 0.2, as: b.as, spd: b.spd,
+      face: rand(st) * Math.PI * 2, target: null, mode: "idle", wanderAt: 0, wx: x, wy: y,
+      atkCd: 0, side: 1, moving: false, lunge: 0, dead: false,
+    };
+  }
+
+  function spawnPack(st, awayFromHeroes) {
+    const N = st.map.n, S = DATA.tile, c = N / 2;
+    const tx = 3 + Math.floor(rand(st) * (N - 6)), ty = 3 + Math.floor(rand(st) * (N - 6));
+    const d = Math.hypot(tx + 0.5 - c, ty + 0.5 - c);
+    if (d < DATA.spawn.safeRadius || !walkable(st, tx, ty)) return;
+    if (awayFromHeroes) {
+      const fog = st.fog[1];
+      if (fog && fog[ty * N + tx] === 2) return;
+      if (st.heroes.some((h) => Math.hypot(h.x / S - tx, h.y / S - ty) < 14)) return;
+    }
+    const z = zoneIndex(d);
+    const wolfChance = [0.15, 0.6, 0.4, 0.5][z];
+    const type = rand(st) < wolfChance ? "wolf" : "zombie";
+    const count = type === "wolf" ? 2 + Math.floor(rand(st) * (z === 0 ? 2 : 3)) : 1 + Math.floor(rand(st) * 3);
+    for (let i = 0; i < count; i++) {
+      const x = (tx + 0.5) * S + (rand(st) - 0.5) * 70, y = (ty + 0.5) * S + (rand(st) - 0.5) * 70;
+      if (blockedAt(st, x, y, DATA.monsters[type].r)) continue;
+      st.monsters.push(makeMonster(st, type, x, y));
+    }
+  }
+
+  /* ----- การต่อสู้ ----- */
+  function enemiesOf(st, team) {
+    const out = [];
+    for (const h of st.heroes) if (!h.dead && h.team !== team) out.push(h);
+    for (const u of st.units) if (!u.dead && u.team !== team) out.push(u);
+    for (const m of st.monsters) if (!m.dead && m.team !== team) out.push(m);
+    return out;
+  }
+
+  function nearestEnemy(st, e, range) {
+    let best = null, bd = range;
+    for (const o of enemiesOf(st, e.team)) {
+      const d = Math.hypot(o.x - e.x, o.y - e.y) - o.r;
+      if (d < bd) { bd = d; best = o; }
+    }
+    return best;
+  }
+
+  function damage(st, target, attacker, base, mul) {
+    if (target.dead) return;
+    const crit = rand(st) < (attacker.crit || 0);
+    const roll = 0.9 + rand(st) * 0.2;
+    const amount = Math.max(1, Math.round((base * mul * (crit ? 2 : 1) - target.def * 0.5) * roll));
+    target.hp -= amount;
+    if (target.kind === "hero") target.lastHurt = st.tick;
+    if (target.kind === "unit") target.lastHurt = st.tick;
+    if (target.kind === "monster" && !target.target && (attacker.kind === "hero" || attacker.kind === "unit")) { target.target = attacker.id; target.mode = "chase"; }
+    st.events.push({ type: "hit", id: target.id, x: target.x, y: target.y - target.r, amount, crit, toHero: target.kind !== "monster" });
+    if (target.hp <= 0) {
+      target.hp = 0; target.dead = true;
+      st.events.push({ type: "death", id: target.id, kind: target.kind, x: target.x, y: target.y });
+      if (target.kind === "monster") st.kills[attacker.team] = (st.kills[attacker.team] || 0) + 1;
+      if (target.kind === "unit") {
+        releaseClaim(st, target);
+        for (const m of st.monsters) if (m.target === target.id) { m.target = null; m.mode = "return"; }
+      }
+      if (target.kind === "building") removeBuilding(st, target);
+      if (target.kind === "hero") {
+        target.respawnAt = st.tick + DATA.hero.respawnSec * 1000 / DATA.tickMs;
+        target.path = null;
+        for (const m of st.monsters) if (m.target === target.id) { m.target = null; m.mode = "return"; }
+      }
+    }
+  }
+
+  function fireArrow(st, h, angle, mul, fromY) {
+    const sp = DATA.hero.arrowSpeed, oy = fromY || 0;
+    st.arrows.push({
+      id: st.nextId++, team: h.team, owner: h.id, atk: h.atk, x: h.x + Math.cos(angle) * 14, y: h.y + oy + Math.sin(angle) * 14,
+      px: h.x, py: h.y + oy, vx: Math.cos(angle) * sp, vy: Math.sin(angle) * sp, angle, mul,
+      life: Math.max(DATA.hero.arrowLife, (h.rng + 40) / sp),
+    });
+  }
+
+  function stepHeroCombat(st, h, dt) {
+    const S = DATA.tile;
+    if (h.dead) {
+      if (st.tick >= h.respawnAt) {
+        h.dead = false; h.hp = h.maxHp; h.mp = h.maxMp; h.skillCd = 0;
+        h.x = h.px = st.camp.x; h.y = h.py = st.camp.y + 90; h.path = null;
+        st.events.push({ type: "respawn", id: h.id });
+      }
+      return;
+    }
+    h.atkCd -= dt; h.skillCd -= dt;
+    h.mp = Math.min(h.maxMp, h.mp + DATA.hero.mpRegen * dt);
+    // HP ฟื้นเฉพาะตอนอยู่ในเขตค่าย
+    h.inCamp = Math.hypot(h.x - st.camp.x, h.y - (st.camp.y + 10)) < DATA.campRadius;
+    if (h.inCamp) h.hp = Math.min(h.maxHp, h.hp + h.maxHp * DATA.hero.campRegenPct * dt);
+    // โจมตีอัตโนมัติ: ยิงเป้าที่ใกล้ที่สุดในระยะ
+    if (h.atkCd <= 0) {
+      const tgt = nearestEnemy(st, h, h.rng);
+      if (tgt) {
+        const a = Math.atan2(tgt.y - h.y, tgt.x - h.x);
+        fireArrow(st, h, a, 1);
+        h.aim = a; h.aimUntil = st.tick + 6;
+        h.atkCd = 1 / h.as;
+      }
+    }
+    if (h.wantSkill) {
+      h.wantSkill = false;
+      const sk = DATA.skills[DATA.classes[h.cls].skill];
+      if (h.skillCd <= 0 && h.mp >= sk.mp) {
+        const tgt = nearestEnemy(st, h, h.rng * 1.4);
+        const a = tgt ? Math.atan2(tgt.y - h.y, tgt.x - h.x) : h.face;
+        for (let i = 0; i < sk.arrows; i++) fireArrow(st, h, a - sk.spread / 2 + (sk.spread * i) / (sk.arrows - 1), sk.dmgMul);
+        h.mp -= sk.mp; h.skillCd = sk.cd;
+        h.aim = a; h.aimUntil = st.tick + 8;
+        st.events.push({ type: "skill", id: h.id });
+      }
+    }
+  }
+
+  function stepArrows(st, dt) {
+    const keep = [];
+    for (const a of st.arrows) {
+      a.px = a.x; a.py = a.y;
+      a.x += a.vx * dt; a.y += a.vy * dt; a.life -= dt;
+      let hit = null;
+      for (const o of enemiesOf(st, a.team)) {
+        // ตรวจตลอดเส้นทางที่ลูกธนูวิ่งผ่านใน 1 จังหวะ
+        const dx = a.x - a.px, dy = a.y - a.py, L = dx * dx + dy * dy || 1;
+        const t = Math.max(0, Math.min(1, ((o.x - a.px) * dx + (o.y - a.py) * dy) / L));
+        if (Math.hypot(a.px + dx * t - o.x, a.py + dy * t - o.y) < o.r + 4) { hit = o; break; }
+      }
+      if (hit) {
+        const shooter = findEntity(st, a.owner) || { atk: a.atk || 10, crit: 0, team: a.team, kind: "building" };
+        damage(st, hit, shooter, a.atk || shooter.atk, a.mul);
+        continue;
+      }
+      if (a.life > 0) keep.push(a);
+    }
+    st.arrows = keep;
+  }
+
+  function steer(st, m, dx, dy, len) {
+    const base = Math.atan2(dy, dx);
+    for (const off of [0, 0.6 * m.side, -0.6 * m.side, 1.2 * m.side, -1.2 * m.side, 1.7 * m.side]) {
+      const a = base + off, moved = moveSlide(st, m, Math.cos(a) * len, Math.sin(a) * len);
+      if (moved > len * 0.35) { if (off !== 0) m.side = Math.sign(off); return moved; }
+    }
+    m.side = -m.side;
+    return 0;
+  }
+
+  function stepMonsters(st, dt) {
+    const S = DATA.tile, sleep = DATA.spawn.sleepRadius * S, leash = DATA.spawn.leash * S;
+    const awake = [];
+    for (const m of st.monsters) {
+      m.px = m.x; m.py = m.y; m.moving = false; m.lunge = Math.max(0, m.lunge - dt * 4);
+      if (m.dead) continue;
+      if (!st.heroes.some((h) => Math.hypot(h.x - m.x, h.y - m.y) < sleep) && !st.units.some((u) => Math.hypot(u.x - m.x, u.y - m.y) < sleep)) continue;   // ไกลผู้เล่น: พักไว้ ประหยัดเครื่อง
+      awake.push(m);
+      const b = DATA.monsters[m.type];
+      m.atkCd -= dt;
+      let tgt = m.target ? findEntity(st, m.target) : null;
+      if (tgt && tgt.dead) { tgt = null; m.target = null; m.mode = "return"; }
+      if (!tgt && m.mode !== "return") {
+        tgt = nearestEnemy(st, m, b.aggro * S);
+        if (tgt && (tgt.kind === "hero" || tgt.kind === "unit")) { m.target = tgt.id; m.mode = "chase"; } else tgt = null;
+      }
+      const homeD = Math.hypot(m.x - m.homeX, m.y - m.homeY);
+      if (tgt && homeD > leash) { m.target = null; m.mode = "return"; tgt = null; }
+
+      if (m.mode === "return") {
+        if (homeD < S) { m.mode = "idle"; m.hp = m.maxHp; }
+        else { m.face = Math.atan2(m.homeY - m.y, m.homeX - m.x); m.moving = steer(st, m, m.homeX - m.x, m.homeY - m.y, m.spd * 1.2 * dt) > 0; }
+      } else if (tgt) {
+        const dx = tgt.x - m.x, dy = tgt.y - m.y, d = Math.hypot(dx, dy);
+        m.face = Math.atan2(dy, dx);
+        if (d <= m.r + tgt.r + b.reach) {
+          if (m.atkCd <= 0) { m.atkCd = 1 / m.as; m.lunge = 1; damage(st, tgt, m, m.atk, 1); }
+        } else {
+          m.moving = steer(st, m, dx, dy, Math.min(m.spd * dt, d - (m.r + tgt.r + b.reach) + 1)) > 0;
+        }
+      } else {
+        m.mode = "idle";
+        if (st.tick >= m.wanderAt) {
+          m.wanderAt = st.tick + 40 + Math.floor(rand(st) * 80);
+          m.wx = m.homeX + (rand(st) - 0.5) * 6 * S; m.wy = m.homeY + (rand(st) - 0.5) * 6 * S;
+        }
+        const dx = m.wx - m.x, dy = m.wy - m.y, d = Math.hypot(dx, dy);
+        if (d > 6) {
+          m.face = Math.atan2(dy, dx);
+          if (moveSlide(st, m, dx / d * m.spd * 0.35 * dt, dy / d * m.spd * 0.35 * dt) < 0.1) m.wanderAt = st.tick;
+          else m.moving = true;
+        }
+      }
+    }
+    // ไม่ให้ Monster ซ้อนกัน
+    for (let i = 0; i < awake.length; i++) {
+      for (let j = i + 1; j < awake.length; j++) {
+        const a = awake[i], c = awake[j], dx = c.x - a.x, dy = c.y - a.y, min = a.r + c.r;
+        const d2 = dx * dx + dy * dy;
+        if (d2 >= min * min || d2 === 0) continue;
+        const d = Math.sqrt(d2), push = (min - d) / 2;
+        moveSlide(st, a, -dx / d * push, -dy / d * push);
+        moveSlide(st, c, dx / d * push, dy / d * push);
+      }
+    }
+    st.monsters = st.monsters.filter((m) => !m.dead);
+    // เติม Monster ที่ถูกกำจัดไป ห่างจากผู้เล่น
+    st.spawnTimer -= dt;
+    if (st.spawnTimer <= 0) {
+      st.spawnTimer = DATA.spawn.refillEvery;
+      if (st.monsters.length < DATA.spawn.population) for (let k = 0; k < 6; k++) spawnPack(st, true);
+    }
+  }
+
+  /* ----- การชน ----- */
+  function tileAt(st, tx, ty) {
+    const N = st.map.n;
+    if (tx < 0 || ty < 0 || tx >= N || ty >= N) return T.TREE;
+    return st.map.t[ty * N + tx];
+  }
+  function walkable(st, tx, ty) { return !BLOCK[tileAt(st, tx, ty)]; }
+  function blockedAt(st, x, y, r) {
+    const S = DATA.tile;
+    for (let ty = Math.floor((y - r) / S); ty <= Math.floor((y + r) / S); ty++) {
+      for (let tx = Math.floor((x - r) / S); tx <= Math.floor((x + r) / S); tx++) {
+        if (walkable(st, tx, ty)) continue;
+        const nx = Math.max(tx * S, Math.min(x, tx * S + S)), ny = Math.max(ty * S, Math.min(y, ty * S + S));
+        if ((x - nx) ** 2 + (y - ny) ** 2 < r * r) return true;
+      }
+    }
+    return false;
+  }
+  function moveSlide(st, h, dx, dy) {
+    const r = h.r || DATA.heroRadius, x0 = h.x, y0 = h.y;
+    if (!blockedAt(st, h.x + dx, h.y, r)) h.x += dx;
+    if (!blockedAt(st, h.x, h.y + dy, r)) h.y += dy;
+    return Math.hypot(h.x - x0, h.y - y0);
+  }
+  function lineClear(st, ax, ay, bx, by) {
+    const d = Math.hypot(bx - ax, by - ay), n = Math.ceil(d / 8);
+    for (let i = 1; i <= n; i++) if (blockedAt(st, ax + (bx - ax) * i / n, ay + (by - ay) * i / n, DATA.heroRadius + 1)) return false;
+    return true;
+  }
+
+  /* ----- หาเส้นทาง (A*) ----- */
+  const DIRS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.4142], [1, -1, 1.4142], [-1, 1, 1.4142], [-1, -1, 1.4142]];
+  function findPath(st, sx, sy, gx, gy) {
+    const N = st.map.n, size = N * N;
+    if (!walkable(st, sx, sy) || !walkable(st, gx, gy)) return null;
+    const g = new Float32Array(size).fill(Infinity), from = new Int32Array(size).fill(-1), closed = new Uint8Array(size);
+    const hIdx = [], hKey = [];
+    const push = (i, k) => {
+      let p = hIdx.length; hIdx.push(i); hKey.push(k);
+      while (p > 0) { const q = (p - 1) >> 1; if (hKey[q] <= k) break; hIdx[p] = hIdx[q]; hKey[p] = hKey[q]; p = q; }
+      hIdx[p] = i; hKey[p] = k;
+    };
+    const pop = () => {
+      const top = hIdx[0], li = hIdx.pop(), lk = hKey.pop();
+      if (hIdx.length) {
+        let p = 0;
+        for (;;) {
+          let c = 2 * p + 1; if (c >= hIdx.length) break;
+          if (c + 1 < hIdx.length && hKey[c + 1] < hKey[c]) c++;
+          if (hKey[c] >= lk) break;
+          hIdx[p] = hIdx[c]; hKey[p] = hKey[c]; p = c;
+        }
+        hIdx[p] = li; hKey[p] = lk;
+      }
+      return top;
+    };
+    const heur = (x, y) => { const dx = Math.abs(x - gx), dy = Math.abs(y - gy); return dx + dy - 0.5858 * Math.min(dx, dy); };
+    const s = sy * N + sx, goal = gy * N + gx;
+    g[s] = 0; push(s, heur(sx, sy));
+    let expanded = 0, found = s === goal;
+    while (hIdx.length && expanded < 60000 && !found) {
+      const cur = pop();
+      if (closed[cur]) continue;
+      if (cur === goal) { found = true; break; }
+      closed[cur] = 1; expanded++;
+      const cx = cur % N, cy = (cur / N) | 0;
+      for (const [dx, dy, cost] of DIRS) {
+        const nx = cx + dx, ny = cy + dy;
+        if (!walkable(st, nx, ny)) continue;
+        if (dx && dy && (!walkable(st, cx + dx, cy) || !walkable(st, cx, cy + dy))) continue;
+        const ni = ny * N + nx, ng = g[cur] + cost;
+        if (ng < g[ni]) { g[ni] = ng; from[ni] = cur; push(ni, ng + heur(nx, ny)); }
+      }
+    }
+    if (!found) return null;
+    const tiles = [];
+    for (let i = goal; i !== s; i = from[i]) tiles.push(i);
+    return tiles.reverse();
+  }
+
+  function nearestWalkable(st, tx, ty, wx, wy) {
+    if (walkable(st, tx, ty)) return [tx, ty];
+    let best = null, bd = Infinity;
+    for (let r = 1; r <= 4 && !best; r++) {
+      for (let y = ty - r; y <= ty + r; y++) for (let x = tx - r; x <= tx + r; x++) {
+        if (!walkable(st, x, y)) continue;
+        const d = Math.hypot((x + 0.5) * DATA.tile - wx, (y + 0.5) * DATA.tile - wy);
+        if (d < bd) { bd = d; best = [x, y]; }
+      }
+    }
+    return best;
+  }
+
+  function planPath(st, h, wx, wy) {
+    const S = DATA.tile, N = st.map.n;
+    const goalTile = nearestWalkable(st, Math.floor(wx / S), Math.floor(wy / S), wx, wy);
+    if (!goalTile) return null;
+    const exactOk = walkable(st, Math.floor(wx / S), Math.floor(wy / S)) && !blockedAt(st, wx, wy, DATA.heroRadius);
+    const end = exactOk ? { x: wx, y: wy } : { x: (goalTile[0] + 0.5) * S, y: (goalTile[1] + 0.5) * S };
+    if (lineClear(st, h.x, h.y, end.x, end.y)) return [end];
+    const tiles = findPath(st, Math.floor(h.x / S), Math.floor(h.y / S), goalTile[0], goalTile[1]);
+    if (!tiles) return null;
+    const pts = tiles.map((i) => ({ x: (i % N + 0.5) * S, y: (((i / N) | 0) + 0.5) * S }));
+    pts[pts.length - 1] = end;
+    // ตัดจุดที่มองเห็นกันได้ทิ้ง ให้เดินเป็นเส้นตรงขึ้น
+    const out = []; let ax = h.x, ay = h.y, k = 0;
+    while (k < pts.length) {
+      let j = pts.length - 1;
+      while (j > k && !lineClear(st, ax, ay, pts[j].x, pts[j].y)) j--;
+      out.push(pts[j]); ax = pts[j].x; ay = pts[j].y; k = j + 1;
+    }
+    return out;
+  }
+
+  /* ----- คำสั่ง (ปุ่มกด → คำสั่ง; ตอนออนไลน์จะส่งไปเซิร์ฟเวอร์แทน) ----- */
+  function applyCommand(st, cmd) {
+    const h = st.heroes.find((e) => e.id === cmd.heroId);
+    if (!h || h.dead) return false;
+    if (cmd.type === "skill") { h.wantSkill = true; return true; }
+    if (cmd.type === "move") {
+      let { x, y } = cmd;
+      const len = Math.hypot(x, y);
+      if (len > 1) { x /= len; y /= len; }
+      h.ix = x; h.iy = y;
+      if (len > 0.05) h.path = null;
+      return true;
+    }
+    if (cmd.type === "moveTo") {
+      const path = planPath(st, h, cmd.x, cmd.y);
+      h.path = path; h.stuck = 0;
+      return !!path;
+    }
+    if (cmd.type === "build") {
+      const err = canBuild(st, h.team, cmd.kind, cmd.tx, cmd.ty);
+      if (err) return err;
+      pay(st.stock[h.team], DATA.buildings[cmd.kind].cost);
+      const b = makeBuilding(st, cmd.kind, h.team, cmd.tx, cmd.ty, 1);
+      st.buildings.push(b);
+      st.mapVersion++;
+      st.events.push({ type: "built", id: b.id, x: b.x, y: b.y });
+      return true;
+    }
+    if (cmd.type === "train") {
+      const w = DATA.worker;
+      if (st.units.filter((u) => u.team === h.team && u.type === "worker").length >= w.max) return "max";
+      if (!afford(st.stock[h.team], w.cost)) return "cost";
+      pay(st.stock[h.team], w.cost);
+      const u = makeWorker(st, h.team, st.camp.x + (rand(st) - 0.5) * 40, st.camp.y + 62);
+      st.units.push(u);
+      st.events.push({ type: "trained", id: u.id, x: u.x, y: u.y });
+      return true;
+    }
+    return false;
+  }
+
+  /* ----- ทรัพยากรและสิ่งก่อสร้าง ----- */
+  const afford = (stock, cost) => Object.keys(cost).every((k) => (stock[k] || 0) >= cost[k]);
+  const pay = (stock, cost) => { for (const k in cost) stock[k] -= cost[k]; };
+
+  function canBuild(st, team, type, tx, ty) {
+    const N = st.map.n, S = DATA.tile, b = DATA.buildings[type];
+    if (!b || !b.cost) return "blocked";
+    if (tx < 2 || ty < 2 || tx >= N - 2 || ty >= N - 2) return "far";
+    if (Math.hypot(tx + 0.5 - N / 2, ty + 0.5 - N / 2) > DATA.buildRadius) return "far";
+    if (st.map.t[ty * N + tx] !== T.GRASS) return "blocked";
+    const x0 = tx * S, y0 = ty * S;
+    const touches = (e) => {
+      const nx = Math.max(x0, Math.min(e.x, x0 + S)), ny = Math.max(y0, Math.min(e.y, y0 + S));
+      return (e.x - nx) ** 2 + (e.y - ny) ** 2 < (e.r + 1) ** 2;
+    };
+    if (st.heroes.some((e) => !e.dead && touches(e)) || st.units.some(touches) || st.monsters.some(touches)) return "occupied";
+    if (!afford(st.stock[team], b.cost)) return "cost";
+    return null;
+  }
+
+  function removeBuilding(st, b) {
+    const N = st.map.n;
+    if (b.type !== "camp") {
+      for (let y = b.ty; y < b.ty + b.size; y++) for (let x = b.tx; x < b.tx + b.size; x++) st.map.t[y * N + x] = T.GRASS;
+    }
+    st.buildings = st.buildings.filter((e) => e !== b);
+    st.mapVersion++;
+  }
+
+  function resourceKind(st, idx) {
+    const N = st.map.n, x = idx % N, y = (idx / N) | 0;
+    if (x < 2 || y < 2 || x >= N - 2 || y >= N - 2) return null;     // แนวต้นไม้ขอบแผนที่ตัดไม่ได้
+    const k = st.map.t[idx];
+    return k === T.TREE ? "tree" : k === T.ROCK ? "rock" : null;
+  }
+
+  function distToTile(st, e, idx) {
+    const N = st.map.n, S = DATA.tile, x0 = (idx % N) * S, y0 = ((idx / N) | 0) * S;
+    const nx = Math.max(x0, Math.min(e.x, x0 + S)), ny = Math.max(y0, Math.min(e.y, y0 + S));
+    return Math.hypot(e.x - nx, e.y - ny);
+  }
+
+  function adjacentResource(st, e) {
+    const N = st.map.n, S = DATA.tile, tx = Math.floor(e.x / S), ty = Math.floor(e.y / S);
+    let best = -1, bd = e.r + 10;
+    for (let y = ty - 1; y <= ty + 1; y++) for (let x = tx - 1; x <= tx + 1; x++) {
+      const idx = y * N + x;
+      if (!resourceKind(st, idx)) continue;
+      const d = distToTile(st, e, idx);
+      if (d < bd) { bd = d; best = idx; }
+    }
+    return best;
+  }
+
+  function harvest(st, idx, amount) {
+    const kind = resourceKind(st, idx);
+    if (!kind) return { res: null, got: 0, cleared: true };
+    const def = DATA.resources[kind];
+    const left = st.resLeft[idx] ?? def.amount, got = Math.min(amount, left);
+    if (left - got <= 0) {
+      st.map.t[idx] = T.GRASS; delete st.resLeft[idx]; delete st.claims[idx];
+      st.mapVersion++;
+      st.events.push({ type: "cleared", idx, kind });
+      return { res: def.give, got, cleared: true };
+    }
+    st.resLeft[idx] = left - got;
+    return { res: def.give, got, cleared: false };
+  }
+
+  function followPath(st, e, dt, spd) {
+    if (!e.path) return "none";
+    let wp = e.path[0], d = Math.hypot(wp.x - e.x, wp.y - e.y);
+    while (d < 3 && e.path.length > 1) { e.path.shift(); wp = e.path[0]; d = Math.hypot(wp.x - e.x, wp.y - e.y); }
+    if (d < 3) { e.path = null; return "arrived"; }
+    const stepLen = Math.min(spd * dt, d), dx = (wp.x - e.x) / d, dy = (wp.y - e.y) / d;
+    e.face = Math.atan2(dy, dx); e.moving = true;
+    const moved = moveSlide(st, e, dx * stepLen, dy * stepLen);
+    if (moved < stepLen * 0.2) { if (++e.stuck > 12) { e.path = null; e.stuck = 0; return "stuck"; } } else e.stuck = 0;
+    return "moving";
+  }
+
+  /* ----- คนงาน: หาทรัพยากร → เก็บ → ขนกลับค่าย → หนีเมื่อเจอ Monster ----- */
+  function releaseClaim(st, u) {
+    if (u.res >= 0 && st.claims[u.res] === u.id) delete st.claims[u.res];
+    u.res = -1;
+  }
+
+  function findResource(st, u, kind) {
+    const N = st.map.n, S = DATA.tile, c = N / 2, R = DATA.worker.range;
+    let best = -1, bd = Infinity;
+    for (let y = c - R; y <= c + R; y++) for (let x = c - R; x <= c + R; x++) {
+      if (Math.hypot(x + 0.5 - c, y + 0.5 - c) > R) continue;
+      const idx = y * N + x;
+      if (resourceKind(st, idx) !== kind || st.claims[idx] || (st.badRes && st.badRes[idx] > st.tick)) continue;
+      const d = Math.hypot((x + 0.5) * S - u.x, (y + 0.5) * S - u.y);
+      if (d < bd) { bd = d; best = idx; }
+    }
+    return best;
+  }
+
+  function stepUnits(st, dt) {
+    const S = DATA.tile, W = DATA.worker, door = { x: st.camp.x, y: st.camp.y + 62 };
+    for (const u of st.units) {
+      u.px = u.x; u.py = u.y; u.moving = false;
+      if (u.dead) continue;
+      const stock = st.stock[u.team];
+      const threat = st.monsters.some((m) => !m.dead && Math.hypot(m.x - u.x, m.y - u.y) < W.flee * S) || st.tick - (u.lastHurt || -999) < 20;
+      if (threat && u.job !== "flee") { releaseClaim(st, u); u.job = "flee"; u.path = planPath(st, u, door.x, door.y); }
+      if (u.wait > 0) { u.wait--; continue; }
+      if (u.job === "flee") {
+        const r = followPath(st, u, dt, u.spd * 1.15);
+        if (r !== "moving" && !threat) u.job = u.carry > 0 ? "return" : "seek";
+        else if (r === "stuck" || (r === "none" && Math.hypot(u.x - door.x, u.y - door.y) > 60)) u.path = planPath(st, u, door.x, door.y);
+      } else if (u.job === "seek") {
+        if (u.carry > 0) { u.job = "return"; u.path = planPath(st, u, door.x, door.y); continue; }
+        const want = stock.wood <= stock.stone * 2 ? "tree" : "rock";
+        let idx = findResource(st, u, want);
+        if (idx < 0) idx = findResource(st, u, want === "tree" ? "rock" : "tree");
+        if (idx < 0) { u.wait = 40; continue; }
+        const N = st.map.n;
+        u.path = planPath(st, u, (idx % N + 0.5) * S, (((idx / N) | 0) + 0.5) * S);
+        if (!u.path) { (st.badRes || (st.badRes = {}))[idx] = st.tick + 600; u.wait = 10; continue; }
+        u.res = idx; st.claims[idx] = u.id; u.job = "walk";
+      } else if (u.job === "walk") {
+        if (!resourceKind(st, u.res)) { releaseClaim(st, u); u.job = "seek"; continue; }
+        if (distToTile(st, u, u.res) < u.r + 10) { u.path = null; u.job = "gather"; u.gatherT = 0; continue; }
+        const r = followPath(st, u, dt, u.spd);
+        if (r !== "moving") {
+          if (distToTile(st, u, u.res) < u.r + 14) { u.job = "gather"; u.gatherT = 0; }
+          else { (st.badRes || (st.badRes = {}))[u.res] = st.tick + 600; releaseClaim(st, u); u.job = "seek"; u.wait = 10; }
+        }
+      } else if (u.job === "gather") {
+        if (!resourceKind(st, u.res)) { releaseClaim(st, u); u.job = "seek"; continue; }
+        const N = st.map.n;
+        u.face = Math.atan2((((u.res / N) | 0) + 0.5) * S - u.y, (u.res % N + 0.5) * S - u.x);
+        u.gatherT += dt;
+        if (u.gatherT >= W.gatherSec) {
+          u.gatherT = 0;
+          const r = harvest(st, u.res, 1);
+          if (r.got) { u.carry += r.got; u.carryType = r.res; }
+          if (u.carry >= W.carry || r.cleared) { releaseClaim(st, u); u.job = "return"; u.path = planPath(st, u, door.x, door.y); }
+        }
+      } else if (u.job === "return") {
+        const d = Math.hypot(u.x - door.x, u.y - door.y);
+        if (d < 46) {
+          if (u.carry > 0) {
+            stock[u.carryType] = (stock[u.carryType] || 0) + u.carry;
+            st.events.push({ type: "gain", x: u.x, y: u.y - 14, res: u.carryType, n: u.carry, team: u.team });
+          }
+          u.carry = 0; u.carryType = null; u.job = "seek"; u.path = null;
+          continue;
+        }
+        const r = followPath(st, u, dt, u.spd);
+        if (r !== "moving") u.path = planPath(st, u, door.x, door.y);
+      }
+    }
+    st.units = st.units.filter((u) => !u.dead);
+  }
+
+  function stepBuildings(st, dt) {
+    for (const b of st.buildings) {
+      if (b.dead || b.type !== "tower") continue;
+      b.atkCd -= dt;
+      if (b.atkCd > 0) continue;
+      const tgt = nearestEnemy(st, b, b.rng);
+      if (!tgt) continue;
+      const a = Math.atan2(tgt.y - (b.y - 18), tgt.x - b.x);
+      fireArrow(st, b, a, 1, -18);
+      b.aim = a; b.atkCd = 1 / b.as;
+    }
+  }
+
+  /* ----- Fog of War: 0 มืด, 1 เคยเห็น, 2 มองเห็นอยู่ (แยกตามทีม) ----- */
+  function updateVision(st) {
+    const N = st.map.n, S = DATA.tile;
+    const teams = new Set(st.heroes.map((h) => h.team)); teams.add(st.camp.team);
+    for (const team of teams) {
+      const sources = st.heroes.filter((h) => h.team === team && !h.dead).map((h) => [Math.floor(h.x / S), Math.floor(h.y / S), DATA.vision.hero]);
+      for (const u of st.units) if (u.team === team) sources.push([Math.floor(u.x / S), Math.floor(u.y / S), DATA.worker.vision]);
+      for (const b of st.buildings) {
+        const v = DATA.buildings[b.type].vision;
+        if (b.team === team && v) sources.push([Math.floor(b.x / S), Math.floor(b.y / S), v]);
+      }
+      const key = sources.map((s) => s.join(",")).join("|");
+      if (st.fogKey[team] === key) continue;
+      st.fogKey[team] = key;
+      const fog = st.fog[team] || (st.fog[team] = new Uint8Array(N * N));
+      for (const i of st.fogVis[team] || []) fog[i] = 1;
+      const vis = [];
+      let explored = st.explored[team] || 0;
+      for (const [cx, cy, r] of sources) {
+        for (let y = Math.max(0, cy - r); y <= Math.min(N - 1, cy + r); y++) {
+          for (let x = Math.max(0, cx - r); x <= Math.min(N - 1, cx + r); x++) {
+            if ((x - cx) ** 2 + (y - cy) ** 2 > r * r + r) continue;
+            const i = y * N + x;
+            if (fog[i] === 0) explored++;
+            if (fog[i] !== 2) { fog[i] = 2; vis.push(i); }
+          }
+        }
+      }
+      st.fogVis[team] = vis;
+      st.explored[team] = explored;
+      st.fogVersion++;
+    }
+  }
+
+  function step(st) {
+    const dt = DATA.tickMs / 1000;
+    for (const h of st.heroes) {
+      h.px = h.x; h.py = h.y;
+      stepHeroCombat(st, h, dt);
+      if (h.dead) { h.moving = false; continue; }
+      h.moving = false;
+      if (Math.hypot(h.ix, h.iy) > 0.05) {
+        const stepLen = h.spd * dt;
+        h.face = Math.atan2(h.iy, h.ix); h.moving = true;
+        moveSlide(st, h, h.ix * stepLen, h.iy * stepLen);
+      } else if (h.path) {
+        followPath(st, h, dt, h.spd);
+      }
+      // ยืนติดต้นไม้/ก้อนหิน และไม่มีศัตรูใกล้ → เก็บทรัพยากรเอง
+      h.gathering = -1;
+      if (!h.moving && !h.path && !nearestEnemy(st, h, h.rng)) {
+        const idx = adjacentResource(st, h);
+        if (idx >= 0) {
+          const N = st.map.n, S = DATA.tile, def = DATA.resources[resourceKind(st, idx)];
+          h.gathering = idx;
+          h.face = Math.atan2((((idx / N) | 0) + 0.5) * S - h.y, (idx % N + 0.5) * S - h.x);
+          h.gatherT = (h.gatherT || 0) + dt;
+          if (h.gatherT >= def.sec) {
+            h.gatherT = 0;
+            const r = harvest(st, idx, 1);
+            if (r.got) {
+              st.stock[h.team][r.res] = (st.stock[h.team][r.res] || 0) + r.got;
+              st.events.push({ type: "gain", x: h.x, y: h.y - 20, res: r.res, n: r.got, team: h.team });
+            }
+          }
+        } else h.gatherT = 0;
+      } else h.gatherT = 0;
+    }
+    stepUnits(st, dt);
+    stepBuildings(st, dt);
+    stepArrows(st, dt);
+    stepMonsters(st, dt);
+    updateVision(st);
+    st.tick++;
+  }
+
+  return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, afford };
+})();
+
+/* ===== input/ : คีย์บอร์ดและจอสัมผัส → เวกเตอร์เดิน ===== */
+const Input = (() => {
+  const keys = new Set();
+  const joy = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
+  const RADIUS = 52;
+  const gameEl = document.getElementById("game");
+  const baseEl = document.getElementById("joy-base");
+  const knobEl = document.getElementById("joy-knob");
+  const listeners = [];
+  const emit = (k) => listeners.forEach((f) => f(k));
+
+  const map = {
+    KeyW: [0, -1], ArrowUp: [0, -1], KeyS: [0, 1], ArrowDown: [0, 1],
+    KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0],
+  };
+  let skillQueued = false, buildMode = false;
+  window.addEventListener("keydown", (e) => {
+    if (map[e.code]) { keys.add(e.code); e.preventDefault(); emit("key"); }
+    else if (e.code === "KeyM" && !e.repeat) emit("map");
+    else if (e.code === "KeyB" && !e.repeat) emit("build");
+    else if (e.code === "Escape") emit("esc");
+    else if (e.code === "KeyQ" && !e.repeat) { skillQueued = true; emit("key"); }
+  });
+  window.addEventListener("keyup", (e) => keys.delete(e.code));
+  window.addEventListener("blur", () => keys.clear());
+
+  gameEl.addEventListener("pointerdown", (e) => {
+    try { gameEl.focus({ preventScroll: true }); } catch (_) {}
+    if (e.pointerType === "mouse" || buildMode) return;
+    if (joy.id !== null || e.clientX > window.innerWidth * 0.6) return;
+    emit("touch");
+    joy.id = e.pointerId; joy.ox = e.clientX; joy.oy = e.clientY; joy.x = 0; joy.y = 0;
+    try { gameEl.setPointerCapture(e.pointerId); } catch (_) {}
+    place(baseEl, joy.ox, joy.oy); place(knobEl, joy.ox, joy.oy);
+    baseEl.hidden = false; knobEl.hidden = false;
+  });
+  gameEl.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== joy.id) return;
+    let dx = e.clientX - joy.ox, dy = e.clientY - joy.oy;
+    const d = Math.hypot(dx, dy);
+    if (d > RADIUS) { dx *= RADIUS / d; dy *= RADIUS / d; }
+    joy.x = dx / RADIUS; joy.y = dy / RADIUS;
+    place(knobEl, joy.ox + dx, joy.oy + dy);
+  });
+  const end = (e) => {
+    if (e.pointerId !== joy.id) return;
+    joy.id = null; joy.x = 0; joy.y = 0;
+    baseEl.hidden = true; knobEl.hidden = true;
+  };
+  gameEl.addEventListener("pointerup", end);
+  gameEl.addEventListener("pointercancel", end);
+
+  function place(el, x, y) { el.style.left = x + "px"; el.style.top = y + "px"; }
+  function vector() {
+    let x = 0, y = 0;
+    for (const k of keys) { x += map[k][0]; y += map[k][1]; }
+    if (Math.abs(joy.x) + Math.abs(joy.y) > 0.15) { x += joy.x; y += joy.y; }
+    return { x, y };
+  }
+  return {
+    vector, on: (f) => listeners.push(f), used: emit,
+    queueSkill: () => { skillQueued = true; },
+    setBuildMode: (v) => { buildMode = v; },
+    takeSkill: () => { const q = skillQueued; skillQueued = false; return q; },
+  };
+})();
+
+/* ===== scenes/ : Phaser วาดภาพตามสถานะ ===== */
+function canvasTexture(scene, key, w, h, draw) {
+  if (scene.textures.exists(key)) return;
+  const tex = scene.textures.createCanvas(key, w, h);
+  draw(tex.getContext(), w, h);
+  tex.refresh();
+}
+const TILE_RGB = [[63, 90, 51], [31, 58, 28], [138, 135, 120], [47, 95, 122], [226, 176, 74], [154, 109, 64]];
+const RES_NAME = { wood: "ไม้", stone: "หิน" };
+const BUILD_ERR = {
+  far: "สร้างได้เฉพาะในเขตค่าย (วงสีฟ้า)", blocked: "ตรงนี้สร้างไม่ได้", occupied: "มีคนหรือ Monster ยืนขวางอยู่",
+  cost: "ทรัพยากรไม่พอ", max: `คนงานเต็มแล้ว (สูงสุด ${DATA.worker.max} คน)`,
+};
+const costText = (cost) => Object.entries(cost).map(([k, v]) => `${v} ${RES_NAME[k]}`).join(" · ");
+
+/* ===== Toast: ข้อความแจ้งสั้น ๆ ===== */
+const Toast = (() => {
+  const el = document.getElementById("toast");
+  let timer = 0;
+  return {
+    show(msg) {
+      el.textContent = msg; el.hidden = false;
+      clearTimeout(timer); timer = setTimeout(() => { el.hidden = true; }, 1600);
+    },
+  };
+})();
+
+/* ===== แผงสร้าง: เลือกสิ่งก่อสร้าง / ฝึกคนงาน ===== */
+const Build = (() => {
+  const dock = document.getElementById("build-menu");
+  const toggle = document.getElementById("build-toggle");
+  const scene = () => window.__game && window.__game.scene.getScene("game");
+  let open = false;
+
+  function setOpen(v) {
+    open = v; dock.hidden = !v; toggle.setAttribute("aria-expanded", String(v));
+    toggle.classList.toggle("on", v);
+    if (!v) choose(null);
+  }
+  function choose(kind) {
+    for (const b of dock.querySelectorAll("[data-build]")) b.classList.toggle("on", b.dataset.build === kind);
+    const sc = scene(); if (sc && sc.setBuildMode) sc.setBuildMode(kind);
+    Input.setBuildMode(!!kind);
+  }
+  toggle.addEventListener("click", () => { setOpen(!open); toggle.blur(); });
+  for (const b of dock.querySelectorAll("[data-build]")) {
+    const k = b.dataset.build;
+    b.querySelector(".cost").textContent = costText(DATA.buildings[k].cost);
+    b.addEventListener("click", () => { choose(b.classList.contains("on") ? null : k); b.blur(); });
+  }
+  const train = document.getElementById("train");
+  train.querySelector(".cost").textContent = costText(DATA.worker.cost);
+  train.addEventListener("click", () => {
+    const sc = scene(); if (!sc) return;
+    const r = Core.applyCommand(sc.state, { type: "train", heroId: sc.localHero });
+    Toast.show(r === true ? "ฝึกคนงานแล้ว 1 คน" : BUILD_ERR[r] || "ฝึกไม่ได้");
+    train.blur();
+  });
+  return {
+    toggle: () => setOpen(!open),
+    close: () => setOpen(false),
+    refresh(stock) {
+      for (const b of dock.querySelectorAll("[data-build]")) b.classList.toggle("poor", !Core.afford(stock, DATA.buildings[b.dataset.build].cost));
+      train.classList.toggle("poor", !Core.afford(stock, DATA.worker.cost));
+    },
+  };
+})();
+const FOG_RGB = [12, 15, 10];
+
+class GameScene extends Phaser.Scene {
+  constructor() { super("game"); }
+
+  create(data) {
+    this.state = Core.createState(data && data.seed ? data.seed : 20261020);
+    this.acc = 0;
+    this.localHero = "p1";
+    this.team = 1;
+    const { w, h } = this.state.world;
+
+    this.makeTextures();
+    this.add.tileSprite(0, 0, w, h, "ground").setOrigin(0, 0).setDepth(-3e6);
+    this.drawTerrain();
+    this.drawCamp();
+
+    this.heroViews = new Map();
+    for (const hero of this.state.heroes) this.heroViews.set(hero.id, this.makeHeroView(hero));
+    this.monViews = new Map();
+    this.arrowViews = new Map();
+    this.unitViews = new Map();
+    this.buildViews = new Map();
+    this.buildMode = null;
+    this.ghost = this.add.graphics().setDepth(7.9e6);
+    this.zoneRing = this.add.graphics().setDepth(-2.45e6).setVisible(false);
+    { const c = this.state.map.n / 2 * DATA.tile; this.zoneRing.lineStyle(2, 0x6fb6e8, 0.6); this.zoneRing.strokeCircle(c, c, DATA.buildRadius * DATA.tile); this.zoneRing.fillStyle(0x6fb6e8, 0.06); this.zoneRing.fillCircle(c, c, DATA.buildRadius * DATA.tile); }
+    this.bars = this.add.graphics().setDepth(8e6);
+
+    this.makeFog();
+
+    const cam = this.cameras.main;
+    cam.setBounds(0, 0, w, h);
+    cam.startFollow(this.heroViews.get(this.localHero).root, true, 0.14, 0.14);
+    const onResize = () => this.fitZoom();
+    this.fitZoom();
+    this.scale.on("resize", onResize);
+    this.events.once("shutdown", () => this.scale.off("resize", onResize));
+
+    // เมาส์: คลิกซ้ายเดินไปจุดนั้น, กดค้างเพื่อเดินตามเมาส์
+    this.input.mouse?.disableContextMenu();
+    this.marker = this.add.graphics().setDepth(-1.5e6);
+    this.markerAge = 1;
+    this.hold = { on: false, tile: -1, at: 0 };
+    this.input.on("pointerdown", (p) => {
+      if (this.buildMode) {
+        if (!p.wasTouch && p.rightButtonDown()) { Build.close(); return; }
+        this.hold.on = true; this.hold.lastTile = -1;
+        this.tryPlace(p, true);
+        return;
+      }
+      if (!p.wasTouch && p.leftButtonDown()) { this.hold.on = true; this.sendMoveTo(p, true); }
+    });
+    this.input.on("pointerup", () => { this.hold.on = false; });
+    this.input.on("gameout", () => { this.hold.on = false; });
+
+    HUD.reset(this.state);
+  }
+
+  fitZoom() {
+    const m = Math.min(this.scale.width, this.scale.height);
+    this.cameras.main.setZoom(Phaser.Math.Clamp(m / 560, 0.8, 1.5));
+  }
+
+  makeTextures() {
+    const r = Core.rng(7);
+    canvasTexture(this, "ground", 128, 128, (g, w, h) => {
+      g.fillStyle = "#3f5a33"; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 70; i++) {
+        g.fillStyle = r() < 0.5 ? "#476638" : "#39522e";
+        g.fillRect(Math.floor(r() * w), Math.floor(r() * h), 2 + Math.floor(r() * 3), 2);
+      }
+      g.strokeStyle = "rgba(0,0,0,0.05)"; g.lineWidth = 1;
+      for (let i = 0; i <= w; i += 32) { g.beginPath(); g.moveTo(i + 0.5, 0); g.lineTo(i + 0.5, h); g.stroke(); }
+      for (let i = 0; i <= h; i += 32) { g.beginPath(); g.moveTo(0, i + 0.5); g.lineTo(w, i + 0.5); g.stroke(); }
+    });
+    const tree = (key, leaf, dark, light) => canvasTexture(this, key, 44, 56, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.28)"; g.beginPath(); g.ellipse(22, 51, 15, 5, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#5a3f24"; g.fillRect(19, 36, 6, 16);
+      g.fillStyle = dark; g.beginPath(); g.arc(22, 26, 17, 0, Math.PI * 2); g.fill();
+      g.fillStyle = leaf; g.beginPath(); g.arc(19, 22, 13, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(28, 27, 10, 0, Math.PI * 2); g.fill();
+      g.fillStyle = light; g.beginPath(); g.arc(15, 17, 5, 0, Math.PI * 2); g.fill();
+    });
+    tree("tree0", "#3e6b31", "#26461f", "#5d8a45");
+    tree("tree1", "#4a7434", "#2c4c22", "#6b9a4c");
+    canvasTexture(this, "boulder", 38, 32, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.28)"; g.beginPath(); g.ellipse(19, 27, 16, 5, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#6f6c5f"; g.beginPath(); g.moveTo(4, 26); g.lineTo(8, 10); g.lineTo(19, 3); g.lineTo(32, 9); g.lineTo(35, 26); g.closePath(); g.fill();
+      g.fillStyle = "#94917f"; g.beginPath(); g.moveTo(9, 12); g.lineTo(19, 5); g.lineTo(29, 10); g.lineTo(19, 16); g.closePath(); g.fill();
+    });
+    canvasTexture(this, "tuft", 20, 16, (g) => {
+      g.strokeStyle = "#5f8547"; g.lineWidth = 2; g.lineCap = "round";
+      [[4, 14, 2, 4], [10, 14, 10, 2], [16, 14, 18, 5], [7, 14, 6, 6], [13, 14, 14, 6]].forEach(([a, b, c, d]) => { g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); });
+    });
+    canvasTexture(this, "flower", 12, 12, (g) => {
+      g.fillStyle = "#e9dca8"; [[6, 3], [3, 6], [9, 6], [6, 9]].forEach(([x, y]) => { g.beginPath(); g.arc(x, y, 2.2, 0, Math.PI * 2); g.fill(); });
+      g.fillStyle = "#e2b04a"; g.beginPath(); g.arc(6, 6, 1.8, 0, Math.PI * 2); g.fill();
+    });
+    // กระโจม: ผ้าใบสองด้าน ประตูเปิด เสากลางพร้อมธงทีม
+    canvasTexture(this, "tent", 112, 96, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.3)"; g.beginPath(); g.ellipse(56, 88, 50, 8, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = "#3b2c18"; g.lineWidth = 3; g.beginPath(); g.moveTo(56, 26); g.lineTo(56, 6); g.stroke();
+      g.fillStyle = "#6fb6e8"; g.beginPath(); g.moveTo(57, 6); g.lineTo(74, 11); g.lineTo(57, 16); g.closePath(); g.fill();
+      g.fillStyle = "#a7834f"; g.beginPath(); g.moveTo(56, 22); g.lineTo(104, 86); g.lineTo(56, 86); g.closePath(); g.fill();
+      g.fillStyle = "#cfac72"; g.beginPath(); g.moveTo(56, 22); g.lineTo(8, 86); g.lineTo(56, 86); g.closePath(); g.fill();
+      g.strokeStyle = "rgba(59,44,24,0.35)"; g.lineWidth = 1.5;
+      [[44, 38, 28, 86], [68, 38, 84, 86]].forEach(([a, b, c, d]) => { g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); });
+      g.fillStyle = "#2a1f12"; g.beginPath(); g.moveTo(56, 46); g.lineTo(72, 86); g.lineTo(40, 86); g.closePath(); g.fill();
+      g.fillStyle = "#e7cf98"; g.beginPath(); g.moveTo(56, 46); g.lineTo(40, 86); g.lineTo(33, 86); g.closePath(); g.fill();
+      g.strokeStyle = "#3b2c18"; g.lineWidth = 2; g.beginPath(); g.moveTo(56, 22); g.lineTo(8, 86); g.lineTo(104, 86); g.closePath(); g.stroke();
+      g.strokeStyle = "rgba(239,232,210,0.5)"; g.lineWidth = 1;
+      [[20, 70, 2, 90], [92, 70, 110, 90]].forEach(([a, b, c, d]) => { g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); });
+    });
+    canvasTexture(this, "firepit", 34, 24, (g) => {
+      g.fillStyle = "#4a3a22"; g.fillRect(6, 13, 22, 4);
+      g.save(); g.translate(17, 15); g.rotate(0.5); g.fillRect(-12, -2, 24, 4); g.restore();
+      g.fillStyle = "#77746a";
+      for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; g.beginPath(); g.arc(17 + Math.cos(a) * 13, 15 + Math.sin(a) * 6, 3, 0, Math.PI * 2); g.fill(); }
+    });
+    canvasTexture(this, "hero", 44, 44, (g) => {
+      g.fillStyle = "#2c5f86"; g.beginPath(); g.arc(22, 22, 14, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#6fb6e8"; g.beginPath(); g.arc(22, 22, 11, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#efe8d2"; g.beginPath(); g.arc(22, 22, 5, 0, Math.PI * 2); g.fill();
+    });
+    canvasTexture(this, "bow", 44, 44, (g) => {
+      g.strokeStyle = "#e2b04a"; g.lineWidth = 3; g.lineCap = "round";
+      g.beginPath(); g.arc(24, 22, 14, -1.05, 1.05); g.stroke();
+      g.strokeStyle = "rgba(239,232,210,0.8)"; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(24 + 14 * Math.cos(-1.05), 22 + 14 * Math.sin(-1.05)); g.lineTo(24 + 14 * Math.cos(1.05), 22 + 14 * Math.sin(1.05)); g.stroke();
+    });
+    // ซอมบี้: มองจากด้านบน หันไปทางขวา แขนยื่นไปข้างหน้า
+    canvasTexture(this, "zombie", 40, 40, (g) => {
+      g.fillStyle = "#4d6436"; g.fillRect(22, 9, 14, 6); g.fillRect(22, 25, 14, 6);
+      g.fillStyle = "#3a4d2a"; g.beginPath(); g.arc(18, 20, 13, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#6f8f4e"; g.beginPath(); g.arc(18, 20, 10, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#57412b"; g.beginPath(); g.arc(14, 20, 7, Math.PI * 0.5, Math.PI * 1.5); g.fill();
+      g.fillStyle = "#d94a3a"; g.fillRect(23, 15, 3, 3); g.fillRect(23, 22, 3, 3);
+    });
+    // หมาป่า: ตัวยาว หัวอยู่ขวา หางอยู่ซ้าย
+    canvasTexture(this, "wolf", 52, 32, (g) => {
+      g.fillStyle = "#4e5057"; g.beginPath(); g.moveTo(3, 16); g.lineTo(13, 12); g.lineTo(13, 20); g.closePath(); g.fill();
+      g.fillStyle = "#5d6068"; g.beginPath(); g.ellipse(23, 16, 13, 8, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#8b8e96"; g.beginPath(); g.ellipse(22, 16, 8, 4, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#6c6f78"; g.beginPath(); g.arc(37, 16, 7, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.moveTo(42, 14); g.lineTo(50, 16); g.lineTo(42, 18); g.closePath(); g.fill();
+      g.fillStyle = "#3d3f45"; g.beginPath(); g.moveTo(33, 10); g.lineTo(36, 4); g.lineTo(39, 10); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(33, 22); g.lineTo(36, 28); g.lineTo(39, 22); g.closePath(); g.fill();
+      g.fillStyle = "#f0c64a"; g.fillRect(40, 12, 2, 2); g.fillRect(40, 18, 2, 2);
+    });
+    // กำแพงไม้: เสาไม้ปลายแหลมเรียงกัน 3 ต้น ต่อกันเป็นแนวเมื่อวางติดกัน
+    canvasTexture(this, "wall", 34, 46, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.28)"; g.fillRect(0, 38, 34, 7);
+      g.fillStyle = "#6b4a2a"; g.fillRect(0, 22, 34, 5);
+      [[1, "#8a6038"], [12, "#9a6d40"], [23, "#8a6038"]].forEach(([x, c]) => {
+        g.fillStyle = c; g.fillRect(x, 10, 10, 32);
+        g.beginPath(); g.moveTo(x, 10); g.lineTo(x + 5, 1); g.lineTo(x + 10, 10); g.closePath(); g.fill();
+        g.fillStyle = "rgba(255,240,200,0.18)"; g.fillRect(x + 1, 10, 2, 30);
+      });
+      g.fillStyle = "#4a321c"; g.fillRect(0, 30, 34, 3);
+    });
+    // ป้อมธนู: ฐานไม้ ห้องยิงด้านบน หลังคาแหลม
+    canvasTexture(this, "tower", 44, 76, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.3)"; g.beginPath(); g.ellipse(22, 70, 19, 5, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = "#5a3f24"; g.lineWidth = 4;
+      [[8, 70, 14, 34], [36, 70, 30, 34]].forEach(([a, b, c, d]) => { g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); });
+      g.lineWidth = 2; g.beginPath(); g.moveTo(10, 62); g.lineTo(34, 44); g.moveTo(34, 62); g.lineTo(10, 44); g.stroke();
+      g.fillStyle = "#8a6038"; g.fillRect(6, 24, 32, 14);
+      g.fillStyle = "#2a1f12"; g.fillRect(12, 28, 6, 6); g.fillRect(26, 28, 6, 6);
+      g.fillStyle = "#6b4a2a"; g.fillRect(4, 36, 36, 3);
+      g.fillStyle = "#b5452f"; g.beginPath(); g.moveTo(2, 25); g.lineTo(22, 4); g.lineTo(42, 25); g.closePath(); g.fill();
+      g.fillStyle = "#d4644a"; g.beginPath(); g.moveTo(2, 25); g.lineTo(22, 4); g.lineTo(22, 25); g.closePath(); g.fill();
+      g.fillStyle = "#6fb6e8"; g.fillRect(21, 0, 2, 6);
+    });
+    // คนงาน: ตัวเล็ก หมวกฟาง ถือขวาน (หันขวา)
+    canvasTexture(this, "worker", 30, 30, (g) => {
+      g.strokeStyle = "#5a3f24"; g.lineWidth = 2; g.beginPath(); g.moveTo(17, 20); g.lineTo(27, 14); g.stroke();
+      g.fillStyle = "#b9bcc4"; g.fillRect(25, 10, 4, 6);
+      g.fillStyle = "#3e5f7a"; g.beginPath(); g.arc(14, 15, 9, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#d9c27a"; g.beginPath(); g.arc(14, 15, 6, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#b39548"; g.beginPath(); g.arc(14, 15, 3, 0, Math.PI * 2); g.fill();
+    });
+    canvasTexture(this, "stump", 20, 14, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.25)"; g.beginPath(); g.ellipse(10, 10, 9, 3.5, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#5a3f24"; g.fillRect(5, 4, 10, 6);
+      g.fillStyle = "#c9a46a"; g.beginPath(); g.ellipse(10, 4, 5, 2.5, 0, 0, Math.PI * 2); g.fill();
+    });
+    canvasTexture(this, "pebbles", 20, 12, (g) => {
+      g.fillStyle = "#7d7a6c"; [[5, 7, 3], [11, 5, 2.5], [15, 8, 2]].forEach(([x, y, r]) => { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); });
+    });
+    canvasTexture(this, "arrow", 26, 6, (g) => {
+      g.fillStyle = "#d8c9a0"; g.fillRect(4, 2, 17, 2);
+      g.fillStyle = "#efe8d2"; g.beginPath(); g.moveTo(26, 3); g.lineTo(20, 0); g.lineTo(20, 6); g.closePath(); g.fill();
+      g.fillStyle = "#c9573f"; g.fillRect(0, 0, 5, 2); g.fillRect(0, 4, 5, 2);
+    });
+    canvasTexture(this, "shadow", 40, 14, (g) => {
+      g.fillStyle = "rgba(0,0,0,0.3)"; g.beginPath(); g.ellipse(20, 7, 17, 5, 0, 0, Math.PI * 2); g.fill();
+    });
+  }
+
+  drawTerrain() {
+    const { n: N, t } = this.state.map, S = DATA.tile, TT = Core.T;
+    const r = Core.rng(this.state.seed + 99);
+    const water = this.add.graphics().setDepth(-2.9e6);
+    this.tileImgs = new Map();
+    const isWater = (x, y) => x >= 0 && y >= 0 && x < N && y < N && t[y * N + x] === TT.WATER;
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const k = t[y * N + x], px = x * S, py = y * S;
+        if (k === TT.WATER) {
+          water.fillStyle(0x2f5f7a, 1); water.fillRect(px, py, S, S);
+          if (!isWater(x, y - 1)) { water.fillStyle(0x7aa7bd, 0.9); water.fillRect(px, py, S, 3); }
+          if (!isWater(x, y + 1)) { water.fillStyle(0x234a60, 1); water.fillRect(px, py + S - 4, S, 4); }
+          if (r() < 0.12) { water.fillStyle(0x5d8ea8, 0.7); water.fillRect(px + 6 + r() * 14, py + 8 + r() * 14, 8, 2); }
+        } else if (k === TT.TREE) {
+          const ox = (r() - 0.5) * 8, oy = (r() - 0.5) * 6;
+          this.tileImgs.set(y * N + x, this.add.image(px + S / 2 + ox, py + S - 2 + oy, r() < 0.5 ? "tree0" : "tree1").setOrigin(0.5, 52 / 56).setDepth(py + S + oy));
+        } else if (k === TT.ROCK) {
+          this.tileImgs.set(y * N + x, this.add.image(px + S / 2, py + S - 2, "boulder").setOrigin(0.5, 28 / 32).setDepth(py + S));
+        } else if (k === TT.GRASS && r() < 0.06) {
+          const kind = r() < 0.7 ? "tuft" : "flower";
+          this.add.image(px + r() * S, py + r() * S, kind).setDepth(-2e6).setAlpha(0.9);
+        }
+      }
+    }
+  }
+
+  drawCamp() {
+    const { x, y } = this.state.camp;
+    const g = this.add.graphics().setDepth(-2.5e6);
+    g.fillStyle(0x6b5a33, 0.4); g.fillCircle(x, y + 10, DATA.campRadius);
+    g.fillStyle(0x7a6740, 0.35); g.fillCircle(x, y + 10, 104);
+    g.lineStyle(2, 0xe2b04a, 0.35); g.strokeCircle(x, y + 10, DATA.campRadius);
+    this.add.image(x, y + 30, "tent").setOrigin(0.5, 88 / 96).setDepth(y + 30);
+    this.fire = { x: x + 64, y: y + 54 };
+    this.add.image(this.fire.x, this.fire.y, "firepit").setDepth(this.fire.y - 2);
+    this.fireGlow = this.add.graphics().setDepth(-2.4e6).setBlendMode(Phaser.BlendModes.ADD);
+    this.flame = this.add.graphics().setDepth(this.fire.y - 1);
+    this.add.text(x, y + 40, "ค่ายพักแรม", { fontFamily: "Sarabun, sans-serif", fontSize: "15px", fontStyle: "bold", color: "#efe8d2", stroke: "#1c2618", strokeThickness: 4 })
+      .setOrigin(0.5, 0).setDepth(y + 31).setResolution(2);
+  }
+
+  drawFire(time) {
+    const { x, y } = this.fire, f = Math.sin(time / 90) * 0.5 + Math.sin(time / 37) * 0.5;
+    this.fireGlow.clear();
+    this.fireGlow.fillStyle(0xe2b04a, 0.08 + f * 0.02); this.fireGlow.fillCircle(x, y - 4, 70 + f * 4);
+    this.fireGlow.fillStyle(0xe2b04a, 0.1); this.fireGlow.fillCircle(x, y - 4, 34);
+    this.flame.clear();
+    const hgt = 16 + f * 4;
+    this.flame.fillStyle(0xd9632b, 1); this.flame.fillTriangle(x - 8, y + 2, x + 8, y + 2, x + f * 2, y - hgt);
+    this.flame.fillStyle(0xf2b544, 1); this.flame.fillTriangle(x - 5, y + 2, x + 5, y + 2, x - f * 2, y - hgt * 0.7);
+    this.flame.fillStyle(0xfff0c2, 1); this.flame.fillTriangle(x - 2, y + 2, x + 2, y + 2, x, y - hgt * 0.35);
+  }
+
+  makeFog() {
+    const N = this.state.map.n;
+    if (this.textures.exists("fog")) this.textures.remove("fog");
+    this.fogTex = this.textures.createCanvas("fog", N, N);
+    this.fogImg = this.add.image(0, 0, "fog").setOrigin(0, 0).setScale(DATA.tile).setDepth(9e6);
+    this.fogData = this.fogTex.getContext().createImageData(N, N);
+    this.fogDrawn = -1;
+    this.drawFog();
+  }
+
+  drawFog() {
+    if (this.fogDrawn === this.state.fogVersion) return;
+    this.fogDrawn = this.state.fogVersion;
+    const fog = this.state.fog[this.team], d = this.fogData.data;
+    for (let i = 0; i < fog.length; i++) {
+      const o = i * 4;
+      d[o] = FOG_RGB[0]; d[o + 1] = FOG_RGB[1]; d[o + 2] = FOG_RGB[2];
+      d[o + 3] = fog[i] === 2 ? 0 : fog[i] === 1 ? 150 : 255;
+    }
+    this.fogTex.getContext().putImageData(this.fogData, 0, 0);
+    this.fogTex.refresh();
+  }
+
+  makeHeroView(hero) {
+    const root = this.add.container(hero.x, hero.y);
+    const shadow = this.add.image(0, 12, "shadow");
+    const body = this.add.image(0, 0, "hero");
+    const bow = this.add.image(0, 0, "bow").setRotation(hero.face);
+    root.add([shadow, body, bow]);
+    return { root, body, bow };
+  }
+
+  sendMoveTo(p, fresh) {
+    const wp = p.positionToCamera(this.cameras.main);
+    const tile = Math.floor(wp.y / DATA.tile) * DATA.mapTiles + Math.floor(wp.x / DATA.tile);
+    const now = this.time.now;
+    if (!fresh && (tile === this.hold.tile || now - this.hold.at < 150)) return;   // กดค้าง: คำนวณทางใหม่ไม่บ่อยเกินไป
+    this.hold.tile = tile; this.hold.at = now;
+    const ok = Core.applyCommand(this.state, { type: "moveTo", heroId: this.localHero, x: wp.x, y: wp.y });
+    if (ok && fresh) this.markerAge = 0;
+    Input.used("mouse");
+  }
+
+  drawMarker(delta) {
+    const hero = this.state.heroes[0];
+    this.marker.clear();
+    if (!hero.path || !hero.path.length) return;
+    this.markerAge = Math.min(1, this.markerAge + delta / 350);
+    const end = hero.path[hero.path.length - 1];
+    const pulse = 1 - this.markerAge;
+    this.marker.lineStyle(2, 0xe2b04a, 0.9);
+    this.marker.strokeEllipse(end.x, end.y, 22 + pulse * 18, 11 + pulse * 9);
+    this.marker.fillStyle(0xe2b04a, 0.9);
+    this.marker.fillCircle(end.x, end.y, 2.5);
+    if (hero.path.length > 1) {
+      this.marker.fillStyle(0xe2b04a, 0.45);
+      for (const p of hero.path.slice(0, -1)) this.marker.fillCircle(p.x, p.y, 2);
+    }
+  }
+
+  castSkill() { Core.applyCommand(this.state, { type: "skill", heroId: this.localHero }); }
+
+  setBuildMode(kind) {
+    this.buildMode = kind;
+    this.zoneRing.setVisible(!!kind);
+    this.ghost.clear();
+    this.hold.on = false;
+  }
+
+  pointerTile(p) {
+    const wp = p.positionToCamera(this.cameras.main);
+    return [Math.floor(wp.x / DATA.tile), Math.floor(wp.y / DATA.tile)];
+  }
+
+  tryPlace(p, fresh) {
+    const [tx, ty] = this.pointerTile(p), key = ty * DATA.mapTiles + tx;
+    if (!fresh && key === this.hold.lastTile) return;
+    this.hold.lastTile = key;
+    const res = Core.applyCommand(this.state, { type: "build", heroId: this.localHero, kind: this.buildMode, tx, ty });
+    if (res !== true && fresh) Toast.show(BUILD_ERR[res] || "ตรงนี้สร้างไม่ได้");
+    if (res === true && this.buildMode === "tower") Build.close();     // ป้อมวางทีละอัน, กำแพงลากต่อได้
+  }
+
+  drawGhost() {
+    this.ghost.clear();
+    if (!this.buildMode) return;
+    const p = this.input.activePointer;
+    if (p.wasTouch && !p.isDown) return;
+    const [tx, ty] = this.pointerTile(p), S = DATA.tile;
+    const ok = !Core.canBuild(this.state, this.team, this.buildMode, tx, ty);
+    this.ghost.fillStyle(ok ? 0x7fcf6a : 0xd9573f, 0.35); this.ghost.fillRect(tx * S, ty * S, S, S);
+    this.ghost.lineStyle(2, ok ? 0x7fcf6a : 0xd9573f, 0.9); this.ghost.strokeRect(tx * S, ty * S, S, S);
+    if (this.buildMode === "tower") { this.ghost.lineStyle(1, 0xefe8d2, 0.35); this.ghost.strokeCircle(tx * S + S / 2, ty * S + S / 2, DATA.buildings.tower.rng); }
+  }
+
+  syncUnits(a, time) {
+    const seen = new Set();
+    for (const u of this.state.units) {
+      seen.add(u.id);
+      let v = this.unitViews.get(u.id);
+      if (!v) {
+        const root = this.add.container(u.x, u.y);
+        const shadow = this.add.image(0, 8, "shadow").setScale(0.6);
+        const body = this.add.image(0, 0, "worker");
+        const load = this.add.image(-6, -8, "pebbles").setScale(0.7).setVisible(false);
+        root.add([shadow, body, load]);
+        v = { root, body, load };
+        this.unitViews.set(u.id, v);
+      }
+      const x = u.px + (u.x - u.px) * a, y = u.py + (u.y - u.py) * a;
+      v.root.setPosition(x, y).setDepth(y + 8).setVisible(this.visibleAt(x, y));
+      v.body.rotation = Phaser.Math.Angle.RotateTo(v.body.rotation, u.face, 0.3);
+      v.body.y = u.moving ? Math.sin(time / 60 + u.id) * 1.5 : 0;
+      if (u.job === "gather") v.body.x = Math.sin(time / 90) * 2; else v.body.x = 0;
+      v.load.setVisible(u.carry > 0).setTexture(u.carryType === "stone" ? "pebbles" : "stump");
+      v.x = x; v.y = y;
+    }
+    for (const [id, v] of this.unitViews) if (!seen.has(id)) { v.root.destroy(); this.unitViews.delete(id); }
+  }
+
+  syncBuildings() {
+    const seen = new Set();
+    for (const b of this.state.buildings) {
+      if (b.type === "camp") continue;
+      seen.add(b.id);
+      if (this.buildViews.has(b.id)) continue;
+      const S = DATA.tile, bx = b.tx * S + S / 2, by = b.ty * S + S;
+      const img = b.type === "wall"
+        ? this.add.image(bx, by + 2, "wall").setOrigin(0.5, 1).setDepth(by)
+        : this.add.image(bx, by + 4, "tower").setOrigin(0.5, 1).setDepth(by);
+      img.setScale(0.6); this.tweens.add({ targets: img, scale: 1, duration: 220, ease: "Back.easeOut" });
+      this.buildViews.set(b.id, img);
+    }
+    for (const [id, img] of this.buildViews) if (!seen.has(id)) { img.destroy(); this.buildViews.delete(id); }
+  }
+
+  visibleAt(x, y) {
+    const N = this.state.map.n, S = DATA.tile, tx = Math.floor(x / S), ty = Math.floor(y / S);
+    return tx >= 0 && ty >= 0 && tx < N && ty < N && this.state.fog[this.team][ty * N + tx] === 2;
+  }
+
+  popText(x, y, text, color, size) {
+    const t = this.add.text(x, y, text, {
+      fontFamily: "Sarabun, sans-serif", fontSize: size + "px", fontStyle: "bold", color, stroke: "#12160f", strokeThickness: 4,
+    }).setOrigin(0.5, 1).setDepth(8.5e6).setResolution(2);
+    this.tweens.add({ targets: t, y: y - 34, alpha: { from: 1, to: 0 }, duration: 750, ease: "Cubic.easeOut", onComplete: () => t.destroy() });
+  }
+
+  handleEvents() {
+    for (const e of this.state.events.splice(0)) {
+      if (e.type === "hit") {
+        if (e.toHero) {
+          this.popText(e.x, e.y, "-" + e.amount, "#ff7a66", 15);
+          if (e.id === this.state.heroes[0].id) this.cameras.main.shake(90, 0.003);
+        } else if (this.visibleAt(e.x, e.y)) {
+          this.popText(e.x + (Math.random() - 0.5) * 10, e.y, e.crit ? e.amount + "!" : String(e.amount), e.crit ? "#ffd166" : "#efe8d2", e.crit ? 19 : 14);
+          const v = this.monViews.get(e.id);
+          if (v) v.flash = 1;
+        }
+      } else if (e.type === "death" && e.kind === "monster") {
+        const v = this.monViews.get(e.id);
+        if (v) {
+          this.monViews.delete(e.id);
+          this.tweens.add({ targets: v.root, alpha: 0, scale: 0.4, duration: 260, onComplete: () => v.root.destroy() });
+        }
+      } else if (e.type === "gain") {
+        if (e.team === this.team && this.visibleAt(e.x, e.y)) this.popText(e.x, e.y, `+${e.n} ${RES_NAME[e.res]}`, e.res === "wood" ? "#e2c48a" : "#cfd3dc", 13);
+      } else if (e.type === "cleared") {
+        const img = this.tileImgs.get(e.idx);
+        if (img) {
+          this.tileImgs.delete(e.idx);
+          const N = this.state.map.n, S = DATA.tile, x = (e.idx % N + 0.5) * S, y = (((e.idx / N) | 0) + 0.5) * S;
+          this.tweens.add({ targets: img, alpha: 0, duration: 250, onComplete: () => img.destroy() });
+          this.add.image(x, y + 6, e.kind === "tree" ? "stump" : "pebbles").setDepth(-2e6);
+        }
+      } else if (e.type === "skill") {
+        const h = this.state.heroes[0];
+        const ring = this.add.graphics().setPosition(h.x, h.y).setDepth(h.y + 5);
+        ring.lineStyle(3, 0xe2b04a, 0.9); ring.strokeCircle(0, 0, 18);
+        this.tweens.add({ targets: ring, alpha: 0, scale: 1.8, duration: 320, onComplete: () => ring.destroy() });
+      }
+    }
+  }
+
+  syncMonsters(a, time) {
+    const seen = new Set();
+    for (const m of this.state.monsters) {
+      seen.add(m.id);
+      let v = this.monViews.get(m.id);
+      if (!v) {
+        const root = this.add.container(m.x, m.y);
+        const shadow = this.add.image(0, m.r - 2, "shadow").setScale(m.type === "wolf" ? 1 : 0.85);
+        const body = this.add.image(0, 0, m.type);
+        root.add([shadow, body]);
+        v = { root, body, flash: 0 };
+        this.monViews.set(m.id, v);
+      }
+      const x = m.px + (m.x - m.px) * a, y = m.py + (m.y - m.py) * a;
+      const vis = this.visibleAt(x, y);
+      v.root.setVisible(vis);
+      if (!vis) continue;
+      v.root.setPosition(x + Math.cos(m.face) * m.lunge * 7, y + Math.sin(m.face) * m.lunge * 7).setDepth(y + 5);
+      v.body.rotation = Phaser.Math.Angle.RotateTo(v.body.rotation, m.face, 0.25);
+      const wob = m.moving ? Math.sin(time / (m.type === "wolf" ? 45 : 110) + m.id) * (m.type === "wolf" ? 0.06 : 0.1) : 0;
+      v.body.setScale(1 + v.flash * 0.18, 1 + wob + v.flash * 0.18);
+      v.body.setAlpha(1 - v.flash * 0.45);
+      v.flash = Math.max(0, v.flash - 0.12);
+      v.x = x; v.y = y;
+    }
+    for (const [id, v] of this.monViews) if (!seen.has(id)) { v.root.destroy(); this.monViews.delete(id); }
+  }
+
+  syncArrows(a) {
+    const seen = new Set();
+    for (const ar of this.state.arrows) {
+      seen.add(ar.id);
+      let s = this.arrowViews.get(ar.id);
+      if (!s) { s = this.add.image(ar.x, ar.y, "arrow").setRotation(ar.angle); this.arrowViews.set(ar.id, s); }
+      const x = ar.px + (ar.x - ar.px) * a, y = ar.py + (ar.y - ar.py) * a;
+      s.setPosition(x, y).setDepth(y + 20).setVisible(this.visibleAt(x, y));
+    }
+    for (const [id, s] of this.arrowViews) if (!seen.has(id)) { s.destroy(); this.arrowViews.delete(id); }
+  }
+
+  drawBars() {
+    const g = this.bars; g.clear();
+    for (const m of this.state.monsters) {
+      const v = this.monViews.get(m.id);
+      if (!v || !v.root.visible || (m.hp >= m.maxHp && !m.target)) continue;
+      const w = 30, x = v.x - w / 2, y = v.y - m.r - 12;
+      g.fillStyle(0x12160f, 0.85); g.fillRect(x - 1, y - 1, w + 2, 6);
+      g.fillStyle(m.target ? 0xd9573f : 0xb3ab92, 1); g.fillRect(x, y, w * (m.hp / m.maxHp), 4);
+    }
+    for (const u of this.state.units) {
+      const v = this.unitViews.get(u.id);
+      if (!v || !v.root.visible || u.hp >= u.maxHp) continue;
+      g.fillStyle(0x12160f, 0.85); g.fillRect(v.x - 12, v.y - 20, 24, 5);
+      g.fillStyle(0xe0433a, 1); g.fillRect(v.x - 11, v.y - 19, 22 * (u.hp / u.maxHp), 3);
+    }
+    for (const b of this.state.buildings) {
+      if (b.hp >= b.maxHp) continue;
+      const w = b.type === "camp" ? 70 : 30, x = b.x - w / 2, y = b.y - (b.type === "tower" ? 70 : b.type === "camp" ? 80 : 40);
+      g.fillStyle(0x12160f, 0.85); g.fillRect(x - 1, y - 1, w + 2, 6);
+      g.fillStyle(0xe2b04a, 1); g.fillRect(x, y, w * (b.hp / b.maxHp), 4);
+    }
+    const h = this.state.heroes[0], hv = this.heroViews.get(h.id);
+    if (!h.dead && h.hp < h.maxHp) {
+      const w = 36, x = hv.root.x - w / 2, y = hv.root.y - 26;
+      g.fillStyle(0x12160f, 0.85); g.fillRect(x - 1, y - 1, w + 2, 6);
+      g.fillStyle(0xe0433a, 1); g.fillRect(x, y, w * (h.hp / h.maxHp), 4);
+    }
+  }
+
+  update(time, delta) {
+    // ส่งคำสั่งทุกเฟรม แล้วประมวลผลตรรกะเกมเป็นจังหวะคงที่
+    const v = Input.vector();
+    Core.applyCommand(this.state, { type: "move", heroId: this.localHero, x: v.x, y: v.y });
+    const p = this.input.activePointer;
+    if (!this.buildMode && this.hold.on && p.isDown && !p.wasTouch) this.sendMoveTo(p, false);
+    if (Input.takeSkill()) this.castSkill();
+
+    this.acc = Math.min(this.acc + delta, 250);
+    while (this.acc >= DATA.tickMs) { Core.step(this.state); this.acc -= DATA.tickMs; this.handleEvents(); }
+    const a = this.acc / DATA.tickMs;
+
+    for (const hero of this.state.heroes) {
+      const view = this.heroViews.get(hero.id);
+      const x = hero.px + (hero.x - hero.px) * a, y = hero.py + (hero.y - hero.py) * a;
+      view.root.setVisible(!hero.dead);
+      view.root.setPosition(x, y).setDepth(y + 10);
+      const aim = hero.aimUntil > this.state.tick ? hero.aim : hero.face;
+      view.bow.rotation = Phaser.Math.Angle.RotateTo(view.bow.rotation, aim, 0.4);
+      const bob = hero.moving ? Math.sin(time / 70) * 2 : 0;
+      view.body.y = bob; view.bow.y = bob;
+      view.body.x = hero.gathering >= 0 ? Math.sin(time / 80) * 2 : 0;
+    }
+    this.syncMonsters(a, time);
+    this.syncUnits(a, time);
+    this.syncBuildings();
+    this.syncArrows(a);
+    this.drawBars();
+    if (this.buildMode && this.hold.on && p.isDown && this.buildMode === "wall") this.tryPlace(p, false);
+    this.drawGhost();
+
+    this.drawMarker(delta);
+    this.drawFire(time);
+    this.drawFog();
+    HUD.update(this.state, this.team, time);
+  }
+}
+
+/* ===== HUD + มินิแมพ (DOM) ===== */
+const HUD = (() => {
+  const $ = (id) => document.getElementById(id);
+  const mm = $("minimap"), ctx = mm.getContext("2d");
+  const N = DATA.mapTiles;
+  const img = ctx.createImageData(N, N);
+  let lastMap = -1, lastFog = -1;
+
+  function reset(st) {
+    $("seed").textContent = "SEED " + st.seed;
+    lastMap = -1; lastFog = -1;
+  }
+
+  function update(st, team, time) {
+    const me = st.heroes[0], S = DATA.tile;
+    const dTiles = Math.hypot(me.x - st.camp.x, me.y - st.camp.y) / S;
+    $("dist").textContent = `${Math.round(dTiles)} ช่อง`;
+    $("zone").textContent = DATA.zones[Core.zoneIndex(dTiles)].name;
+    $("explored").textContent = `${((st.explored[team] / (N * N)) * 100).toFixed(1)}%`;
+    $("kills").textContent = `${st.kills[team] || 0} ตัว`;
+    const stock = st.stock[team];
+    $("res-wood").textContent = stock.wood; $("res-stone").textContent = stock.stone;
+    $("res-workers").textContent = `${st.units.filter((u) => u.team === team).length}/${DATA.worker.max}`;
+    Build.refresh(stock);
+
+    $("hp-fill").style.width = (me.hp / me.maxHp) * 100 + "%";
+    $("hp-text").textContent = `HP ${Math.ceil(me.hp)} / ${me.maxHp}`;
+    $("hp-fill").parentElement.classList.toggle("low", me.hp / me.maxHp < 0.3);
+    $("hp-fill").parentElement.classList.toggle("regen", !!me.inCamp && me.hp < me.maxHp);
+    $("camp-tag").hidden = !me.inCamp || me.dead;
+    $("mp-fill").style.width = (me.mp / me.maxMp) * 100 + "%";
+    $("mp-text").textContent = `MP ${Math.floor(me.mp)} / ${me.maxMp}`;
+
+    const sk = DATA.skills[DATA.classes[me.cls].skill];
+    $("skill-cd").style.setProperty("--cd", Math.max(0, me.skillCd) / sk.cd);
+    $("skill").classList.toggle("locked", me.dead || me.skillCd > 0 || me.mp < sk.mp);
+
+    $("down").hidden = !me.dead;
+    if (me.dead) $("down-sec").textContent = Math.max(0, Math.ceil((me.respawnAt - st.tick) * DATA.tickMs / 1000));
+
+    if (time - lastMap < 200) return;
+    lastMap = time;
+    const fog = st.fog[team], t = st.map.t, d = img.data;
+    if (lastFog !== st.fogVersion + st.mapVersion * 1e6) {
+      lastFog = st.fogVersion + st.mapVersion * 1e6;
+      for (let i = 0; i < N * N; i++) {
+        const o = i * 4, f = fog[i];
+        if (f === 0) { d[o] = FOG_RGB[0]; d[o + 1] = FOG_RGB[1]; d[o + 2] = FOG_RGB[2]; }
+        else {
+          const c = TILE_RGB[t[i]], k = f === 2 ? 1 : 0.55;
+          d[o] = c[0] * k; d[o + 1] = c[1] * k; d[o + 2] = c[2] * k;
+        }
+        d[o + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    const cx = st.camp.x / S, cy = st.camp.y / S;
+    ctx.fillStyle = "#e2b04a"; ctx.fillRect(cx - 3, cy - 3, 6, 6);
+    ctx.fillStyle = "#d9c27a";
+    for (const u of st.units) ctx.fillRect(u.x / S - 1, u.y / S - 1, 2, 2);
+    ctx.fillStyle = "#e05a4a";
+    for (const m of st.monsters) {
+      const tx = Math.floor(m.x / S), ty = Math.floor(m.y / S);
+      if (fog[ty * N + tx] === 2) ctx.fillRect(tx - 1, ty - 1, 3, 3);
+    }
+    for (const h of st.heroes) {
+      ctx.fillStyle = "#0c0f0a"; ctx.fillRect(h.x / S - 3, h.y / S - 3, 7, 7);
+      ctx.fillStyle = h.team === team ? "#6fb6e8" : "#e05a4a"; ctx.fillRect(h.x / S - 2, h.y / S - 2, 5, 5);
+    }
+  }
+
+  return { reset, update };
+})();
+
+/* ===== main ===== */
+(function boot() {
+  const hint = document.getElementById("hint");
+  const keysHint = document.getElementById("hint-keys");
+  const panel = document.getElementById("map-panel");
+  const toggleMap = () => panel.classList.toggle("big");
+
+  if (window.matchMedia("(pointer: coarse)").matches) keysHint.textContent = "ลากนิ้วฝั่งซ้ายเพื่อเดิน · ยืนติดต้นไม้เพื่อเก็บไม้ · ปุ่มสร้างอยู่ขวาล่าง";
+  let fadeQueued = false;
+  Input.on((kind) => {
+    if (kind === "map") { toggleMap(); return; }
+    if (kind === "build") { Build.toggle(); return; }
+    if (kind === "esc") { Build.close(); return; }
+    if (kind === "touch") keysHint.textContent = "ลากนิ้วฝั่งซ้ายเพื่อเดิน · ยืนติดต้นไม้เพื่อเก็บไม้ · ปุ่มสร้างอยู่ขวาล่าง";
+    if (!fadeQueued) { fadeQueued = true; setTimeout(() => hint.classList.add("faded"), 4000); }
+  });
+  document.getElementById("skill").addEventListener("click", (e) => {
+    Input.queueSkill();
+    e.currentTarget.blur();
+    try { document.getElementById("game").focus({ preventScroll: true }); } catch (_) {}
+  });
+  const minimap = document.getElementById("minimap");
+  minimap.addEventListener("click", toggleMap);
+  minimap.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleMap(); } });
+
+  if (!window.Phaser) {
+    document.body.insertAdjacentHTML("beforeend", '<div class="err">โหลดตัวเกมไม่สำเร็จ ลองรีเฟรชหน้านี้อีกครั้ง</div>');
+    return;
+  }
+  const game = new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: "game",
+    backgroundColor: "#1c2618",
+    scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" },
+    input: { activePointers: 3 },
+    scene: [GameScene],
+  });
+  window.__game = game;   // ให้แผงสร้างและการทดสอบเข้าถึงฉากเกมได้
+  document.getElementById("new-map").addEventListener("click", (e) => {
+    const seed = 1 + Math.floor(Math.random() * 999999);
+    Build.close();
+    game.scene.getScene("game").scene.restart({ seed });
+    e.currentTarget.blur();
+    try { document.getElementById("game").focus({ preventScroll: true }); } catch (_) {}
+  });
+  try { document.getElementById("game").focus({ preventScroll: true }); } catch (_) {}
+})();
+</script>
