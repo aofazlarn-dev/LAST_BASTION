@@ -4253,7 +4253,8 @@ class GameScene extends Phaser.Scene {
       const o = st.buildings.find((e) => e.id === st.buildAt[y * N + x]);
       return !!o && (o.type === "wall" || o.type === "gate") && o.team === b.team;
     };
-    return (link(b.tx, b.ty - 1) ? 1 : 0) | (link(b.tx + 1, b.ty) ? 2 : 0) | (link(b.tx, b.ty + 1) ? 4 : 0) | (link(b.tx - 1, b.ty) ? 8 : 0);
+    const w = b.w || 1, h = b.h || 1;
+    return (link(b.tx, b.ty - 1) ? 1 : 0) | (link(b.tx + w, b.ty) ? 2 : 0) | (link(b.tx, b.ty + h) ? 4 : 0) | (link(b.tx - 1, b.ty) ? 8 : 0);
   }
 
   /* กำแพงต่อเนื่อง (วาดเป็นบล็อกตรง ไม่ใช้ภาพเอียง): แต่ละช่องมีแกนกลาง + แขนยื่นไปหาเพื่อนบ้าน
@@ -4293,6 +4294,36 @@ class GameScene extends Phaser.Scene {
     }
     t.refresh();
     return key;
+  }
+
+  /* ประตู 2 ช่อง: แนวนอน = ภาพประตูหน้ายืดกว้างพอดี 2 ช่อง ฐานตรงกำแพง
+     แนวตั้ง = แถบกำแพงข้างต่อเนื่อง 2 ช่อง (เหมือนกำแพงแนวตั้ง) + ภาพประตูด้านข้างวางทับกลาง (สัดส่วนจริง) */
+  gateArt(lv, vert, mask) {
+    const key = "gt" + lv + (vert ? "v" : "h") + "_" + mask;
+    if (this.textures.exists(key)) return key;
+    const S = DATA.tile, K = 2, FH = 50, lift = FH - 16, SW = WALL_SIDE_W;
+    if (!vert) {
+      if (!ART_OK.has("gate" + lv)) return null;
+      const gi = this.textures.get("art_gate" + lv).getSourceImage();
+      const CW = 3 * S, CH = 3 * S, t = this.textures.createCanvas(key, CW * K, CH * K), g = t.getContext();
+      g.scale(K, K);
+      const gw = 2 * S + 8, gh = gi.height * gw / gi.width, yb = CH - 6;
+      g.drawImage(gi, CW / 2 - gw / 2, yb - gh, gw, gh);
+      t.refresh(); return key;
+    }
+    if (!ART_OK.has("gate_side" + lv) || !ART_OK.has("wall_side" + lv)) return null;
+    const side = this.textures.get("art_wall_side" + lv).getSourceImage(), gs = this.textures.get("art_gate_side" + lv).getSourceImage();
+    const CW = 2 * S, CH = 4 * S, t = this.textures.createCanvas(key, CW * K, CH * K), g = t.getContext();
+    g.scale(K, K);
+    const cx = CW / 2, yb = CH, up = mask & 1, dn = mask & 4;
+    const sTop = side.height * 0.3, sBot = side.height * 0.8;
+    const top = yb - 2 * S - lift, bot = yb - lift;
+    g.drawImage(side, 0, sTop, side.width, sBot - sTop, cx - SW / 2, top, SW, bot - top + 0.5);
+    if (!dn) g.drawImage(side, 0, sBot, side.width, side.height - sBot, cx - SW / 2, bot, SW, lift - 2);
+    if (!up) { const ch = sTop * SW / side.width; g.drawImage(side, 0, 0, side.width, sTop, cx - SW / 2, top - ch + 0.5, SW, ch); }
+    const gw = SW + 12, gh = gs.height * gw / gs.width;   // ภาพประตูข้างวางกลาง 2 ช่อง
+    g.drawImage(gs, cx - gw / 2, yb - S - lift / 2 - gh / 2 - 4, gw, gh);
+    t.refresh(); return key;
   }
 
   wallArt(lv, mask, tx, ty) {
@@ -4403,6 +4434,10 @@ class GameScene extends Phaser.Scene {
       if (key) { img.setTexture(key).setOrigin(0.5, key.startsWith("wi") ? (4 * DATA.tile - 4) / (4 * DATA.tile) : (2 * DATA.tile - 4) / (3 * DATA.tile)).setScale(0.5).clearTint(); img.base = 0.5; img.art = true; img.y = (b.ty + 1) * DATA.tile; return; }
     }
     // ภาพจริงด้านข้าง / มุม (ชุด v2)
+    if (b.type === "gate" && mk != null) {   // ประตู: ประกอบภาพให้ต่อกับกำแพงสนิท
+      const key = this.gateArt(lv, v === "v", +mk);
+      if (key) { img.setTexture(key).setOrigin(0.5, 1).setScale(0.5).clearTint(); img.base = 0.5; img.art = true; img.y = (b.ty + (b.h || 1)) * DATA.tile; return; }
+    }
     const sideName = v === "v" ? (b.type === "gate" ? "gate_side" : "wall_side") + lv : v === "c" ? "wall_corner" + lv : null;
     if (sideName && ART_OK.has(sideName)) {
       const gate = b.type === "gate";
@@ -4444,11 +4479,11 @@ class GameScene extends Phaser.Scene {
       }
       seen.add(b.id);
       const shape = b.type === "gate" ? (b.rot ? "v" : "h") : this.wallShape(b);
-      const tex = this.buildingTexture(b) + (shape === "h" ? "" : ":" + shape) + (b.type === "wall" ? "#" + this.wallMask(b) : "");
+      const tex = this.buildingTexture(b) + (shape === "h" ? "" : ":" + shape) + (b.type === "wall" || b.type === "gate" ? "#" + this.wallMask(b) : "");
       const have = this.buildViews.get(b.id);
       if (have) { if (have.tex !== tex) { have.tex = tex; this.skinBuilding(have, b, tex); } continue; }
       const S = DATA.tile, bx = (b.tx + (b.w || b.size) / 2) * S, by = (b.ty + (b.h || b.size)) * S;
-      const img = this.add.image(bx, by + (b.type === "tower" ? 4 : b.type === "gate" ? -5 : 2), tex.split(":")[0]).setOrigin(0.5, 1).setDepth(by);   // ประตูฐานตรงแนวกำแพง
+      const img = this.add.image(bx, by + (b.type === "tower" ? 4 : 2), tex.split(":")[0]).setOrigin(0.5, 1).setDepth(by);   // ประตูฐานตรงแนวกำแพง
       img.tex = tex; this.skinBuilding(img, b, tex);
       const full = img.base || 1;
       const fx = img.scaleX, fy = img.scaleY;
