@@ -40,8 +40,8 @@ function runSeed(seed) {
       const stock = st.stock[1], camp = st.buildings.find((b) => b.type === "camp");
       const has = (t) => st.buildings.some((b) => b.type === t);
       const count = (t) => st.units.filter((u) => u.type === t).length;
-      const pop = () => Core.popUsed(st, 1) < Core.popCap(st, 1);
-      if (count("worker") < (SKILL >= 0.75 ? 3 + camp.lv : 2) && pop() && stock.wood >= 15 + (count("worker") ? 20 : 0)) cmd({ type: "hire", unit: "worker" });
+      const pop = (k) => Core.popUsed(st, 1, k || "army") < Core.popCap(st, 1, k || "army");
+      if (count("worker") < (SKILL >= 0.75 ? 3 + camp.lv : 2) && pop("worker") && stock.wood >= 15 + (count("worker") ? 20 : 0)) cmd({ type: "hire", unit: "worker" });
       if (SKILL >= 0.75 && !night && (camp.hp < camp.maxHp * 0.85 || st.buildings.some((b) => b.hp < b.maxHp * 0.6))) cmd({ type: "repair" });
       if (SKILL >= 0.75) {
         // ผู้เล่นเก่ง: ทำตามลำดับเป้าหมายทีละข้อ (เก็บของจนกว่าจะทำข้อแรกที่ยังไม่เสร็จได้)
@@ -100,7 +100,7 @@ function runSeed(seed) {
           for (const [gi, g] of goals.entries()) {
             const r = g();
             if (process.env.DEBUG && i % 1200 === 0 && n === 0 && r !== "done") console.log("  goal", gi, "->", r, JSON.stringify(st.stock[1]), "campLv", camp.lv);
-            if (r === "done" || r === "max" || r === "maxLv" || r === "needCamp" || r === "locked") continue;   // ทำตอนนี้ไม่ได้ ข้ามไปข้อถัดไป
+            if (r === "done" || r === "max" || r === "maxWorker" || r === "maxArmy" || r === "maxLv" || r === "needCamp" || r === "locked") continue;   // ทำตอนนี้ไม่ได้ ข้ามไปข้อถัดไป
             if (r === true) progressed = true;
             break;   // ข้อแรกที่ยังไม่เสร็จ: ทำได้ก็ทำ ไม่ได้ก็รอเก็บของ
           }

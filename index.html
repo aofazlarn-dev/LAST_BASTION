@@ -115,6 +115,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .ico.wood { background: #9a6d40; }
 .ico.stone { background: #9b9a90; border-radius: 50%; }
 .ico.worker { background: #d9c27a; border-radius: 50%; }
+.ico.army { background: #6fb6e8; border-radius: 50%; }
 
 .build-dock {
   position: fixed; display: flex; align-items: flex-end; gap: 10px;
@@ -481,7 +482,8 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
     <div class="res">
       <span class="res-item" title="ไม้"><i class="ico wood"></i>ไม้ <b id="res-wood">0</b></span>
       <span class="res-item" title="หิน"><i class="ico stone"></i>หิน <b id="res-stone">0</b></span>
-      <span class="res-item" title="ประชากร (คนงาน + ทหาร + หมอ)"><i class="ico worker"></i>ประชากร <b id="res-workers">0/4</b></span>
+      <span class="res-item" title="คนงาน"><i class="ico worker"></i>คนงาน <b id="res-workers">0/10</b></span>
+      <span class="res-item" title="ทหารและหมอ"><i class="ico army"></i>ทหาร <b id="res-army">0/5</b></span>
     </div>
   </div>
 
@@ -732,11 +734,12 @@ const DATA = {
     camp: {
       name: "บ้านหลัก", hp: 1500, def: 6, vision: 9, repairCost: { wood: 60, stone: 30 }, maxLv: 5,
       levels: [
-        { pop: 10, radius: 13, hpMul: 1 },   // ประชากรสูงสุด (คนงาน + ทหาร + หมอ) = 10 ต่อเลเวลบ้านหลัก
-        { pop: 20, radius: 14, hpMul: 1.4, cost: { wood: 90, stone: 30 } },
-        { pop: 30, radius: 15, hpMul: 1.9, cost: { wood: 180, stone: 70 } },
-        { pop: 40, radius: 16, hpMul: 2.6, cost: { wood: 300, stone: 120 } },
-        { pop: 50, radius: 17, hpMul: 3.5, cost: { wood: 450, stone: 200 } },
+        // โควตาแยกกัน: pop = คนงาน (10 ต่อเลเวล), army = ทหารและหมอรวมกัน (5 ต่อเลเวล)
+        { pop: 10, army: 5, radius: 13, hpMul: 1 },
+        { pop: 20, army: 10, radius: 14, hpMul: 1.4, cost: { wood: 90, stone: 30 } },
+        { pop: 30, army: 15, radius: 15, hpMul: 1.9, cost: { wood: 180, stone: 70 } },
+        { pop: 40, army: 20, radius: 16, hpMul: 2.6, cost: { wood: 300, stone: 120 } },
+        { pop: 50, army: 25, radius: 17, hpMul: 3.5, cost: { wood: 450, stone: 200 } },
       ],
     },
     wall: {
@@ -1026,8 +1029,9 @@ const Core = (() => {
   }
   function campOf(st, team) { return st.buildings.find((b) => b.type === "camp" && b.team === team); }
   function campLevel(st, team) { const c = campOf(st, team); return c ? c.lv : 1; }
-  function popCap(st, team) { return DATA.buildings.camp.levels[campLevel(st, team) - 1].pop; }
-  function popUsed(st, team) { return st.units.filter((u) => u.team === team && !u.dead).length; }
+  // kind: "worker" = คนงาน, "army" = ทหารและหมอ
+  function popCap(st, team, kind) { const L = DATA.buildings.camp.levels[campLevel(st, team) - 1]; return kind === "army" ? L.army : L.pop; }
+  function popUsed(st, team, kind) { return st.units.filter((u) => u.team === team && !u.dead && ((u.type === "worker") === (kind !== "army"))).length; }
   function buildRadius(st, team) { return DATA.buildings.camp.levels[campLevel(st, team) - 1].radius; }
   function upgradeCost(b) {
     const D = DATA.buildings[b.type];
@@ -1997,7 +2001,8 @@ const Core = (() => {
         from = st.buildings.find((b) => b.team === h.team && DATA.buildings[b.type].hires && DATA.buildings[b.type].hires.includes(kind));
         if (!from) return "needBuilding";
       }
-      if (popUsed(st, h.team) >= popCap(st, h.team)) return "max";
+      const pk = kind === "worker" ? "worker" : "army";
+      if (popUsed(st, h.team, pk) >= popCap(st, h.team, pk)) return pk === "worker" ? "maxWorker" : "maxArmy";
       if (!afford(st.stock[h.team], def.cost)) return "cost";
       pay(st.stock[h.team], def.cost);
       const ox = (rand(st) - 0.5) * 40, door = freeSpot(st, from.x + ox, from.y + from.r + 14, (def.r || 10), h.team);
@@ -2663,6 +2668,7 @@ const ICON = {
 const BUILD_ERR = {
   far: "สร้างได้เฉพาะในเขตค่าย (วงสีฟ้า)", blocked: "ตรงนี้สร้างไม่ได้", occupied: "มีคนหรือ Monster ยืนขวางอยู่",
   cost: "ทรัพยากรไม่พอ", max: "ประชากรเต็ม · อัปเกรดบ้านหลักเพื่อเพิ่มประชากร",
+  maxWorker: "คนงานเต็มแล้ว · อัปเกรดบ้านหลักเพื่อเพิ่มอีก 10 คน", maxArmy: "ทหารและหมอเต็มแล้ว · อัปเกรดบ้านหลักเพื่อเพิ่มอีก 5 คน",
   locked: "ต้องอัปเกรดบ้านหลักก่อน", needCamp: "อัปเกรดบ้านหลักก่อน (อาคารอื่นสูงกว่าบ้านหลักได้ไม่เกิน 1 เลเวล)",
   maxLv: "ระดับสูงสุดแล้ว", needBuilding: "ต้องสร้างอาคารที่จ้างได้ก่อน", nothing: "ไม่มีอะไรต้องซ่อม",
 };
@@ -2710,7 +2716,8 @@ const BPanel = (() => {
     const rows = [];
     if (b.type === "camp") {
       const L = D.levels[b.lv - 1];
-      rows.push(["ประชากร", `${Core.popUsed(st, b.team)} / ${L.pop}${next ? ` <em>→ ${next.pop}</em>` : ""}`]);
+      rows.push(["คนงาน", `${Core.popUsed(st, b.team, "worker")} / ${L.pop}${next ? ` <em>→ ${next.pop}</em>` : ""}`]);
+      rows.push(["ทหารและหมอ", `${Core.popUsed(st, b.team, "army")} / ${L.army}${next ? ` <em>→ ${next.army}</em>` : ""}`]);
       rows.push(["เขตสร้าง", `${L.radius} ช่อง${next ? ` <em>→ ${next.radius}</em>` : ""}`]);
       if (next && UNLOCK[b.lv + 1]) rows.push(["ปลดล็อก Lv " + (b.lv + 1), `<em>${UNLOCK[b.lv + 1]}</em>`]);
     } else if (b.type === "tower") {
@@ -2751,10 +2758,10 @@ const BPanel = (() => {
       return `<div class="bp-row"><div><b>${def.name}</b> × ${n}<small>${desc}</small></div>${btn("hire:" + unit, "จ้าง", def.cost)}</div>`;
     };
     if (b.type === "camp") {
-      html += `<div class="bp-sec">ประชากร ${Core.popUsed(st, b.team)} / ${Core.popCap(st, b.team)}</div>` + hireRow("worker", DATA.worker);
+      html += `<div class="bp-sec">คนงาน ${Core.popUsed(st, b.team, "worker")} / ${Core.popCap(st, b.team, "worker")}</div>` + hireRow("worker", DATA.worker);
     }
     if (D.hires) {
-      html += `<div class="bp-sec">จ้างยูนิต · ประชากร ${Core.popUsed(st, b.team)} / ${Core.popCap(st, b.team)}</div>` + D.hires.map((u) => hireRow(u, DATA.units[u])).join("");
+      html += `<div class="bp-sec">จ้างยูนิต · ทหารและหมอ ${Core.popUsed(st, b.team, "army")} / ${Core.popCap(st, b.team, "army")}</div>` + D.hires.map((u) => hireRow(u, DATA.units[u])).join("");
       html += `<div class="bp-sec">คำสั่ง</div>` + D.hires.map((u) => {
         const mode = st.unitMode[b.team][u];
         const opt = (m, label) => `<button type="button" class="btn${mode === m ? " on" : ""}" data-act="mode:${u}:${m}">${label}</button>`;
@@ -3814,7 +3821,7 @@ class GameScene extends Phaser.Scene {
         const img = this.buildViews.get(e.id);
         if (img) this.tweens.add({ targets: img, scale: { from: 1.25, to: 1 }, duration: 320, ease: "Back.easeOut" });
         this.popText(e.x, e.y - 30, `Lv ${e.lv}!`, "#ffd166", 16);
-        if (e.btype === "camp") Banner.show(`บ้านหลัก Lv ${e.lv} · ประชากรสูงสุด ${Core.popCap(this.state, this.team)} · เขตสร้างกว้างขึ้น`, "day");
+        if (e.btype === "camp") Banner.show(`บ้านหลัก Lv ${e.lv} · คนงาน ${Core.popCap(this.state, this.team, "worker")} · ทหาร ${Core.popCap(this.state, this.team, "army")} · เขตสร้างกว้างขึ้น`, "day");
       } else if (e.type === "researched") {
         Toast.show(`วิจัย ${DATA.research[e.key].name} Lv ${e.lv} แล้ว`);
       } else if (e.type === "trained" && e.unit && e.unit !== "worker") {
@@ -4125,7 +4132,8 @@ const HUD = (() => {
     }
     const stock = st.stock[team];
     $("res-wood").textContent = stock.wood; $("res-stone").textContent = stock.stone;
-    $("res-workers").textContent = `${Core.popUsed(st, team)}/${Core.popCap(st, team)}`;
+    $("res-workers").textContent = `${Core.popUsed(st, team, "worker")}/${Core.popCap(st, team, "worker")}`;
+    $("res-army").textContent = `${Core.popUsed(st, team, "army")}/${Core.popCap(st, team, "army")}`;
     BPanel.tick();
     Build.refresh(stock);
 
