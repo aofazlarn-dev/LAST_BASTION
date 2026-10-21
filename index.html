@@ -4429,8 +4429,8 @@ class GameScene extends Phaser.Scene {
         if (b.lv !== this.campLv) {
           this.campLv = b.lv;
           this.campImg.anims.stop();
-          if (b.lv === 1 && ANIM_OK.has("flag")) { this.campImg.play("a_flag"); this.campImg.setOrigin(0.5, ANIM.flag.oy - 0.04).setScale(126 / ANIM.flag.w * 1.12).clearTint(); }
-          else if (!this.skin(this.campImg, "camp" + b.lv, { w: 118 + b.lv * 8, oy: 0.9 }))
+          // บ้านหลักใช้ภาพนิ่งเสมอ (เฟรมธงโบกจาก GPT วาดทั้งเต็นท์ใหม่ทุกเฟรม ตำแหน่งไม่ตรงกัน ทำให้บ้านสั่น)
+          if (!this.skin(this.campImg, "camp" + b.lv, { w: 118 + b.lv * 8, oy: 0.9 }))
             this.campImg.setTexture(b.lv >= 3 ? "hall" : "tent").setOrigin(0.5, b.lv >= 3 ? 96 / 104 : 88 / 96).setScale(b.lv >= 5 ? 1.12 : b.lv === 4 ? 1.05 : 1);
           this.campLabel.setText(`บ้านหลัก Lv ${b.lv}`);
           this.drawZoneRing();
