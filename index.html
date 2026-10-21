@@ -194,12 +194,12 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .inv-cell img { width: 82%; height: 82%; object-fit: contain; pointer-events: none; }
 /* ไอคอนภาพจริง (เปิดเมื่อโหลดภาพสำเร็จ) */
 .art-ui .ico { width: 16px; height: 16px; margin-right: 4px; vertical-align: -3px; border-radius: 0; background: center / contain no-repeat; }
-.art-ui .ico.wood { background-image: url(assets/sprites/ui_wood.webp); }
-.art-ui .ico.stone { background-image: url(assets/sprites/ui_stone.webp); }
-.art-ui .ico.worker { background-image: url(assets/sprites/ui_worker.webp); }
-.art-ui .ico.army { background-image: url(assets/sprites/ui_army.webp); }
+.art-ui .ico.wood { background-image: url(assets/art/ui_wood.webp); }
+.art-ui .ico.stone { background-image: url(assets/art/ui_stone.webp); }
+.art-ui .ico.worker { background-image: url(assets/art/ui_worker.webp); }
+.art-ui .ico.army { background-image: url(assets/art/ui_army.webp); }
 .art-ui .aico { display: inline-block; width: 18px; height: 18px; margin-right: 5px; vertical-align: -4px; background: center / contain no-repeat; flex: none; }
-.art-ui #skill { background-image: url(assets/sprites/ui_skill_volley.webp); background-size: 40%; background-position: center 14%; background-repeat: no-repeat; padding-top: 22px; }
+.art-ui #skill { background-image: url(assets/art/ui_skill_volley.webp); background-size: 40%; background-position: center 14%; background-repeat: no-repeat; padding-top: 22px; }
 .art-ui #skill .skill-name, .art-ui #skill .skill-key { text-shadow: 0 1px 2px #000, 0 0 4px #000; }
 .inv-cell .ilv { position: absolute; right: 3px; bottom: 1px; font-size: 9px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
 .inv-cell.empty { border-style: dashed; border-color: rgba(214, 196, 140, 0.15); cursor: default; color: var(--ink-dim); font-size: 10px; }
@@ -3284,8 +3284,8 @@ const Build = (() => {
 const FOG_RGB = [12, 15, 10];
 
 /* ===== ภาพวาดจริง (assets/sprites/*.webp) · ไฟล์ไหนโหลดไม่ได้ ใช้ภาพวาดด้วยโค้ดแทน ===== */
-const ART_DIR = "assets/sprites/";
-const ART_FILES = "armor_common armor_common1 armor_common2 armor_common3 armor_epic armor_epic1 armor_epic2 armor_epic3 armor_rare armor_rare2 armor_rare3 barracks bat0 bat1 bat2 bat3 bat4 bonemage0 bonemage1 bonemage2 bonemage3 bonemage4 boss0 boss1 boss2 boss3 boss4 bow_common bow_common1 bow_common2 bow_common3 bow_epic bow_epic1 bow_epic2 bow_epic3 bow_rare bow_rare1 bow_rare2 bow_rare3 camp1 camp2 camp3 camp4 camp5 demon0 demon1 demon2 demon3 demon4 firepit flower fx_arrow fx_blast fx_bolt fx_fireball fx_flame fx_frost fx_frostbolt fx_heal fx_hit fx_levelup fx_recall fx_rubble fx_sunburn fx_volley fx_web gate1 gate2 gate3 ghoul0 ghoul1 ghoul2 ghoul3 ghoul4 golem0 golem1 golem2 golem3 golem4 grass ground_forest ground_rocky ground_waste hero_archer hero_engineer hero_healer hero_mage hero_warrior infirmary knight0 knight1 knight2 knight3 knight4 lich0 lich1 lich2 lich3 lich4 loot_bag orc0 orc1 orc2 orc3 orc4 pebbles rock skel0 skel1 skel2 skel3 skel4 slime0 slime1 slime2 slime3 slime4 spider0 spider1 spider2 spider3 spider4 stump tower1 tower2 tower3 tree1 tree2 tuft u_archer u_medic u_sword ui_army ui_bag ui_bestiary ui_build ui_day ui_exp ui_home ui_hp ui_map ui_menu ui_mode_follow ui_mode_free ui_mode_guard ui_mp ui_night ui_repair ui_res_heroweapon ui_res_unitarmor ui_res_unitweapon ui_skill_volley ui_stone ui_warn ui_wood ui_worker wall1 wall2 wall3 water were0 were1 were2 were3 were4 wisp0 wisp1 wisp2 wisp3 wisp4 wolf0 wolf1 wolf2 wolf3 wolf4 worker worker_stone worker_wood workshop zombie0 zombie1 zombie2 zombie3 zombie4".split(" ");
+const ART_DIR = "assets/art/";   // ภาพชุด v2 (สไตล์สว่าง)
+const ART_FILES = "armor_common1 armor_common2 armor_common3 armor_epic1 armor_epic2 armor_epic3 armor_rare1 armor_rare2 armor_rare3 barracks bat0 bat1 bat2 bat3 bat4 bat5 bat6 bat7 beetle0 beetle1 beetle2 beetle3 beetle4 bonemage0 bonemage1 bonemage2 bonemage3 bonemage4 boss0 boss1 boss2 boss3 boss4 bow_common1 bow_common2 bow_common3 bow_epic1 bow_epic2 bow_epic3 bow_rare1 bow_rare2 bow_rare3 camp1 camp2 camp3 camp4 camp5 demon0 demon1 demon2 demon3 demon4 dirt firepit flower fx_arrow fx_blast fx_bolt fx_fireball fx_flame fx_frost fx_frostbolt fx_heal fx_hit fx_levelup fx_recall fx_rubble fx_sunburn fx_volley fx_web gate1 gate2 gate3 gate_side1 gate_side2 gate_side3 ghoul0 ghoul1 ghoul2 ghoul3 ghoul4 golem0 golem1 golem2 golem3 golem4 grass ground_rocky hero_archer hero_engineer hero_healer hero_mage hero_warrior infirmary knight0 knight1 knight2 knight3 knight4 lich0 lich1 lich2 lich3 lich4 loot_bag orc0 orc1 orc2 orc3 orc4 pebbles rock skel0 skel1 skel2 skel3 skel4 skel5 skel6 skel7 slime0 slime1 slime2 slime3 slime4 slime5 slime6 slime7 spider0 spider1 spider2 spider3 spider4 stump tower1 tower2 tower3 tree1 tree2 tuft u_archer u_medic u_sword ui_army ui_bag ui_bestiary ui_build ui_day ui_exp ui_home ui_hp ui_map ui_menu ui_mode_follow ui_mode_free ui_mode_guard ui_mp ui_night ui_repair ui_res_heroweapon ui_res_unitarmor ui_res_unitweapon ui_skill_volley ui_stone ui_warn ui_wood ui_worker wall1 wall2 wall3 wall_corner1 wall_corner2 wall_corner3 wall_side1 wall_side2 wall_side3 water were0 were1 were2 were3 were4 wisp0 wisp1 wisp2 wisp3 wisp4 wolf0 wolf1 wolf2 wolf3 wolf4 wolf5 wolf6 wolf7 worker worker_stone worker_wood workshop zombie0 zombie1 zombie2 zombie3 zombie4 zombie5 zombie6 zombie7".split(" ");
 const ART_OK = new Set();
 const ART_TINT = { 5: 0x9d86c8, 6: 0xb4b4b4, 7: 0xff9c8c };   // ตัวแปรที่ยังไม่มีภาพ: ย้อมสีจากตัวปกติ (เงา / หิน / คลั่ง)
 function artMon(key) {
@@ -4006,7 +4006,20 @@ class GameScene extends Phaser.Scene {
   }
 
   // กำแพง/ประตูแนวตั้ง: มีเพื่อนบ้านด้านบนหรือล่าง แต่ไม่มีซ้ายขวา → ใช้ภาพด้านข้างให้ต่อเป็นแนวยาว
-  wallVertical(b) {
+  wallVertical(b) { return this.wallShape(b) === "v"; }
+  // รูปทรงกำแพง: h = ด้านหน้า (ต่อซ้ายขวา), v = ด้านข้าง (ต่อขึ้นลง), c = มุม (ต่อทั้งสองแนว)
+  wallShape(b) {
+    if (b.type !== "wall") return "h";
+    const st = this.state, N = st.map.n;
+    const link = (x, y) => {
+      if (x < 0 || y < 0 || x >= N || y >= N) return false;
+      const o = st.buildings.find((e) => e.id === st.buildAt[y * N + x]);
+      return !!o && (o.type === "wall" || o.type === "gate") && o.team === b.team;
+    };
+    const v = link(b.tx, b.ty - 1) || link(b.tx, b.ty + 1), h = link(b.tx - 1, b.ty) || link(b.tx + 1, b.ty);
+    return v && h ? "c" : v ? "v" : "h";
+  }
+  wallVerticalOld(b) {
     if (b.type !== "wall" && b.type !== "gate") return false;
     const st = this.state, N = st.map.n;
     const link = (x, y) => {
@@ -4032,7 +4045,14 @@ class GameScene extends Phaser.Scene {
   }
 
   skinBuilding(img, b, tex) {
-    const [base, v] = tex.split(":"), name = ART_BUILD[base];
+    const [base, v] = tex.split(":"), name = ART_BUILD[base], lv = /\d$/.test(name || "") ? name.slice(-1) : "1";
+    // ภาพจริงด้านข้าง / มุม (ชุด v2)
+    const sideName = v === "v" ? (b.type === "gate" ? "gate_side" : "wall_side") + lv : v === "c" ? "wall_corner" + lv : null;
+    if (sideName && ART_OK.has(sideName)) {
+      const gate = b.type === "gate";
+      this.skin(img, sideName, gate ? { h: 92, oy: 0.97 } : v === "c" ? { h: 58, oy: 0.95 } : { h: 54, oy: 0.97 });
+      return;
+    }
     if (v && ART_OK.has(name)) {
       const gate = b.type === "gate";
       img.setTexture(this.verticalArt(name, gate)).setOrigin(0.5, 0.97).clearTint();
@@ -4061,7 +4081,8 @@ class GameScene extends Phaser.Scene {
         continue;
       }
       seen.add(b.id);
-      const tex = this.buildingTexture(b) + ((b.type === "gate" ? b.rot : this.wallVertical(b)) ? ":v" : "");
+      const shape = b.type === "gate" ? (b.rot ? "v" : "h") : this.wallShape(b);
+      const tex = this.buildingTexture(b) + (shape === "h" ? "" : ":" + shape);
       const have = this.buildViews.get(b.id);
       if (have) { if (have.tex !== tex) { have.tex = tex; this.skinBuilding(have, b, tex); } continue; }
       const S = DATA.tile, bx = (b.tx + (b.w || b.size) / 2) * S, by = (b.ty + (b.h || b.size)) * S;

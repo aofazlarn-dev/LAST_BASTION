@@ -81,4 +81,4 @@ HP ฟื้นเฉพาะตอนอยู่ในเขตค่าย, 
 ## เทคโนโลยี
 
 - [Phaser 4.0.0](https://phaser.io) โหลดจาก cdnjs
-- ภาพจริงอยู่ใน `assets/sprites/*.webp` (ตัดจาก `assets/sheets/` ด้วย `tools/slice_sheets.py`) ภาพไหนไม่มี เกมวาดด้วยโค้ดแทนอัตโนมัติ · ต้องเปิดผ่านเว็บ (เช่น GitHub Pages หรือ `python3 -m http.server`) ภาพถึงจะโหลด
+- ภาพจริงชุด v2 อยู่ใน `assets/art/*.webp` (ตัดจาก `assets/sheets2/` ด้วย `python3 tools/slice_sheets_v2.py assets/sheets2 build/cut2`) ภาพไหนไม่มี เกมวาดด้วยโค้ดแทนอัตโนมัติ · ต้องเปิดผ่านเว็บ (เช่น GitHub Pages หรือ `python3 -m http.server`) ภาพถึงจะโหลด
