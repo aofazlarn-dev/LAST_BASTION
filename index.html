@@ -108,6 +108,16 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .skill-name { position: relative; font-size: 13px; font-weight: 700; }
 .skill-key { position: relative; font-family: var(--font-pixel); font-size: 9px; color: var(--ink-dim); }
 .skill.locked { border-color: var(--panel-line); }
+.skill.small { width: 66px; height: 66px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); }
+.skill.small .skill-name { font-size: 10px; }
+.skill.small .skill-key { font-size: 8px; }
+.skill.s2 { right: calc(env(safe-area-inset-right, 0px) + 116px); }
+.skill.s3 { right: calc(env(safe-area-inset-right, 0px) + 190px); }
+.skill.active { border-color: #ffd166; box-shadow: 0 0 14px rgba(255, 209, 102, 0.7); }
+.skill-ico { display: none; }
+.art-ui .skill-ico { display: block; position: relative; width: 34px; height: 34px; margin: 0 auto -2px; background: center / contain no-repeat; }
+.art-ui .skill.small .skill-ico { width: 24px; height: 24px; }
+.art-ui .skill .skill-name, .art-ui .skill .skill-key { text-shadow: 0 1px 2px #000, 0 0 4px #000; }
 
 .res { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--ink-dim); }
 .res b { color: var(--ink); font-variant-numeric: tabular-nums; margin-left: 3px; }
@@ -199,8 +209,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .art-ui .ico.worker { background-image: url(assets/art/ui_worker.webp); }
 .art-ui .ico.army { background-image: url(assets/art/ui_army.webp); }
 .art-ui .aico { display: inline-block; width: 18px; height: 18px; margin-right: 5px; vertical-align: -4px; background: center / contain no-repeat; flex: none; }
-.art-ui #skill { background-image: url(assets/art/ui_skill_volley.webp); background-size: 40%; background-position: center 14%; background-repeat: no-repeat; padding-top: 22px; }
-.art-ui #skill .skill-name, .art-ui #skill .skill-key { text-shadow: 0 1px 2px #000, 0 0 4px #000; }
+
 .inv-cell .ilv { position: absolute; right: 3px; bottom: 1px; font-size: 9px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
 .inv-cell.empty { border-style: dashed; border-color: rgba(214, 196, 140, 0.15); cursor: default; color: var(--ink-dim); font-size: 10px; }
 .inv-cell.sel { box-shadow: 0 0 0 2px var(--ink); }
@@ -312,7 +321,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .hint {
   bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
   left: calc(env(safe-area-inset-left, 0px) + 14px);
-  max-width: calc(100vw - 140px);
+  max-width: calc(100vw - 290px);
   padding: 9px 13px; font-size: 13px; color: var(--ink-dim);
   transition: opacity 0.6s ease;
 }
@@ -458,6 +467,8 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 @media (max-height: 560px) { .quest-list li:not(.now) { display: none; } .meter.xp { display: none; } }
 @media (max-width: 560px) { .quest-list li:not(.now) { display: none; } .quest { padding: 7px 9px; } }
 @media (max-width: 560px) {
+  .hint { max-width: calc(100vw - 210px); }
+  .skill.s3 { right: calc(env(safe-area-inset-right, 0px) + 116px); bottom: calc(env(safe-area-inset-bottom, 0px) + 88px); }
   .build-menu { grid-template-columns: minmax(0, 1fr); max-height: calc(100vh - 220px); }
   .build-item { width: 168px; }
 }
@@ -586,10 +597,20 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
   </div>
 </div>
 
-<button class="skill" id="skill" type="button" aria-label="สกิลยิงกระจาย (ปุ่ม Q)">
-  <span class="skill-cd" id="skill-cd"></span>
-  <span class="skill-name">ยิงกระจาย</span>
+<button class="skill" id="skill" data-slot="0" type="button" aria-label="Arrow Shower ฝนธนู (ปุ่ม Q)">
+  <span class="skill-cd"></span><i class="skill-ico"></i>
+  <span class="skill-name">Arrow Shower</span>
   <span class="skill-key">Q · 35 MP</span>
+</button>
+<button class="skill small s2" id="skill2" data-slot="1" type="button" aria-label="Snipe ยิงเจาะจุด (ปุ่ม E)">
+  <span class="skill-cd"></span><i class="skill-ico"></i>
+  <span class="skill-name">Snipe</span>
+  <span class="skill-key">E · 25</span>
+</button>
+<button class="skill small s3" id="skill3" data-slot="2" type="button" aria-label="Rapid Fire ยิงรัว (ปุ่ม R)">
+  <span class="skill-cd"></span><i class="skill-ico"></i>
+  <span class="skill-name">Rapid Fire</span>
+  <span class="skill-key">R · 30</span>
 </button>
 
 <div class="down" id="down" hidden>
@@ -637,7 +658,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
       <tbody>
         <tr><td>เดิน</td><td>WASD / ลูกศร / คลิกที่พื้น</td><td>ลากนิ้วฝั่งซ้าย</td></tr>
         <tr><td>ยิง</td><td colspan="2">อัตโนมัติเมื่อมีศัตรูในระยะ</td></tr>
-        <tr><td>สกิลยิงกระจาย</td><td>Q</td><td>ปุ่มวงกลมขวาล่าง</td></tr>
+        <tr><td>สกิล Arrow Shower / Snipe / Rapid Fire</td><td>Q / E / R (หรือ 1 2 3)</td><td>ปุ่มวงกลม 3 ปุ่มขวาล่าง</td></tr>
         <tr><td>สร้าง / ฝึกคนงาน</td><td>B</td><td>ปุ่ม "สร้าง"</td></tr>
         <tr><td>กระเป๋า</td><td>I</td><td>ปุ่ม "กระเป๋า"</td></tr>
         <tr><td>กลับฐาน</td><td>H</td><td>ปุ่มใต้มินิแมพ</td></tr>
@@ -701,7 +722,7 @@ const DATA = {
   ],
   zoneLevels: [[1, 10], [10, 20], [20, 35], [35, 50]],
   classes: {
-    archer: { hp: 120, mp: 100, atk: 14, def: 3, as: 1.4, spd: 170, rng: 220, crit: 0.15, skill: "volley" },
+    archer: { hp: 120, mp: 100, atk: 14, def: 3, as: 1.4, spd: 170, rng: 220, crit: 0.15, skills: ["shower", "snipe", "haste"] },
   },
   hero: { mpRegen: 6, campRegenPct: 0.1, respawnSec: 10, recallSec: 3, arrowSpeed: 640, arrowLife: 0.5 },
   levels: { max: 50, hp: 12, atk: 2, def: 0.6, healOnLevel: 0.3, nightBonus: 40 },
@@ -729,7 +750,13 @@ const DATA = {
     salvage: { common: { wood: 3 }, rare: { wood: 6, stone: 3 }, epic: { wood: 12, stone: 8 } },
   },
   skills: {
-    volley: { name: "ยิงกระจาย", mp: 35, cd: 3, arrows: 11, spread: 1.1, dmgMul: 1.4 },   // แรงขึ้น คูลดาวน์ครึ่งหนึ่ง แต่กิน MP มากขึ้น
+    // Archer 3 สกิล (Q / E / R หรือ 1 / 2 / 3)
+    shower: { name: "Arrow Shower", th: "ฝนธนู", key: "Q", mp: 35, cd: 6, range: 1.7, radius: 78, delay: 0.5, waves: 5, every: 0.22, dmgMul: 0.85, icon: "ui_skill_volley",
+              note: "ยิงขึ้นฟ้า ลูกธนูตกเป็นฝน 5 ระลอก ทำดาเมจทุกตัวในวง" },
+    snipe: { name: "Snipe", th: "ยิงเจาะจุด", key: "E", mp: 25, cd: 5, range: 2.3, dmgMul: 5, speed: 1.8, icon: "fx_arrow",
+             note: "เล็งยิงเป้าเดียว ดาเมจ x5 คริติคอลแน่นอน เลือกตัวที่ถึกที่สุดก่อน" },
+    haste: { name: "Rapid Fire", th: "ยิงรัว", key: "R", mp: 30, cd: 16, dur: 6, asMul: 1.8, spdMul: 1.35, icon: "fx_levelup",
+             note: "6 วินาที ยิงเร็วขึ้น x1.8 วิ่งเร็วขึ้น x1.35" },
   },
   monsters: {},   // สร้างอัตโนมัติ 100 ชนิดด้านล่าง (buildRoster)
   stockStart: { wood: 60, stone: 30 },
@@ -1106,7 +1133,7 @@ const Core = (() => {
       id, kind: "hero", team, cls, x, y, px: x, py: y, r: DATA.heroRadius,
       face: -Math.PI / 2, ix: 0, iy: 0, path: null, stuck: 0, moving: false,
       spd: c.spd, hp: c.hp, maxHp: c.hp, mp: c.mp, maxMp: c.mp, atk: c.atk, def: c.def, as: c.as, rng: c.rng, crit: c.crit,
-      atkCd: 0, skillCd: 0, wantSkill: false, lastHurt: -999, dead: false, respawnAt: 0,
+      atkCd: 0, skillCd: 0, cds: [0, 0, 0], wantSkill: null, hasteUntil: 0, lastHurt: -999, dead: false, respawnAt: 0,
       lv: 1, exp: 0, bag: [], equip: { weapon: null, armor: null },
     };
   }
@@ -1314,13 +1341,16 @@ const Core = (() => {
     const S = DATA.tile;
     if (h.dead) {
       if (st.tick >= h.respawnAt) {
-        h.dead = false; h.hp = h.maxHp; h.mp = h.maxMp; h.skillCd = 0;
+        h.dead = false; h.hp = h.maxHp; h.mp = h.maxMp; h.skillCd = 0; h.cds = [0, 0, 0];
         placeAt(h, campSpawn(st, h.team));
         st.events.push({ type: "respawn", id: h.id });
       }
       return;
     }
     h.atkCd -= dt; h.skillCd -= dt;
+    if (!h.cds) h.cds = [0, 0, 0];
+    for (let i = 0; i < h.cds.length; i++) h.cds[i] -= dt;
+    const haste = st.tick < (h.hasteUntil || 0) ? DATA.skills.haste : null;
     h.mp = Math.min(h.maxMp, h.mp + DATA.hero.mpRegen * dt);
     // HP ฟื้นเฉพาะตอนอยู่ในเขตค่าย
     h.inCamp = Math.hypot(h.x - st.camp.x, h.y - (st.camp.y + 10)) < DATA.campRadius;
@@ -1332,27 +1362,77 @@ const Core = (() => {
         const a = Math.atan2(tgt.y - h.y, tgt.x - h.x);
         fireArrow(st, h, a, 1);
         h.aim = a; h.aimUntil = st.tick + 6;
-        h.atkCd = 1 / h.as;
+        h.atkCd = 1 / (h.as * (haste ? haste.asMul : 1));
       }
     }
     if (h.wantSkill) {
-      h.wantSkill = false;
-      const sk = DATA.skills[DATA.classes[h.cls].skill];
-      if (h.skillCd <= 0 && h.mp >= sk.mp) {
-        const tgt = nearestEnemy(st, h, h.rng * 1.4);
-        const a = tgt ? Math.atan2(tgt.y - h.y, tgt.x - h.x) : h.face;
-        for (let i = 0; i < sk.arrows; i++) fireArrow(st, h, a - sk.spread / 2 + (sk.spread * i) / (sk.arrows - 1), sk.dmgMul);
-        h.mp -= sk.mp; h.skillCd = sk.cd;
-        h.aim = a; h.aimUntil = st.tick + 8;
-        st.events.push({ type: "skill", id: h.id });
+      const want = h.wantSkill; h.wantSkill = null;
+      const slot = want.slot || 0, key = (DATA.classes[h.cls].skills || [])[slot], sk = DATA.skills[key];
+      if (!sk) return;
+      if (h.cds[slot] > 0) { st.events.push({ type: "skillFail", id: h.id, why: "cd", slot }); return; }
+      if (h.mp < sk.mp) { st.events.push({ type: "skillFail", id: h.id, why: "mp", slot }); return; }
+      let ok = false;
+      if (key === "shower") {
+        // เป้า: จุดที่เมาส์ชี้ (ถ้าส่งมา) ไม่งั้นหากลุ่มศัตรูที่หนาแน่นที่สุดในระยะ
+        const R = h.rng * sk.range;
+        let tx, ty;
+        if (want.x != null) { const d = Math.hypot(want.x - h.x, want.y - h.y), k = d > R ? R / d : 1; tx = h.x + (want.x - h.x) * k; ty = h.y + (want.y - h.y) * k; }
+        else {
+          const foes = enemiesOf(st, h.team).filter((o) => o.kind === "monster" && Math.hypot(o.x - h.x, o.y - h.y) < R);
+          let best = null, bn = 0;
+          for (const o of foes) { const n = foes.filter((q) => Math.hypot(q.x - o.x, q.y - o.y) < sk.radius).length; if (n > bn) { bn = n; best = o; } }
+          if (best) { tx = best.x; ty = best.y; } else { tx = h.x + Math.cos(h.face) * h.rng * 0.8; ty = h.y + Math.sin(h.face) * h.rng * 0.8; }
+        }
+        (st.rains || (st.rains = [])).push({ team: h.team, owner: h.id, x: tx, y: ty, r: sk.radius, t: sk.delay, left: sk.waves, mul: sk.dmgMul });
+        h.aim = Math.atan2(ty - h.y, tx - h.x); h.aimUntil = st.tick + 10;
+        st.events.push({ type: "skill", id: h.id, skill: key, x: tx, y: ty, r: sk.radius });
+        ok = true;
+      } else if (key === "snipe") {
+        const foes = enemiesOf(st, h.team).filter((o) => Math.hypot(o.x - h.x, o.y - h.y) < h.rng * sk.range);
+        let tgt = null, score = -1;
+        for (const o of foes) { const sc = (o.boss ? 1e6 : 0) + o.maxHp - Math.hypot(o.x - h.x, o.y - h.y) * 0.1; if (sc > score) { score = sc; tgt = o; } }
+        if (!tgt) { st.events.push({ type: "skillFail", id: h.id, why: "target", slot }); return; }
+        const a = Math.atan2(tgt.y - h.y, tgt.x - h.x);
+        fireArrow(st, h, a, sk.dmgMul);
+        const ar = st.arrows[st.arrows.length - 1];
+        ar.vx *= sk.speed; ar.vy *= sk.speed; ar.big = true; ar.crit = true; ar.home = tgt.id; ar.life = 3;
+        h.aim = a; h.aimUntil = st.tick + 10;
+        st.events.push({ type: "skill", id: h.id, skill: key, tid: tgt.id });
+        ok = true;
+      } else if (key === "haste") {
+        h.hasteUntil = st.tick + Math.round(sk.dur * 1000 / DATA.tickMs);
+        st.events.push({ type: "skill", id: h.id, skill: key });
+        ok = true;
       }
+      if (ok) { h.mp -= sk.mp; h.cds[slot] = sk.cd; }
     }
+  }
+
+  // ฝนธนู: หลังยิงขึ้นฟ้า ลูกธนูตกลงมาเป็นระลอก ทำดาเมจทุกศัตรูในวง
+  function stepRains(st, dt) {
+    if (!st.rains || !st.rains.length) return;
+    const keep = [];
+    for (const r of st.rains) {
+      r.t -= dt;
+      if (r.t <= 0) {
+        const shooter = findEntity(st, r.owner);
+        if (shooter && !shooter.dead) for (const o of enemiesOf(st, r.team)) if (Math.hypot(o.x - r.x, o.y - r.y) < r.r + o.r * 0.5) damage(st, o, shooter, shooter.atk, r.mul);
+        st.events.push({ type: "rainWave", x: r.x, y: r.y, r: r.r });
+        r.left--; r.t = DATA.skills.shower.every;
+      }
+      if (r.left > 0) keep.push(r);
+    }
+    st.rains = keep;
   }
 
   function stepArrows(st, dt) {
     const keep = [];
     for (const a of st.arrows) {
       a.px = a.x; a.py = a.y;
+      if (a.home) {   // ลูกเล็งเป้า: เลี้ยวตามเป้าหมาย
+        const t = findEntity(st, a.home);
+        if (t && !t.dead) { const sp = Math.hypot(a.vx, a.vy), ang = Math.atan2(t.y - a.y, t.x - a.x); a.vx = Math.cos(ang) * sp; a.vy = Math.sin(ang) * sp; a.angle = ang; }
+      }
       a.x += a.vx * dt; a.y += a.vy * dt; a.life -= dt;
       let hit = null;
       for (const o of enemiesOf(st, a.team)) {
@@ -1362,7 +1442,8 @@ const Core = (() => {
         if (Math.hypot(a.px + dx * t - o.x, a.py + dy * t - o.y) < o.r + 4) { hit = o; break; }
       }
       if (hit) {
-        const shooter = findEntity(st, a.owner) || { atk: a.atk || 10, crit: 0, team: a.team, kind: "building" };
+        let shooter = findEntity(st, a.owner) || { atk: a.atk || 10, crit: 0, team: a.team, kind: "building" };
+        if (a.crit) shooter = Object.assign(Object.create(Object.getPrototypeOf(shooter)), shooter, { crit: 1 });
         damage(st, hit, shooter, a.atk || shooter.atk, a.mul);
         continue;
       }
@@ -1948,7 +2029,7 @@ const Core = (() => {
     if (st.result && !st.endless) return false;
     const h = st.heroes.find((e) => e.id === cmd.heroId);
     if (!h || h.dead) return false;
-    if (cmd.type === "skill") { h.wantSkill = true; return true; }
+    if (cmd.type === "skill") { h.wantSkill = { slot: cmd.slot || 0, x: cmd.x, y: cmd.y }; return true; }
     if (cmd.type === "equip") {
       const i = h.bag.findIndex((it) => it.id === cmd.itemId);
       if (i < 0) return "missing";
@@ -2563,12 +2644,13 @@ const Core = (() => {
           continue;
         }
       }
+      const hs = st.tick < (h.hasteUntil || 0) ? DATA.skills.haste.spdMul : 1;
       if (Math.hypot(h.ix, h.iy) > 0.05) {
-        const stepLen = h.spd * dt;
+        const stepLen = h.spd * hs * dt;
         h.face = Math.atan2(h.iy, h.ix); h.moving = true;
         moveSlide(st, h, h.ix * stepLen, h.iy * stepLen);
       } else if (h.path) {
-        followPath(st, h, dt, h.spd);
+        followPath(st, h, dt, h.spd * hs);
       }
       // ยืนติดต้นไม้/ก้อนหิน และไม่มีศัตรูใกล้ → เก็บทรัพยากรเอง
       h.gathering = -1;
@@ -2593,7 +2675,7 @@ const Core = (() => {
     stepLoot(st, dt);
     stepUnits(st, dt);
     stepBuildings(st, dt);
-    stepArrows(st, dt);
+    stepArrows(st, dt); stepRains(st, dt);
     stepBolts(st, dt);
     stepMonsters(st, dt);
     // กันติด: ถ้า Hero หรือยูนิตอยู่ในตำแหน่งที่ทับสิ่งก่อสร้าง ย้ายไปจุดว่างข้างเคียง
@@ -2624,7 +2706,7 @@ const Input = (() => {
     KeyW: [0, -1], ArrowUp: [0, -1], KeyS: [0, 1], ArrowDown: [0, 1],
     KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0],
   };
-  let skillQueued = false, buildMode = false;
+  let skillQueued = -1, buildMode = false;
   window.addEventListener("keydown", (e) => {
     if (map[e.code]) { keys.add(e.code); e.preventDefault(); emit("key"); }
     else if (e.code === "KeyM" && !e.repeat) emit("map");
@@ -2633,7 +2715,9 @@ const Input = (() => {
     else if (e.code === "Escape") emit("esc");
     else if (e.code === "KeyH" && !e.repeat) emit("recall");
     else if (e.code === "KeyI" && !e.repeat) emit("bag");
-    else if (e.code === "KeyQ" && !e.repeat) { skillQueued = true; emit("key"); }
+    else if (e.code === "KeyQ" && !e.repeat) { skillQueued = 0; emit("key"); }
+    else if (e.code === "KeyE" && !e.repeat) { skillQueued = 1; emit("key"); }
+    else if (["Digit1", "Digit2", "Digit3"].includes(e.code) && !e.repeat) { skillQueued = +e.code.slice(-1) - 1; emit("key"); }
   });
   window.addEventListener("keyup", (e) => keys.delete(e.code));
   window.addEventListener("blur", () => keys.clear());
@@ -2673,9 +2757,9 @@ const Input = (() => {
   }
   return {
     vector, on: (f) => listeners.push(f), used: emit,
-    queueSkill: () => { skillQueued = true; },
+    queueSkill: (slot) => { skillQueued = slot || 0; },
     setBuildMode: (v) => { buildMode = v; },
-    takeSkill: () => { const q = skillQueued; skillQueued = false; return q; },
+    takeSkill: () => { const q = skillQueued; skillQueued = -1; return q; },
   };
 })();
 
@@ -3302,6 +3386,10 @@ function artUi() {
   if (!ART_OK.has("ui_build") || document.documentElement.classList.contains("art-ui")) return;
   document.documentElement.classList.add("art-ui");
   const put = (id, n) => { const el = document.getElementById(id); if (el && ART_OK.has(n)) el.insertAdjacentHTML("afterbegin", `<i class="aico" style="background-image:url(${ART_DIR}${n}.webp)" aria-hidden="true"></i>`); };
+  for (const [id, key] of [["skill", "shower"], ["skill2", "snipe"], ["skill3", "haste"]]) {
+    const n = DATA.skills[key].icon, el = document.querySelector("#" + id + " .skill-ico");
+    if (el && ART_OK.has(n)) el.style.backgroundImage = `url(${ART_DIR}${n}.webp)`;
+  }
   put("build-toggle", "ui_build"); put("bag-btn", "ui_bag"); put("recall", "ui_home"); put("menu-btn", "ui_menu"); put("skip", "ui_night"); put("repair", "ui_repair"); put("train", "ui_worker");
 }
 
@@ -3900,7 +3988,16 @@ class GameScene extends Phaser.Scene {
     g.strokeTriangle(x + Math.cos(a) * 12, y + Math.sin(a) * 12, x + Math.cos(a + 2.4) * 10, y + Math.sin(a + 2.4) * 10, x + Math.cos(a - 2.4) * 10, y + Math.sin(a - 2.4) * 10);
   }
 
-  castSkill() { Core.applyCommand(this.state, { type: "skill", heroId: this.localHero }); }
+  castSkill(slot) {
+    const cmd = { type: "skill", heroId: this.localHero, slot };
+    // คอม: ฝนธนูตกตรงจุดที่เมาส์ชี้ · มือถือ: เล็งกลุ่มศัตรูที่หนาแน่นที่สุดให้เอง
+    const el = MOUSE.x >= 0 ? document.elementFromPoint(MOUSE.x, MOUSE.y) : null;
+    if (slot === 0 && el && el.tagName === "CANVAS" && !this.input.activePointer.wasTouch) {
+      const wp = this.cameras.main.getWorldPoint(MOUSE.x - this.game.canvas.getBoundingClientRect().left, MOUSE.y - this.game.canvas.getBoundingClientRect().top);
+      cmd.x = wp.x; cmd.y = wp.y;
+    }
+    Core.applyCommand(this.state, cmd);
+  }
 
   drawZoneRing() {
     const c = this.state.map.n / 2 * DATA.tile, R = Core.buildRadius(this.state, this.team) * DATA.tile;
@@ -4347,9 +4444,33 @@ class GameScene extends Phaser.Scene {
         const full = img.base || 1; img.setScale(full * 0.3); this.tweens.add({ targets: img, scale: full, duration: 600, ease: "Back.easeOut" });
       } else if (e.type === "noResource" && e.team === this.team) {
         Banner.show("ไม้และหินรอบค่ายหมดแล้ว · คนงานรอต้นไม้งอกใหม่ตอนเช้า หรือ Hero ออกไปเก็บเอง", "warn");
+      } else if (e.type === "skillFail" && e.id === this.localHero) {
+        Toast.show(e.why === "mp" ? "MP ไม่พอ" : e.why === "target" ? "ไม่มีเป้าในระยะ" : "สกิลยังไม่พร้อม");
+      } else if (e.type === "rainWave") {
+        // ลูกธนูร่วงจากฟ้าลงในวง
+        for (let i = 0; i < 7; i++) {
+          const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * e.r, x = e.x + Math.cos(a) * d, y = e.y + Math.sin(a) * d;
+          const ar = this.add.image(x - 30, y - 170, ART_OK.has("fx_arrow") ? "art_fx_arrow" : "arrow").setDepth(y + 40).setRotation(Math.atan2(170, 30));
+          if (ART_OK.has("fx_arrow")) this.skin(ar, "fx_arrow", { w: 26, oy: 0.5 }), ar.setRotation(Math.atan2(170, 30));
+          this.tweens.add({ targets: ar, x, y, duration: 150 + Math.random() * 80, ease: "Quad.easeIn", onComplete: () => { ar.destroy(); this.puff("fx_hit", x, y, { w: 18, dur: 180, from: 0.5, to: 1 }); } });
+        }
+        if (this.visibleAt(e.x, e.y)) this.cameras.main.shake(60, 0.002);
       } else if (e.type === "skill") {
         const h = this.state.heroes[0];
-        this.puff("fx_volley", h.x + Math.cos(h.aim) * 30, h.y + Math.sin(h.aim) * 30, { w: 70, dur: 360, from: 0.6, to: 1.2, rot: h.aim, depth: h.y + 30 });
+        if (e.skill === "shower") {
+          this.puff("fx_volley", h.x, h.y - 20, { w: 60, dur: 380, from: 0.6, to: 1.1, rot: -Math.PI / 2, depth: h.y + 30, dy: -40 });
+          const ring = this.add.graphics().setPosition(e.x, e.y).setDepth(e.y - 2);
+          ring.lineStyle(3, 0xffd166, 0.9); ring.strokeCircle(0, 0, e.r); ring.fillStyle(0xffd166, 0.12); ring.fillCircle(0, 0, e.r);
+          this.tweens.add({ targets: ring, alpha: 0, duration: 1600, ease: "Quad.easeIn", onComplete: () => ring.destroy() });
+        } else if (e.skill === "snipe") {
+          this.puff("fx_hit", h.x + Math.cos(h.aim) * 20, h.y + Math.sin(h.aim) * 20, { w: 40, dur: 260, from: 0.4, to: 1.3, depth: h.y + 30 });
+          const m = this.state.monsters.find((q) => q.id === e.tid);
+          if (m) { const g = this.add.graphics().setDepth(8.3e6); g.lineStyle(2, 0xff5a4a, 0.9); g.strokeCircle(m.x, m.y, 18); g.lineBetween(m.x - 24, m.y, m.x + 24, m.y); g.lineBetween(m.x, m.y - 24, m.x, m.y + 24);
+            this.tweens.add({ targets: g, alpha: 0, duration: 500, onComplete: () => g.destroy() }); }
+        } else if (e.skill === "haste") {
+          this.puff("fx_levelup", h.x, h.y, { w: 70, dur: 600, from: 0.4, to: 1.2, depth: h.y + 30, dy: -10 });
+          Toast.show("Rapid Fire! ยิงเร็ว วิ่งเร็ว 6 วินาที");
+        }
         const ring = this.add.graphics().setPosition(h.x, h.y).setDepth(h.y + 5);
         ring.lineStyle(3, 0xe2b04a, 0.9); ring.strokeCircle(0, 0, 18);
         this.tweens.add({ targets: ring, alpha: 0, scale: 1.8, duration: 320, onComplete: () => ring.destroy() });
@@ -4461,7 +4582,12 @@ class GameScene extends Phaser.Scene {
     for (const ar of this.state.arrows) {
       seen.add(ar.id);
       let s = this.arrowViews.get(ar.id);
-      if (!s) { s = this.add.image(ar.x, ar.y, "arrow").setRotation(ar.angle); this.skin(s, "fx_arrow", { w: 28, oy: 0.5 }); this.arrowViews.set(ar.id, s); }
+      if (!s) {
+        s = this.add.image(ar.x, ar.y, "arrow").setRotation(ar.angle); this.skin(s, "fx_arrow", { w: ar.big ? 46 : 28, oy: 0.5 });
+        if (ar.big) { s.setTint(0xffe08a); if (!s.art) s.setScale(1.7); }
+        this.arrowViews.set(ar.id, s);
+      }
+      if (ar.home) s.setRotation(ar.angle);
       const x = ar.px + (ar.x - ar.px) * a, y = ar.py + (ar.y - ar.py) * a;
       s.setPosition(x, y).setDepth(y + 20).setVisible(this.visibleAt(x, y));
     }
@@ -4516,7 +4642,7 @@ class GameScene extends Phaser.Scene {
     Core.applyCommand(this.state, { type: "move", heroId: this.localHero, x: v.x, y: v.y });
     const p = this.input.activePointer;
     if (!this.buildMode && this.hold.on && p.isDown && !p.wasTouch) this.sendMoveTo(p, false);
-    if (Input.takeSkill()) this.castSkill();
+    { const q = Input.takeSkill(); if (q >= 0) this.castSkill(q); }
 
     if (this.paused) delta = 0;
     this.acc = Math.min(this.acc + delta, 250);
@@ -4569,6 +4695,17 @@ class GameScene extends Phaser.Scene {
 
     this.drawMarker(delta);
     this.drawFire(time);
+    { // ออร่า Rapid Fire รอบ Hero
+      const h = this.state.heroes[0], hv = this.heroViews.get(h.id);
+      if (!this.hasteFx) this.hasteFx = this.add.graphics().setDepth(-1.4e6);
+      this.hasteFx.clear();
+      if (!h.dead && this.state.tick < (h.hasteUntil || 0)) {
+        const k = 0.5 + Math.sin(time / 90) * 0.25;
+        this.hasteFx.lineStyle(3, 0xffd166, 0.7 * k + 0.2); this.hasteFx.strokeEllipse(hv.root.x, hv.root.y + 14, 46, 20);
+        this.hasteFx.fillStyle(0xffd166, 0.15 * k); this.hasteFx.fillEllipse(hv.root.x, hv.root.y + 14, 46, 20);
+        if (hv.body.art) hv.body.setTint(Math.floor(time / 120) % 2 ? 0xfff0b0 : 0xffffff);
+      }
+    }
     this.drawFog();
     HUD.update(this.state, this.team, time);
   }
@@ -4649,9 +4786,13 @@ const HUD = (() => {
     $("mp-fill").style.width = (me.mp / me.maxMp) * 100 + "%";
     $("mp-text").textContent = `MP ${Math.floor(me.mp)} / ${me.maxMp}`;
 
-    const sk = DATA.skills[DATA.classes[me.cls].skill];
-    $("skill-cd").style.setProperty("--cd", Math.max(0, me.skillCd) / sk.cd);
-    $("skill").classList.toggle("locked", me.dead || me.skillCd > 0 || me.mp < sk.mp);
+    (DATA.classes[me.cls].skills || []).forEach((key, i) => {
+      const sk = DATA.skills[key], el = $(i ? "skill" + (i + 1) : "skill"); if (!el) return;
+      const cd = (me.cds && me.cds[i]) || 0;
+      el.querySelector(".skill-cd").style.setProperty("--cd", Math.max(0, cd) / sk.cd);
+      el.classList.toggle("locked", me.dead || cd > 0 || me.mp < sk.mp);
+      el.classList.toggle("active", key === "haste" && st.tick < (me.hasteUntil || 0));
+    });
 
     $("recall").classList.toggle("recalling", !!me.recall);
     { const t = me.recall ? `กลับฐาน ${me.recall.t.toFixed(1)}` : "กลับฐาน", el = $("recall"), last = el.lastChild;
@@ -4725,7 +4866,7 @@ function recall() {
         const p = sc.input.activePointer, [tx, ty] = sc.pointerTile(p);
         sc.rotPick = sc.buildRot(tx, ty) ? 0 : 1;
         Toast.show(sc.rotPick ? "ประตูแนวตั้ง (1×2)" : "ประตูแนวนอน (2×1)");
-      }
+      } else Input.queueSkill(2);
       return;
     }
     if (kind === "esc") {
@@ -4742,8 +4883,8 @@ function recall() {
     if (kind === "touch") keysHint.textContent = "ลากนิ้วฝั่งซ้ายเพื่อเดิน · ยืนติดต้นไม้เพื่อเก็บไม้ · ปุ่มสร้างอยู่ขวาล่าง";
     if (!fadeQueued) { fadeQueued = true; setTimeout(() => hint.classList.add("faded"), 4000); }
   });
-  document.getElementById("skill").addEventListener("click", (e) => {
-    Input.queueSkill();
+  for (const id of ["skill", "skill2", "skill3"]) document.getElementById(id).addEventListener("click", (e) => {
+    Input.queueSkill(+e.currentTarget.dataset.slot);
     e.currentTarget.blur();
     try { document.getElementById("game").focus({ preventScroll: true }); } catch (_) {}
   });
