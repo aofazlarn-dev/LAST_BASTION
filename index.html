@@ -3281,6 +3281,34 @@ function artUi() {
 class GameScene extends Phaser.Scene {
   constructor() { super("game"); }
 
+  /* ท่าทางจากภาพนิ่ง (ยังไม่มีเฟรมอนิเมชัน): เดินโยกตัว ยืดหดตามก้าว, หายใจตอนยืน, โน้มตัวตอนโจมตี,
+     สับขวานตอนเก็บของ, กระพือปีกตอนบิน, โดนตีกระพริบแดง · หมุนรอบเท้าเพราะจุดหมุนอยู่ที่เท้า */
+  pose(v, o) {
+    const b = v.body, t = o.time, ph = o.phase || 0, dir = b.flipX ? -1 : 1;
+    // จับจังหวะโจมตีจากค่าคูลดาวน์ที่เพิ่งรีเซ็ต
+    if (o.cd != null) { if (v.lastCd != null && o.cd > v.lastCd + 0.02) v.atk = 1; v.lastCd = o.cd; }
+    v.atk = Math.max(0, (v.atk || 0) - (o.dt || 16) / 260);
+    const a = v.atk, ease = a * a * (3 - 2 * a);
+    let rot = 0, sx = 1, sy = 1;
+    if (o.moving) {
+      const w = Math.sin(t / (o.fast ? 52 : 85) + ph);
+      rot = w * (o.fast ? 0.05 : 0.08);
+      sy = 1 + Math.abs(w) * 0.07; sx = 1 - Math.abs(w) * 0.04;
+    } else {
+      sy = 1 + Math.sin(t / 520 + ph) * 0.025; sx = 1 - Math.sin(t / 520 + ph) * 0.012;
+    }
+    if (o.gather) rot = Math.max(0, Math.sin(t / 75 + ph)) * 0.22 * dir;
+    if (o.fly) { const f = Math.sin(t / 48 + ph); sy *= 1 + f * 0.1; sx *= 1 - f * 0.03; }
+    if (a > 0) {   // โจมตี: ง้างถอยหลังก่อน แล้วโน้มไปข้างหน้า
+      const k = a > 0.7 ? -(1 - a) / 0.3 * 0.5 : ease;
+      rot += dir * k * (o.heavy ? 0.3 : 0.2); sx *= 1 + ease * 0.12; sy *= 1 - ease * 0.06;
+    }
+    const fl = v.flash || 0;
+    b.rotation = rot;
+    b.setScale(v.baseScale * sx * (1 + fl * 0.12), v.baseScale * sy * (1 + fl * 0.12));
+    if (fl > 0.05) b.setTint(0xff7a6a); else if (v.tint) b.setTint(v.tint); else b.clearTint();
+  }
+
   // เอฟเฟกต์ภาพจริงแบบขยายแล้วจางหาย
   puff(name, x, y, o) {
     if (!ART_OK.has(name)) return null;
@@ -3919,14 +3947,19 @@ class GameScene extends Phaser.Scene {
       const x = u.px + (u.x - u.px) * a, y = u.py + (u.y - u.py) * a;
       v.root.setPosition(x, y).setDepth(y + 8).setVisible(!u.hidden && this.visibleAt(x, y));
       const ub = u.moving ? Math.sin(time / 60 + u.id) * 1.5 : 0;
-      if (v.art) { const c = Math.cos(u.face); if (Math.abs(c) > 0.2) v.body.flipX = c < 0; v.body.y = 9 + ub; }
+      if (v.art) {
+        const c = Math.cos(u.face); if (Math.abs(c) > 0.2) v.body.flipX = c < 0; v.body.y = 9;
+        v.baseScale = v.body.base; v.flash = Math.max(0, (v.flash || 0) - 0.1);
+        this.pose(v, { time, dt: this.game.loop.delta, moving: u.moving, gather: u.job === "gather", cd: u.atkCd, phase: u.id, heavy: u.type === "swordsman" });
+      }
       else { v.body.rotation = Phaser.Math.Angle.RotateTo(v.body.rotation, u.face, 0.3); v.body.y = ub; }
-      if (u.job === "gather") v.body.x = Math.sin(time / 90) * 2; else v.body.x = 0;
+      if (!v.art) { if (u.job === "gather") v.body.x = Math.sin(time / 90) * 2; else v.body.x = 0; }
       if (u.type === "worker" && v.art) {
         const want = u.carry > 0 ? (u.carryType === "stone" ? "worker_stone" : "worker_wood") : "worker";
-        if (v.carry !== want) { v.carry = want; const fx = v.body.flipX; this.skin(v.body, ART_OK.has(want) ? want : "worker", { h: 36, oy: 0.95 }); v.body.flipX = fx; }
+        if (v.carry !== want) { v.carry = want; const fx = v.body.flipX; this.skin(v.body, ART_OK.has(want) ? want : "worker", { h: 36, oy: 0.95 }); v.body.flipX = fx; v.baseScale = v.body.base; }
       } else if (u.type === "worker") v.load.setVisible(u.carry > 0).setTexture(u.carryType === "stone" ? "pebbles" : "stump");
       if (u.type === "swordsman" && u.lunge) { v.body.x = Math.cos(u.face) * u.lunge * 5; u.lunge = Math.max(0, u.lunge - 0.15); }
+      else if (v.art) v.body.x = 0;
       v.x = x; v.y = y;
     }
     for (const [id, v] of this.unitViews) if (!seen.has(id)) { v.root.destroy(); this.unitViews.delete(id); }
@@ -4017,11 +4050,12 @@ class GameScene extends Phaser.Scene {
       if (e.type === "hit") {
         if (e.toHero) {
           this.popText(e.x, e.y, "-" + e.amount, "#ff7a66", 15);
+          { const hv = this.heroViews.get(e.id); if (hv) hv.flash = 1; const uv = this.unitViews.get(e.id); if (uv) uv.flash = 1; }
           if (e.id === this.state.heroes[0].id) this.cameras.main.shake(90, 0.003);
         } else if (this.visibleAt(e.x, e.y)) {
           this.popText(e.x + (Math.random() - 0.5) * 10, e.y, e.crit ? e.amount + "!" : String(e.amount), e.crit ? "#ffd166" : "#efe8d2", e.crit ? 19 : 14);
           const v = this.monViews.get(e.id);
-          if (v) v.flash = 1;
+          if (v) { v.flash = 1; v.kb = 1; }
           this.puff("fx_hit", e.x + (Math.random() - 0.5) * 8, e.y - 8, { w: e.crit ? 34 : 22, dur: 220, from: 0.5, to: 1.1 });
         }
       } else if (e.type === "death" && e.kind === "monster") {
@@ -4029,6 +4063,12 @@ class GameScene extends Phaser.Scene {
         if (v) {
           this.monViews.delete(e.id);
           if (e.burn) { this.puff("fx_sunburn", v.root.x, v.root.y - 6, { w: 46, dur: 900, from: 0.6, to: 1.2, dy: -14 }); v.body.setAlpha(0.8); this.tweens.add({ targets: v.root, alpha: 0, y: v.root.y - 16, duration: 900, onComplete: () => v.root.destroy() }); }
+          else if (v.art && !e.blast) {   // ล้มลงไปทางด้านหลังแล้วจางหาย
+            const dir = v.body.flipX ? 1 : -1;
+            v.body.setTint(0xb0a090);
+            this.tweens.add({ targets: v.body, rotation: dir * 1.45, y: v.body.y - 2, duration: 320, ease: "Quad.easeIn" });
+            this.tweens.add({ targets: v.root, alpha: 0, delay: 380, duration: 420, onComplete: () => v.root.destroy() });
+          }
           else this.tweens.add({ targets: v.root, alpha: 0, scale: 0.4, duration: 260, onComplete: () => v.root.destroy() });
         }
       } else if (e.type === "death" && e.kind === "building") {
@@ -4150,23 +4190,26 @@ class GameScene extends Phaser.Scene {
         const am = artMon(m.type);
         const art = !!am && this.skin(body, am.name, { m: m.r * 3.6 * def.size, oy: m.fly ? 0.6 : 0.92, tint: am.tint });
         root.add([shadow, body]);
-        v = { root, body, flash: 0, def, art, foot: m.fly ? -6 : m.r * def.size * 0.6 + 4 };
+        v = { root, body, flash: 0, def, art, foot: m.fly ? -6 : m.r * def.size * 0.6 + 4, baseScale: body.base || 1, tint: am && am.tint, kb: 0 };
         this.monViews.set(m.id, v);
       }
       const x = m.px + (m.x - m.px) * a, y = m.py + (m.y - m.py) * a;
       const vis = this.visibleAt(x, y);
       v.root.setVisible(vis);
       if (!vis) continue;
-      v.root.setPosition(x + Math.cos(m.face) * m.lunge * 7, y + Math.sin(m.face) * m.lunge * 7).setDepth(y + 5);
+      v.kb = Math.max(0, (v.kb || 0) - 0.12);
+      v.root.setPosition(x + Math.cos(m.face) * (m.lunge * 7 - v.kb * 5), y + Math.sin(m.face) * (m.lunge * 7 - v.kb * 5)).setDepth(y + 5);
       if (v.art) { const c = Math.cos(m.face); if (Math.abs(c) > 0.15) v.body.flipX = c < 0; v.body.y = v.foot; }
       else v.body.rotation = Phaser.Math.Angle.RotateTo(v.body.rotation, m.face, 0.25);
       if (!this.seenTypes.has(m.type)) Bestiary.see(m.type);
       if (m.fly) v.body.y = (v.art ? v.foot : -10) + Math.sin(time / 120 + m.id) * 3;
       const fast = m.arch === "runner" || m.arch === "exploder";
       const wob = m.moving ? Math.sin(time / (fast ? 45 : 110) + m.id) * (fast ? 0.06 : 0.1) : m.arch === "exploder" ? Math.sin(time / 60) * 0.05 : 0;
-      const bs = v.body.base || 1;
-      v.body.setScale(bs * (1 + v.flash * 0.18), bs * (1 + wob + v.flash * 0.18));
-      v.body.setAlpha(1 - v.flash * 0.45);
+      if (v.art) this.pose(v, { time, dt: this.game.loop.delta, moving: m.moving, fast, fly: m.fly, cd: m.atkCd, phase: m.id, heavy: m.arch === "brute" || m.boss });
+      else {
+        v.body.setScale(1 + v.flash * 0.18, 1 + wob + v.flash * 0.18);
+        v.body.setAlpha(1 - v.flash * 0.45);
+      }
       v.flash = Math.max(0, v.flash - 0.12);
       v.x = x; v.y = y;
     }
@@ -4308,9 +4351,14 @@ class GameScene extends Phaser.Scene {
       const aim = hero.aimUntil > this.state.tick ? hero.aim : hero.face;
       view.bow.rotation = Phaser.Math.Angle.RotateTo(view.bow.rotation, aim, 0.4);
       const bob = hero.moving ? Math.sin(time / 70) * 2 : 0;
-      if (view.art) { const c = Math.cos(aim); if (Math.abs(c) > 0.2) view.body.flipX = c < 0; view.body.y = 14 + bob; }
+      if (view.art) {
+        const c = Math.cos(aim); if (Math.abs(c) > 0.2) view.body.flipX = c < 0;
+        view.baseScale = view.baseScale || view.body.base; view.body.y = 14;
+        view.flash = Math.max(0, (view.flash || 0) - 0.1);
+        this.pose(view, { time, dt: delta, moving: hero.moving, gather: hero.gathering >= 0, cd: hero.atkCd });
+      }
       else { view.body.y = bob; view.bow.y = bob; }
-      view.body.x = hero.gathering >= 0 ? Math.sin(time / 80) * 2 : 0;
+      if (!view.art) view.body.x = hero.gathering >= 0 ? Math.sin(time / 80) * 2 : 0;
     }
     this.syncMonsters(a, time);
     this.syncUnits(a, time);
