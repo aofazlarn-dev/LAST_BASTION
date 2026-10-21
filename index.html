@@ -769,7 +769,8 @@ const DATA = {
     unitWeapon: { name: "อาวุธทหาร", note: "พลังโจมตีพลธนูและนักดาบ", max: 5, per: 0.25, cost: { wood: 40, stone: 15 } },
     unitArmor: { name: "เกราะทหาร", note: "พลังชีวิตและป้องกันของยูนิตทั้งหมด", max: 5, per: 0.25, cost: { wood: 40, stone: 18 } },
   },
-  worker: { name: "คนงาน", cost: { wood: 15 }, max: 6, hp: 40, spd: 120, r: 9, carry: 8, gatherSec: 0.6, range: 19, flee: 4, avoid: 5, vision: 4 },
+  worker: { name: "คนงาน", cost: { wood: 15 }, max: 6, hp: 40, spd: 120, r: 9, carry: 8, gatherSec: 0.6, range: 19, farRange: [28, 38], flee: 4, avoid: 5, vision: 4,
+    regrow: { tree: 0.5, rock: 0.3, keepOut: 3 } },   // รอบค่ายหมดค่อยออกไปไกลขึ้น · ตอนเช้าต้นไม้/หินงอกใหม่บางส่วน (ไม่งอกในเขตค่าย)
   cycle: { daySec: 240, nightSec: 120, warnSec: 30, nights: 5, skipTo: 10 },   // กลางวัน 4 นาที กลางคืน 2 นาที
   waves: {
     count: [3, 4, 5, 5, 6],             // จำนวนเวฟในแต่ละคืน (คืนหลังจากนี้ใช้ค่าสุดท้าย)
@@ -1614,6 +1615,7 @@ const Core = (() => {
       giveExp(st, st.camp.team, DATA.levels.nightBonus * st.day);
       st.day++; st.clock = 0; st.wave = null; st.nightPlan = null;
       st.events.push({ type: "dawn", day: st.day });
+      regrowResources(st);
       if (st.day > C.nights && !st.endless && !st.result) { st.result = "win"; st.events.push({ type: "result", result: "win" }); }
     }
   }
@@ -2137,6 +2139,28 @@ const Core = (() => {
     return best;
   }
 
+  // รุ่งเช้า: ตอไม้/เศษหินที่ถูกเก็บไปแล้ว งอกกลับมาบางส่วน (นอกเขตค่าย ไม่ขวางทางเดินหรือสิ่งก่อสร้าง)
+  function regrowResources(st) {
+    if (!st.regrow || !st.regrow.length) return;
+    const N = st.map.n, S = DATA.tile, c = N / 2, G = DATA.worker.regrow, keep = [];
+    const out = buildRadius(st, 1) + G.keepOut;
+    let changed = false;
+    for (const r of st.regrow) {
+      if (r.day >= st.day) { keep.push(r); continue; }
+      const x = r.idx % N, y = (r.idx / N) | 0;
+      if (Math.hypot(x + 0.5 - c, y + 0.5 - c) < out || st.map.t[r.idx] !== T.GRASS) continue;
+      if (rand(st) >= (G[r.kind] || 0)) { keep.push(r); continue; }
+      let near = false;
+      for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1; dx++) { const k = tileAt(st, x + dx, y + dy); if (k === T.BUILD || k === T.GATE || k === T.CAMP) { near = true; break; } }
+      const px = (x + 0.5) * S, py = (y + 0.5) * S, hit = (e) => !e.dead && Math.abs(e.x - px) < S && Math.abs(e.y - py) < S;
+      if (near || st.heroes.some(hit) || st.units.some(hit) || st.monsters.some(hit)) { keep.push(r); continue; }
+      st.map.t[r.idx] = r.kind === "tree" ? T.TREE : T.ROCK; delete st.resLeft[r.idx];
+      st.events.push({ type: "regrow", idx: r.idx, kind: r.kind }); changed = true;
+    }
+    st.regrow = keep;
+    if (changed) st.mapVersion++;
+  }
+
   function harvest(st, idx, amount) {
     const kind = resourceKind(st, idx);
     if (!kind) return { res: null, got: 0, cleared: true };
@@ -2144,6 +2168,7 @@ const Core = (() => {
     const left = st.resLeft[idx] ?? def.amount, got = Math.min(amount, left);
     if (left - got <= 0) {
       st.map.t[idx] = T.GRASS; delete st.resLeft[idx]; delete st.claims[idx];
+      (st.regrow || (st.regrow = [])).push({ idx, kind, day: st.day });
       st.mapVersion++;
       st.events.push({ type: "cleared", idx, kind });
       return { res: def.give, got, cleared: true };
@@ -2171,7 +2196,11 @@ const Core = (() => {
   }
 
   function findResource(st, u, kind) {
-    const N = st.map.n, S = DATA.tile, c = N / 2, R = DATA.worker.range;
+    for (const R of [DATA.worker.range, ...DATA.worker.farRange]) { const i = findResourceIn(st, u, kind, R); if (i >= 0) return i; }
+    return -1;
+  }
+  function findResourceIn(st, u, kind, R) {
+    const N = st.map.n, S = DATA.tile, c = N / 2;
     const lim = (R + DATA.worker.avoid + 2) * S;
     const danger = st.monsters.filter((m) => !m.dead && Math.abs(m.x - st.camp.x) < lim && Math.abs(m.y - st.camp.y) < lim);
     let best = -1, bd = Infinity;
@@ -2383,8 +2412,9 @@ const Core = (() => {
         if (idx < 0) idx = findResource(st, u, want === "tree" ? "rock" : "tree");
         if (idx < 0) {
           u.wait = 40;
-          if (st.tick - (st.stuckWarn || -9999) > 600 && st.badRes && Object.values(st.badRes).some((t) => t > st.tick)) {
-            st.stuckWarn = st.tick; st.events.push({ type: "workersStuck", team: u.team });
+          if (st.tick - (st.stuckWarn || -9999) > 600) {
+            st.stuckWarn = st.tick;
+            st.events.push({ type: st.badRes && Object.values(st.badRes).some((t) => t > st.tick) ? "workersStuck" : "noResource", team: u.team });
           }
           continue;
         }
@@ -3923,8 +3953,20 @@ class GameScene extends Phaser.Scene {
           this.tileImgs.delete(e.idx);
           const N = this.state.map.n, S = DATA.tile, x = (e.idx % N + 0.5) * S, y = (((e.idx / N) | 0) + 0.5) * S;
           this.tweens.add({ targets: img, alpha: 0, duration: 250, onComplete: () => img.destroy() });
-          this.statics.push(this.add.image(x, y + 6, e.kind === "tree" ? "stump" : "pebbles").setDepth(-2e6));
+          const st = this.add.image(x, y + 6, e.kind === "tree" ? "stump" : "pebbles").setDepth(-2e6);
+          this.statics.push(st); (this.stumps || (this.stumps = new Map())).set(e.idx, st);
         }
+      } else if (e.type === "regrow") {
+        const N = this.state.map.n, S = DATA.tile, x = (e.idx % N) * S, y = ((e.idx / N) | 0) * S;
+        const old = this.stumps && this.stumps.get(e.idx);
+        if (old) { this.stumps.delete(e.idx); old.setAlpha(0); }
+        const img = e.kind === "tree"
+          ? this.add.image(x + S / 2, y + S - 2, e.idx % 2 ? "tree0" : "tree1").setOrigin(0.5, 52 / 56).setDepth(y + S)
+          : this.add.image(x + S / 2, y + S - 2, "boulder").setOrigin(0.5, 28 / 32).setDepth(y + S);
+        this.tileImgs.set(e.idx, img); this.statics.push(img);
+        img.setScale(0.3); this.tweens.add({ targets: img, scale: 1, duration: 600, ease: "Back.easeOut" });
+      } else if (e.type === "noResource" && e.team === this.team) {
+        Banner.show("ไม้และหินรอบค่ายหมดแล้ว · คนงานรอต้นไม้งอกใหม่ตอนเช้า หรือ Hero ออกไปเก็บเอง", "warn");
       } else if (e.type === "skill") {
         const h = this.state.heroes[0];
         const ring = this.add.graphics().setPosition(h.x, h.y).setDepth(h.y + 5);
