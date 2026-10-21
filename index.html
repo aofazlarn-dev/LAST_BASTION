@@ -1014,6 +1014,16 @@ const Core = (() => {
     b.def = L.def || D.def || 2;
     if (b.type === "tower") { b.atk = D.atk * (L.atkMul || 1); b.as = D.as * (L.asMul || 1); b.rng = D.rng + (L.rngAdd || 0); }
   }
+  function startLevel(st, team, type) {
+    const D = DATA.buildings[type];
+    return D.levels && type !== "camp" ? Math.min(D.maxLv || 1, campLevel(st, team)) : 1;
+  }
+  // ราคาสร้าง = ราคาเลเวล 1 + ราคาอัปเกรดจนถึงเลเวลเริ่มต้น
+  function buildCost(st, team, type) {
+    const D = DATA.buildings[type], lv = startLevel(st, team, type), out = { ...D.cost };
+    for (let i = 1; i < lv; i++) for (const k in D.levels[i].cost) out[k] = (out[k] || 0) + D.levels[i].cost[k];
+    return out;
+  }
   function campOf(st, team) { return st.buildings.find((b) => b.type === "camp" && b.team === team); }
   function campLevel(st, team) { const c = campOf(st, team); return c ? c.lv : 1; }
   function popCap(st, team) { return DATA.buildings.camp.levels[campLevel(st, team) - 1].pop; }
@@ -1959,8 +1969,11 @@ const Core = (() => {
     if (cmd.type === "build") {
       const err = canBuild(st, h.team, cmd.kind, cmd.tx, cmd.ty);
       if (err) return err;
-      pay(st.stock[h.team], DATA.buildings[cmd.kind].cost);
-      const b = makeBuilding(st, cmd.kind, h.team, cmd.tx, cmd.ty, 1);
+      pay(st.stock[h.team], buildCost(st, h.team, cmd.kind));
+      const b = makeBuilding(st, cmd.kind, h.team, cmd.tx, cmd.ty);
+      // สร้างใหม่ได้เลเวลเท่าบ้านหลัก (ไม่เกินเลเวลสูงสุดของอาคารนั้น)
+      const lv = startLevel(st, h.team, cmd.kind);
+      if (lv > 1) { b.lv = lv; applyLevel(b); b.hp = b.maxHp; }
       st.buildings.push(b);
       st.mapVersion++;
       st.events.push({ type: "built", id: b.id, x: b.x, y: b.y });
@@ -2061,7 +2074,7 @@ const Core = (() => {
       return (e.x - nx) ** 2 + (e.y - ny) ** 2 < (e.r + 1) ** 2;
     };
     if (st.heroes.some((e) => !e.dead && touches(e)) || st.units.some(touches) || st.monsters.some(touches)) return "occupied";
-    if (!afford(st.stock[team], b.cost)) return "cost";
+    if (!afford(st.stock[team], buildCost(st, team, type))) return "cost";
     return null;
   }
 
@@ -2472,7 +2485,7 @@ const Core = (() => {
   }
 
   return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, afford, phase, expToNext, repairCost, freeSpot,
-    popCap, popUsed, upgradeCost, buildingName, buildRadius, researchCost, campLevel };
+    popCap, popUsed, upgradeCost, buildingName, buildRadius, researchCost, campLevel, startLevel, buildCost };
 })();
 
 /* ===== input/ : คีย์บอร์ดและจอสัมผัส → เวกเตอร์เดิน ===== */
@@ -3105,7 +3118,13 @@ const Build = (() => {
       const sc0 = scene(), clv = sc0 ? Core.campLevel(sc0.state, sc0.team) : 1;
       for (const b of dock.querySelectorAll("[data-build]")) {
         const D = DATA.buildings[b.dataset.build], locked = D.needCamp && clv < D.needCamp;
-        b.classList.toggle("poor", !Core.afford(stock, D.cost));
+        const cost = sc0 ? Core.buildCost(sc0.state, sc0.team, b.dataset.build) : D.cost;
+        b.querySelector(".cost").textContent = costText(cost);
+        b.classList.toggle("poor", !Core.afford(stock, cost));
+        if (D.levels) {
+          const lv = sc0 ? Core.startLevel(sc0.state, sc0.team, b.dataset.build) : 1;
+          b.querySelector("b").textContent = `${D.levels[lv - 1].name || D.name}${lv > 1 ? " Lv " + lv : ""}`;
+        }
         b.classList.toggle("locked", !!locked); b.disabled = !!locked;
         if (locked) b.querySelector(".note").textContent = `ต้องมีบ้านหลัก Lv ${D.needCamp}`;
         else if (D.needCamp) b.querySelector(".note").textContent = { barracks: "จ้างพลธนู นักดาบ", infirmary: "จ้างหมอรักษาคนเจ็บ", workshop: "พัฒนาอาวุธ Hero และทหาร" }[b.dataset.build];
