@@ -541,7 +541,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 <div class="build-dock">
   <div class="build-menu hud" id="build-menu" hidden>
     <button type="button" class="build-item" data-build="wall"><b>กำแพงไม้</b><span class="cost"></span><span class="note">ลากเพื่อวางต่อกัน</span></button>
-    <button type="button" class="build-item" data-build="gate"><b>ประตูไม้</b><span class="cost"></span><span class="note">คนงานผ่านได้ Monster ผ่านไม่ได้</span></button>
+    <button type="button" class="build-item" data-build="gate"><b>ประตูไม้</b><span class="cost"></span><span class="note">วางทับกำแพงได้ · คนงานผ่าน Monster ไม่ผ่าน</span></button>
     <button type="button" class="build-item" data-build="tower"><b>ป้อมธนู</b><span class="cost"></span><span class="note">ยิง Monster เอง</span></button>
     <button type="button" class="build-item" data-build="barracks"><b>ค่ายทหาร</b><span class="cost"></span><span class="note">จ้างพลธนู นักดาบ</span></button>
     <button type="button" class="build-item" data-build="infirmary"><b>สถานพยาบาล</b><span class="cost"></span><span class="note">จ้างหมอรักษาคนเจ็บ</span></button>
@@ -1257,6 +1257,7 @@ const Core = (() => {
     const roll = 0.9 + rand(st) * 0.2;
     const amount = Math.max(1, Math.round((base * mul * (crit ? 2 : 1) - target.def * 0.5) * roll));
     target.hp -= amount;
+    if (attacker.kind === "monster" && target.team && (target.kind === "building" || Math.hypot(target.x - st.camp.x, target.y - st.camp.y) < (buildRadius(st, target.team) + 1) * DATA.tile)) attacker.raidT = st.tick;
     if (target.kind === "hero") { target.lastHurt = st.tick; if (target.recall) { target.recall = null; st.events.push({ type: "recallBroken", id: target.id }); } }
     if (target.kind === "unit") target.lastHurt = st.tick;
     if (target.kind === "monster" && !target.target && (attacker.kind === "hero" || attacker.kind === "unit")) { target.target = attacker.id; target.mode = "chase"; }
@@ -1365,6 +1366,7 @@ const Core = (() => {
   const MONSTER_SHIM = { kind: "monster", team: 0, crit: 0 };
 
   function fireBolt(st, m, b, tgt, dmg) {
+    if (tgt.team && (tgt.kind === "building" || Math.hypot(tgt.x - st.camp.x, tgt.y - st.camp.y) < (buildRadius(st, tgt.team) + 1) * DATA.tile)) m.raidT = st.tick;
     st.bolts.push({ id: st.nextId++, x: m.x, y: m.y - 8, px: m.x, py: m.y - 8, tid: tgt.id, dmg, spd: b.bolt || 280, life: 3, type: m.type });
   }
   function stepBolts(st, dt) {
@@ -1974,13 +1976,16 @@ const Core = (() => {
       const err = canBuild(st, h.team, cmd.kind, cmd.tx, cmd.ty);
       if (err) return err;
       pay(st.stock[h.team], buildCost(st, h.team, cmd.kind));
+      const old = cmd.kind === "gate" ? wallAt(st, h.team, cmd.tx, cmd.ty) : null;
+      if (old) removeBuilding(st, old);   // ประตูทับกำแพงเดิม
       const b = makeBuilding(st, cmd.kind, h.team, cmd.tx, cmd.ty);
-      // สร้างใหม่ได้เลเวลเท่าบ้านหลัก (ไม่เกินเลเวลสูงสุดของอาคารนั้น)
-      const lv = startLevel(st, h.team, cmd.kind);
+      // สร้างใหม่ได้เลเวลเท่าบ้านหลัก (ไม่เกินเลเวลสูงสุดของอาคารนั้น) ถ้าทับกำแพงได้เลเวลเท่ากำแพงเดิมเป็นอย่างน้อย
+      const lv = Math.min(DATA.buildings.gate.levels ? DATA.buildings.gate.levels.length : 9, Math.max(startLevel(st, h.team, cmd.kind), old ? old.lv || 1 : 1));
       if (lv > 1) { b.lv = lv; applyLevel(b); b.hp = b.maxHp; }
       st.buildings.push(b);
       st.mapVersion++;
       st.events.push({ type: "built", id: b.id, x: b.x, y: b.y });
+      if (b.type === "gate" && !gateOpen(st, h.team, cmd.tx, cmd.ty)) st.events.push({ type: "gateBlocked", team: h.team, x: b.x, y: b.y });
       return true;
     }
     if (cmd.type === "repair") {
@@ -2071,7 +2076,7 @@ const Core = (() => {
     const R = buildRadius(st, team);
     for (let y = ty; y < ty + size; y++) for (let x = tx; x < tx + size; x++) {
       if (Math.hypot(x + 0.5 - N / 2, y + 0.5 - N / 2) > R) return "far";
-      if (st.map.t[y * N + x] !== T.GRASS) return "blocked";
+      if (st.map.t[y * N + x] !== T.GRASS && !(type === "gate" && wallAt(st, team, x, y))) return "blocked";
     }
     const x0 = tx * S, y0 = ty * S, w = size * S;
     const touches = (e) => {
@@ -2081,6 +2086,18 @@ const Core = (() => {
     if (st.heroes.some((e) => !e.dead && touches(e)) || st.units.some(touches) || st.monsters.some(touches)) return "occupied";
     if (!afford(st.stock[team], buildCost(st, team, type))) return "cost";
     return null;
+  }
+
+  // กำแพงของทีมนี้ที่ช่องนี้ (ใช้วางประตูทับ)
+  function wallAt(st, team, tx, ty) {
+    const i = ty * st.map.n + tx;
+    if (st.map.t[i] !== T.BUILD) return null;
+    const w = st.buildings.find((e) => e.id === st.buildAt[i]);
+    return w && w.type === "wall" && w.team === team && !w.dead ? w : null;
+  }
+  // ประตูต้องมีทางเดินทะลุได้ ซ้าย-ขวา หรือ บน-ล่าง ไม่งั้นเป็นประตูตัน
+  function gateOpen(st, team, tx, ty) {
+    return withTeam(team, () => (walkable(st, tx - 1, ty) && walkable(st, tx + 1, ty)) || (walkable(st, tx, ty - 1) && walkable(st, tx, ty + 1)));
   }
 
   function removeBuilding(st, b) {
@@ -2181,7 +2198,8 @@ const Core = (() => {
   // Monster ที่กำลังบุกค่าย (อยู่ในเขตป้องกัน)
   function raidersNear(st, team, extra) {
     const R = (buildRadius(st, team) + extra) * DATA.tile;
-    return st.monsters.filter((m) => !m.dead && Math.hypot(m.x - st.camp.x, m.y - st.camp.y) < R);
+    // เฉพาะศัตรูที่มาทำลายค่าย: Monster เวฟบุก หรือตัวที่เพิ่งตีสิ่งก่อสร้าง/คนในค่าย
+    return st.monsters.filter((m) => !m.dead && (m.wave || st.tick - (m.raidT || -9999) < 200) && Math.hypot(m.x - st.camp.x, m.y - st.camp.y) < R);
   }
 
   function soldierAttack(st, u, tgt, dt) {
@@ -2293,6 +2311,38 @@ const Core = (() => {
     else moveTowards(st, u, home.x + Math.cos(u.id) * 30, home.y + home.r + 16, dt, u.spd);
   }
 
+  // จุดที่ใกล้ (x,y) ที่สุดซึ่งคนงานเดินไปถึงได้จริง (BFS จากตัวคนงาน) ใช้เมื่อหาทางไปประตูค่ายไม่เจอ
+  function nearestReachable(st, u, x, y) {
+    const N = st.map.n, S = DATA.tile, seen = new Uint8Array(N * N), q = new Int32Array(N * N);
+    const sx = Math.floor(u.x / S), sy = Math.floor(u.y / S), gx = x / S - 0.5, gy = y / S - 0.5;
+    let head = 0, tail = 0, best = sy * N + sx, bd = Infinity;
+    seen[best] = 1; q[tail++] = best;
+    withTeam(u.team, () => {
+      while (head < tail) {
+        const i = q[head++], tx = i % N, ty = (i / N) | 0, d = (tx - gx) ** 2 + (ty - gy) ** 2;
+        if (d < bd) { bd = d; best = i; }
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = tx + dx, ny = ty + dy, ni = ny * N + nx;
+          if (nx < 1 || ny < 1 || nx >= N - 1 || ny >= N - 1 || seen[ni] || !walkable(st, nx, ny)) continue;
+          seen[ni] = 1; q[tail++] = ni;
+        }
+      }
+    });
+    return { x: (best % N + 0.5) * S, y: (((best / N) | 0) + 0.5) * S };
+  }
+  // วางเส้นทางกลับค่าย: ไปประตูค่ายก่อน ถ้าไปไม่ได้ (ประตูตัน/ถูกล้อม) ไปจุดที่ใกล้ค่ายที่สุดแทน และเตือนผู้เล่น
+  function goHome(st, u, door) {
+    if (st.tick < (u.repathAt || 0)) return;
+    u.repathAt = st.tick + 15;
+    u.home = null;
+    u.path = planPath(st, u, door.x, door.y);
+    if (u.path) return;
+    u.home = nearestReachable(st, u, st.camp.x, st.camp.y);
+    u.path = planPath(st, u, u.home.x, u.home.y);
+    if (st.tick - (st.gateWarn || -9999) > 600) { st.gateWarn = st.tick; st.events.push({ type: "workersStuck", team: u.team, gate: true }); }
+  }
+  const homeOf = (u, door) => u.home || door;
+
   function stepUnits(st, dt) {
     const S = DATA.tile, W = DATA.worker, door = campDoor(st, 1);
     for (const u of st.units) {
@@ -2304,30 +2354,30 @@ const Core = (() => {
       // ใกล้ค่ำหรือกลางคืน: กลับไปหลบในกระโจม
       if (st.wave) {
         if (u.job !== "shelter") {
-          releaseClaim(st, u); u.job = "shelter"; u.path = planPath(st, u, door.x, door.y);
+          releaseClaim(st, u); u.job = "shelter"; u.repathAt = 0; goHome(st, u, door);
         }
         if (!u.hidden) {
-          const d = Math.hypot(u.x - door.x, u.y - door.y);
+          const hp = homeOf(u, door), d = Math.hypot(u.x - hp.x, u.y - hp.y);
           if (d < 40) {
             if (u.carry > 0) { stock[u.carryType] = (stock[u.carryType] || 0) + u.carry; st.events.push({ type: "gain", x: u.x, y: u.y - 14, res: u.carryType, n: u.carry, team: u.team }); u.carry = 0; }
             u.hidden = true; u.path = null;
-          } else if (followPath(st, u, dt, u.spd * 1.15) !== "moving") u.path = planPath(st, u, door.x, door.y);
+          } else if (followPath(st, u, dt, u.spd * 1.15) !== "moving") goHome(st, u, door);
         }
         continue;
       }
-      if (u.job === "shelter") { u.job = "seek"; u.hidden = false; placeAt(u, door); u.wait = 0; }
+      if (u.job === "shelter") { u.job = "seek"; u.hidden = false; placeAt(u, u.home && freeSpot(st, u.home.x, u.home.y, u.r, u.team) || door); u.home = null; u.wait = 0; }
       const threat = st.monsters.some((m) => !m.dead && Math.hypot(m.x - u.x, m.y - u.y) < (m.arch === "ranged" ? W.flee + 3 : m.fly ? W.flee + 1 : W.flee) * S) || st.tick - (u.lastHurt || -999) < 20;
       if (threat && u.job !== "flee") {
         if (u.res >= 0) (st.badRes || (st.badRes = {}))[u.res] = st.tick + 400;   // จำว่าจุดนี้อันตราย
-        releaseClaim(st, u); u.job = "flee"; u.path = planPath(st, u, door.x, door.y);
+        releaseClaim(st, u); u.job = "flee"; u.repathAt = 0; goHome(st, u, door);
       }
       if (u.wait > 0) { u.wait--; continue; }
       if (u.job === "flee") {
         const r = followPath(st, u, dt, u.spd * 1.15);
         if (r !== "moving" && !threat) u.job = u.carry > 0 ? "return" : "seek";
-        else if (r === "stuck" || (r === "none" && Math.hypot(u.x - door.x, u.y - door.y) > 60)) u.path = planPath(st, u, door.x, door.y);
+        else if (r === "stuck" || (r === "none" && Math.hypot(u.x - homeOf(u, door).x, u.y - homeOf(u, door).y) > 60)) goHome(st, u, door);
       } else if (u.job === "seek") {
-        if (u.carry > 0) { u.job = "return"; u.path = planPath(st, u, door.x, door.y); continue; }
+        if (u.carry > 0) { u.job = "return"; u.repathAt = 0; goHome(st, u, door); continue; }
         const want = stock.wood <= stock.stone * 2 ? "tree" : "rock";
         let idx = findResource(st, u, want);
         if (idx < 0) idx = findResource(st, u, want === "tree" ? "rock" : "tree");
@@ -2359,20 +2409,20 @@ const Core = (() => {
           u.gatherT = 0;
           const r = harvest(st, u.res, 1);
           if (r.got) { u.carry += r.got; u.carryType = r.res; }
-          if (u.carry >= W.carry || r.cleared) { releaseClaim(st, u); u.job = "return"; u.path = planPath(st, u, door.x, door.y); }
+          if (u.carry >= W.carry || r.cleared) { releaseClaim(st, u); u.job = "return"; u.repathAt = 0; goHome(st, u, door); }
         }
       } else if (u.job === "return") {
-        const d = Math.hypot(u.x - door.x, u.y - door.y);
+        const hp = homeOf(u, door), d = Math.hypot(u.x - hp.x, u.y - hp.y);
         if (d < 46) {
           if (u.carry > 0) {
             stock[u.carryType] = (stock[u.carryType] || 0) + u.carry;
             st.events.push({ type: "gain", x: u.x, y: u.y - 14, res: u.carryType, n: u.carry, team: u.team });
           }
-          u.carry = 0; u.carryType = null; u.job = "seek"; u.path = null;
+          u.carry = 0; u.carryType = null; u.job = "seek"; u.path = null; u.home = null;
           continue;
         }
         const r = followPath(st, u, dt, u.spd);
-        if (r !== "moving") u.path = planPath(st, u, door.x, door.y);
+        if (r !== "moving") goHome(st, u, door);
       }
     }
     st.units = st.units.filter((u) => !u.dead);
@@ -3816,7 +3866,9 @@ class GameScene extends Phaser.Scene {
       } else if (e.type === "drop" && e.rarity === "epic" && this.visibleAt(e.x, e.y)) {
         Toast.show("ของระดับมหากาพย์ดรอป!");
       } else if (e.type === "workersStuck" && e.team === this.team) {
-        Banner.show("คนงานออกจากค่ายไม่ได้ · สร้างประตูไม้ในแนวกำแพง", "warn");
+        Banner.show(e.gate ? "คนงานเข้าค่ายไม่ได้ · ประตูถูกหิน ต้นไม้ หรือน้ำขวาง ลองย้ายประตู" : "คนงานออกจากค่ายไม่ได้ · สร้างประตูไม้ในแนวกำแพง", "warn");
+      } else if (e.type === "gateBlocked" && e.team === this.team) {
+        Banner.show("ประตูนี้ตัน · ด้านหนึ่งติดหิน ต้นไม้ หรือน้ำ คนงานเดินผ่านไม่ได้", "warn");
       } else if (e.type === "upgraded") {
         const img = this.buildViews.get(e.id);
         if (img) this.tweens.add({ targets: img, scale: { from: 1.25, to: 1 }, duration: 320, ease: "Back.easeOut" });
