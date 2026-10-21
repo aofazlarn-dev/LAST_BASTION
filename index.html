@@ -4055,46 +4055,114 @@ class GameScene extends Phaser.Scene {
     return (link(b.tx, b.ty - 1) ? 1 : 0) | (link(b.tx + 1, b.ty) ? 2 : 0) | (link(b.tx, b.ty + 1) ? 4 : 0) | (link(b.tx - 1, b.ty) ? 8 : 0);
   }
 
-  /* กำแพงต่อเนื่อง: ประกอบภาพใหม่ต่อช่องจากภาพจริง
-     แนวนอน = ตัดแถบกลางของกำแพงด้านหน้า ยืดให้กว้างพอดี 1 ช่อง (ช่องติดกันต่อกันสนิท) + ปิดหัวท้ายเฉพาะปลายแถว
-     แนวตั้ง = ตัดแถบกลางของกำแพงด้านข้าง สูงพอดี 1 ช่อง + ยอดบนสุด / ฐานล่างสุดเฉพาะปลายแถว
-     มุม/ทางแยก = แถบทั้งสองแนว + เสามุมทับ */
-  wallArt(lv, mask) {
-    const key = "wc" + lv + "_" + mask;
+  /* กำแพงต่อเนื่อง (วาดเป็นบล็อกตรง ไม่ใช้ภาพเอียง): แต่ละช่องมีแกนกลาง + แขนยื่นไปหาเพื่อนบ้าน
+     ทุกชิ้นยกขึ้นสูง H (ด้านบน) และมีหน้ากำแพงด้านใต้ → เส้นตรงต่อกันสนิททุกทิศ ลายอิงพิกัดโลกจึงต่อเนื่องข้ามช่อง */
+  wallArt(lv, mask, tx, ty) {
+    const key = "wb" + lv + "_" + mask + "_" + ((tx + ty) % 3 === 0 ? 1 : 0);
     if (this.textures.exists(key)) return key;
-    if (!ART_OK.has("wall" + lv) || !ART_OK.has("wall_side" + lv)) return null;
-    const img = (n) => this.textures.get("art_" + n).getSourceImage();
-    const front = img("wall" + lv), side = img("wall_side" + lv), post = ART_OK.has("wall_corner" + lv) ? img("wall_corner" + lv) : null;
-    const S = DATA.tile, K = 2, CW = 3 * S, CH = 4 * S;
+    const S = DATA.tile, K = 2, CW = 2 * S, CH = 3 * S;
     const t = this.textures.createCanvas(key, CW * K, CH * K), g = t.getContext();
     g.scale(K, K);
-    const cx = CW / 2, x0 = cx - S / 2, x1 = cx + S / 2, yb = CH - 4;
-    const up = mask & 1, rt = mask & 2, dn = mask & 4, lf = mask & 8, vert = up || dn, hor = rt || lf;
-    const fh = 44, fw = front.width * fh / front.height, cut = 0.3;
-    const band = (dx0, dx1) => g.drawImage(front, front.width * cut, 0, front.width * (1 - 2 * cut), front.height, dx0, yb - fh, dx1 - dx0, fh);
-    if (!vert) {
-      band(x0, x1);
-      if (!lf) g.drawImage(front, 0, 0, front.width * cut, front.height, x0 - fw * cut, yb - fh, fw * cut, fh);
-      if (!rt) g.drawImage(front, front.width * (1 - cut), 0, front.width * cut, front.height, x1, yb - fh, fw * cut, fh);
-    } else {
-      if (lf) band(x0 - 1, cx + 1);
-      if (rt) band(cx - 1, x1 + 1);
-      const sw = 26, sh = side.height * sw / side.width, cap = sh * 0.26, base = sh * 0.22, top = yb - base - S;
-      g.drawImage(side, 0, side.height * 0.26, side.width, side.height * 0.52, cx - sw / 2, top, sw, S + 1);
-      if (!dn) g.drawImage(side, 0, side.height * 0.78, side.width, side.height * 0.22, cx - sw / 2, yb - base, sw, base);
-      if (!up) g.drawImage(side, 0, 0, side.width, side.height * 0.26, cx - sw / 2, top - cap + 0.5, sw, cap);
-      if (hor && post) { const ph = 54, pw = post.width * ph / post.height; g.drawImage(post, cx - pw / 2, yb - ph, pw, ph); }
+    const M = [
+      { top: "#d7a464", topL: "#e9c08a", face: "#a8703c", line: "#7a4c24", dark: "#5e3a1b", stake: true },
+      { top: "#c9ccd2", topL: "#e4e6ea", face: "#9ea3ad", line: "#767b86", dark: "#575c66", merlon: true },
+      { top: "#7d848f", topL: "#9aa1ab", face: "#5b616c", line: "#3f444d", dark: "#2c3038", merlon: true, iron: true },
+    ][Math.min(3, Math.max(1, +lv)) - 1];
+    const ox = S / 2, oy = S - 4;           // มุมซ้ายบนของช่องในผ้าใบ (เท้าช่องอยู่ที่ oy + S)
+    const H = M.stake ? 26 : 24, T = M.stake ? 10 : 14, c0 = (S - T) / 2;  // ความสูงกำแพง, ความหนา (รั้วไม้บางกว่า)
+    const up = mask & 1, rt = mask & 2, dn = mask & 4, lf = mask & 8;
+    const horiz = !(up || dn) || lf || rt;
+    // ชิ้นบนพื้น (ก่อนยก): แกนกลาง + แขน
+    const parts = [[c0, c0, T, T]];
+    if (lf || !(up || dn || rt)) parts.push([0, c0, c0 + 1, T]);
+    if (rt || !(up || dn || lf)) parts.push([c0 + T - 1, c0, S - c0 - T + 1, T]);
+    if (up) parts.push([c0, 0, T, c0 + 1]);
+    if (dn) parts.push([c0, c0 + T - 1, T, S - c0 - T + 1]);
+    const X = (x) => ox + x, Y = (y) => oy + y - H;
+    // เงาบนพื้น
+    g.fillStyle = "rgba(20,40,10,0.22)";
+    for (const [x, y, w, h] of parts) g.fillRect(X(x) + 3, oy + y + 2, w, h);
+    // หน้ากำแพงด้านใต้ (เห็นเฉพาะขอบล่างที่ไม่มีชิ้นต่อ)
+    const faces = [];
+    if (!dn) faces.push([c0, c0 + T, T]);
+    if (lf || !(up || dn || rt)) faces.push([0, c0 + T, c0]);
+    if (rt || !(up || dn || lf)) faces.push([c0 + T, c0 + T, S - c0 - T]);
+    for (const [x, y, w] of faces) {
+      const fx = X(x), fy = Y(y), fw = w;
+      g.fillStyle = M.face; g.fillRect(fx, fy, fw, H);
+      g.fillStyle = M.line;
+      if (M.stake) {   // ท่อนซุงตั้งเรียงกัน: สลับเฉด มีไฮไลต์ซ้าย เงาขวา
+        for (let wx = Math.floor(x / 6) * 6; wx < x + w; wx += 6) {
+          const a0 = Math.max(x, wx), a1 = Math.min(x + w, wx + 6); if (a1 <= a0) continue;
+          g.fillStyle = (wx / 6) % 2 ? "#9a6232" : "#a96f3a"; g.fillRect(X(a0), fy, a1 - a0, H);
+          if (wx >= x) { g.fillStyle = "#c98f55"; g.fillRect(X(wx), fy, 1, H); }
+          if (wx + 5 < x + w && wx + 5 >= x) { g.fillStyle = "#6b4220"; g.fillRect(X(wx + 5), fy, 1, H); }
+        }
+        g.fillStyle = "#5e3a1b"; g.fillRect(fx, fy + 7, fw, 2); g.fillRect(fx, fy + H - 9, fw, 2);   // คานผูก
+      }
+      else { for (let r = 0; r < H; r += 8) { g.fillRect(fx, fy + r, fw, 1); const off = (r / 8) % 2 ? 0 : 5; for (let wx = Math.ceil((x - off) / 10) * 10 + off; wx < x + w; wx += 10) g.fillRect(X(wx), fy + r, 1, 8); } }
+      if (M.iron) { g.fillStyle = "#2a2d33"; g.fillRect(fx, fy + 6, fw, 2); g.fillRect(fx, fy + H - 7, fw, 2); }
+      g.fillStyle = M.dark; g.fillRect(fx, fy + H - 2, fw, 2);
+      g.fillStyle = "rgba(255,255,255,0.12)"; g.fillRect(fx, fy, fw, 2);
+    }
+    // ธงฟ้าบนหน้ากำแพงบางช่อง
+    if (key.endsWith("_1") && !dn && horiz) {
+      const bx = X(S / 2 - 4), by = Y(c0 + T) + 3;
+      g.fillStyle = "#3f7fd9"; g.fillRect(bx, by, 8, 13); g.beginPath(); g.moveTo(bx, by + 13); g.lineTo(bx + 4, by + 17); g.lineTo(bx + 8, by + 13); g.fill();
+      g.fillStyle = "#f4f1e6"; g.fillRect(bx + 3, by + 4, 2, 5); g.fillRect(bx + 2, by + 5, 4, 2);
+    }
+    // ด้านบน
+    for (const [x, y, w, h] of parts) {
+      g.fillStyle = M.top; g.fillRect(X(x), Y(y), w, h);
+    }
+    g.fillStyle = M.topL;
+    for (const [x, y, w, h] of parts) g.fillRect(X(x), Y(y), w, Math.min(2, h));
+    if (M.stake) {   // มองจากบน: หัวท่อนซุงกลม ๆ เรียงเป็นแถว
+      for (const [x, y, w, h] of parts) { g.fillStyle = "#5e3a1b"; g.fillRect(X(x), Y(y), w, h); }
+      const logs = new Set();
+      for (const [x, y, w, h] of parts) {
+        const along = w >= h;
+        for (let q = 0; q < (along ? w : h); q += 6) {
+          const lx = along ? Math.floor((x + q) / 6) * 6 + 3 : x + w / 2, ly = along ? y + h / 2 : Math.floor((y + q) / 6) * 6 + 3;
+          const k = Math.round(lx) + "," + Math.round(ly); if (logs.has(k)) continue; logs.add(k);
+          g.fillStyle = "#b9824a"; g.beginPath(); g.arc(X(lx), Y(ly), 3.3, 0, Math.PI * 2); g.fill();
+          g.fillStyle = "#d9a86d"; g.beginPath(); g.arc(X(lx) - 0.6, Y(ly) - 0.6, 1.8, 0, Math.PI * 2); g.fill();
+        }
+      }
+    }
+    if (M.merlon) {   // พื้นหินด้านบน
+      g.fillStyle = M.line;
+      for (const [x, y, w, h] of parts) {
+        for (let wy = Math.ceil(y / 7) * 7; wy < y + h; wy += 7) g.fillRect(X(x), Y(wy), w, 1);
+        for (let wx = Math.ceil(x / 9) * 9; wx < x + w; wx += 9) g.fillRect(X(wx), Y(y), 1, h);
+      }
+    }
+    if (M.merlon) {   // ใบเสมาตามขอบนอก
+      g.fillStyle = M.topL;
+      for (const [x, y, w, h] of parts) {
+        for (let wx = Math.ceil(x / 8) * 8; wx < x + w; wx += 8) { g.fillRect(X(wx) + 1, Y(y) - 4, 4, 4); }
+      }
+      g.fillStyle = M.line;
+      for (const [x, y, w, h] of parts) for (let wx = Math.ceil(x / 8) * 8; wx < x + w; wx += 8) g.fillRect(X(wx) + 1, Y(y), 4, 1);
+    }
+    // เสามุม
+    if ((up || dn) && (lf || rt) && M.merlon) {
+      const px = X(c0 - 3), py = Y(c0 - 3) - 8, pw = T + 6;
+      g.fillStyle = M.face; g.fillRect(px, py + pw, pw, H - (pw - T) + 2);
+      g.fillStyle = M.dark; g.fillRect(px, py + pw + H - (pw - T), pw, 2);
+      g.fillStyle = M.top; g.fillRect(px, py, pw, pw);
+      g.fillStyle = M.topL; g.fillRect(px, py, pw, 2);
+      if (M.merlon) { g.fillStyle = M.topL; g.fillRect(px, py - 4, 5, 4); g.fillRect(px + pw - 5, py - 4, 5, 4); }
     }
     t.refresh();
-    t.yb = yb / CH;
     return key;
   }
 
   skinBuilding(img, b, tex) {
     const [base0, mk] = tex.split("#"), [base, v] = base0.split(":"), name = ART_BUILD[base], lv = /\d$/.test(name || "") ? name.slice(-1) : "1";
     if (b.type === "wall" && mk != null) {
-      const key = this.wallArt(lv, +mk);
-      if (key) { img.setTexture(key).setOrigin(0.5, (4 * DATA.tile - 4) / (4 * DATA.tile)).setScale(0.5).clearTint(); img.base = 0.5; img.art = true; img.y = (b.ty + 1) * DATA.tile; return; }
+      const key = this.wallArt(lv, +mk, b.tx, b.ty);
+      if (key) { img.setTexture(key).setOrigin(0.5, (2 * DATA.tile - 4) / (3 * DATA.tile)).setScale(0.5).clearTint(); img.base = 0.5; img.art = true; img.y = (b.ty + 1) * DATA.tile; return; }
     }
     // ภาพจริงด้านข้าง / มุม (ชุด v2)
     const sideName = v === "v" ? (b.type === "gate" ? "gate_side" : "wall_side") + lv : v === "c" ? "wall_corner" + lv : null;
