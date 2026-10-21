@@ -551,7 +551,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 <div class="build-dock">
   <div class="build-menu hud" id="build-menu" hidden>
     <button type="button" class="build-item" data-build="wall"><b>กำแพงไม้</b><span class="cost"></span><span class="note">ลากเพื่อวางต่อกัน</span></button>
-    <button type="button" class="build-item" data-build="gate"><b>ประตูไม้</b><span class="cost"></span><span class="note">วางทับกำแพงได้ · คนงานผ่าน Monster ไม่ผ่าน</span></button>
+    <button type="button" class="build-item" data-build="gate"><b>ประตูไม้</b><span class="cost"></span><span class="note">กว้าง 2 ช่อง · วางทับกำแพงได้ · R หมุน</span></button>
     <button type="button" class="build-item" data-build="tower"><b>ป้อมธนู</b><span class="cost"></span><span class="note">ยิง Monster เอง</span></button>
     <button type="button" class="build-item" data-build="barracks"><b>ค่ายทหาร</b><span class="cost"></span><span class="note">จ้างพลธนู นักดาบ</span></button>
     <button type="button" class="build-item" data-build="infirmary"><b>สถานพยาบาล</b><span class="cost"></span><span class="note">จ้างหมอรักษาคนเจ็บ</span></button>
@@ -757,7 +757,7 @@ const DATA = {
       levels: [{ name: "กำแพงไม้", hpMul: 1 }, { name: "กำแพงหิน", hpMul: 2, def: 7, cost: { wood: 6, stone: 5 } }, { name: "กำแพงเหล็ก", hpMul: 3.4, def: 11, cost: { wood: 12, stone: 10 } }],
     },
     gate: {
-      name: "ประตู", cost: { wood: 8 }, hp: 200, def: 4, vision: 0, maxLv: 3,
+      name: "ประตู", cost: { wood: 8 }, hp: 260, def: 4, vision: 0, maxLv: 3, len: 2,   // กว้าง 2 ช่องตามแนวกำแพง (แนวนอน 2×1 / แนวตั้ง 1×2)
       levels: [{ name: "ประตูไม้", hpMul: 1 }, { name: "ประตูหิน", hpMul: 2, def: 7, cost: { wood: 8, stone: 6 } }, { name: "ประตูเหล็ก", hpMul: 3.4, def: 11, cost: { wood: 14, stone: 12 } }],
     },
     tower: {
@@ -1003,17 +1003,24 @@ const Core = (() => {
     return st.heroes.find((e) => e.id === id) || st.units.find((e) => e.id === id) || st.buildings.find((e) => e.id === id) || null;
   }
 
-  function makeBuilding(st, type, team, tx, ty, size) {
+  // ขนาดฐานอาคาร [กว้าง, สูง] เป็นช่อง · rot 1 = หมุนแนวตั้ง (ใช้กับประตู)
+  function footprint(type, rot) {
+    const b = DATA.buildings[type] || {};
+    if (b.len) return rot ? [1, b.len] : [b.len, 1];
+    const n = b.size || 1; return [n, n];
+  }
+  function makeBuilding(st, type, team, tx, ty, size, rot) {
     const b = DATA.buildings[type], S = DATA.tile;
-    size = size || b.size || 1;
+    let [fw, fh] = size ? [size, size] : footprint(type, rot);
+    size = Math.max(fw, fh);
     const id = st.nextId++;
-    for (let y = ty; y < ty + size; y++) for (let x = tx; x < tx + size; x++) {
+    for (let y = ty; y < ty + fh; y++) for (let x = tx; x < tx + fw; x++) {
       st.map.t[y * st.map.n + x] = type === "camp" ? T.CAMP : type === "gate" ? T.GATE : T.BUILD;
       st.buildAt[y * st.map.n + x] = id;
     }
     return {
-      id, kind: "building", type, team, tx, ty, size,
-      x: (tx + size / 2) * S, y: (ty + size / 2) * S, r: (size * S) / 2,
+      id, kind: "building", type, team, tx, ty, size, w: fw, h: fh, rot: rot ? 1 : 0,
+      x: (tx + fw / 2) * S, y: (ty + fh / 2) * S, r: (size * S) / 2,
       hp: b.hp, maxHp: b.hp, atk: b.atk || 0, as: b.as || 0, rng: b.rng || 0, crit: 0.1, def: b.def || 2, atkCd: 0, dead: false, lv: 1,
     };
   }
@@ -1631,7 +1638,7 @@ const Core = (() => {
   }
 
   function distToBuilding(m, b) {
-    const S = DATA.tile, x0 = b.tx * S, y0 = b.ty * S, x1 = x0 + b.size * S, y1 = y0 + b.size * S;
+    const S = DATA.tile, x0 = b.tx * S, y0 = b.ty * S, x1 = x0 + (b.w || b.size) * S, y1 = y0 + (b.h || b.size) * S;
     const nx = Math.max(x0, Math.min(m.x, x1)), ny = Math.max(y0, Math.min(m.y, y1));
     return Math.hypot(m.x - nx, m.y - ny);
   }
@@ -1985,19 +1992,24 @@ const Core = (() => {
       return !!path;
     }
     if (cmd.type === "build") {
-      const err = canBuild(st, h.team, cmd.kind, cmd.tx, cmd.ty);
+      const rot = cmd.kind === "gate" ? (cmd.rot == null ? gateRot(st, h.team, cmd.tx, cmd.ty) : cmd.rot ? 1 : 0) : 0;
+      const err = canBuild(st, h.team, cmd.kind, cmd.tx, cmd.ty, rot);
       if (err) return err;
       pay(st.stock[h.team], buildCost(st, h.team, cmd.kind));
-      const old = cmd.kind === "gate" ? wallAt(st, h.team, cmd.tx, cmd.ty) : null;
-      if (old) removeBuilding(st, old);   // ประตูทับกำแพงเดิม
-      const b = makeBuilding(st, cmd.kind, h.team, cmd.tx, cmd.ty);
+      // ประตูทับกำแพงเดิม (ทุกช่องที่ประตูกินพื้นที่)
+      let oldLv = 1;
+      if (cmd.kind === "gate") {
+        const [fw, fh] = footprint("gate", rot);
+        for (let y = cmd.ty; y < cmd.ty + fh; y++) for (let x = cmd.tx; x < cmd.tx + fw; x++) { const o = wallAt(st, h.team, x, y); if (o) { oldLv = Math.max(oldLv, o.lv || 1); removeBuilding(st, o); } }
+      }
+      const b = makeBuilding(st, cmd.kind, h.team, cmd.tx, cmd.ty, 0, rot);
       // สร้างใหม่ได้เลเวลเท่าบ้านหลัก (ไม่เกินเลเวลสูงสุดของอาคารนั้น) ถ้าทับกำแพงได้เลเวลเท่ากำแพงเดิมเป็นอย่างน้อย
-      const lv = Math.min(DATA.buildings.gate.levels ? DATA.buildings.gate.levels.length : 9, Math.max(startLevel(st, h.team, cmd.kind), old ? old.lv || 1 : 1));
+      const lv = Math.min(DATA.buildings[cmd.kind].maxLv || 1, Math.max(startLevel(st, h.team, cmd.kind), oldLv));
       if (lv > 1) { b.lv = lv; applyLevel(b); b.hp = b.maxHp; }
       st.buildings.push(b);
       st.mapVersion++;
       st.events.push({ type: "built", id: b.id, x: b.x, y: b.y });
-      if (b.type === "gate" && !gateOpen(st, h.team, cmd.tx, cmd.ty)) st.events.push({ type: "gateBlocked", team: h.team, x: b.x, y: b.y });
+      if (b.type === "gate" && !gateOpen(st, h.team, cmd.tx, cmd.ty, rot)) st.events.push({ type: "gateBlocked", team: h.team, x: b.x, y: b.y });
       return true;
     }
     if (cmd.type === "repair") {
@@ -2080,19 +2092,20 @@ const Core = (() => {
   const afford = (stock, cost) => Object.keys(cost).every((k) => (stock[k] || 0) >= cost[k]);
   const pay = (stock, cost) => { for (const k in cost) stock[k] -= cost[k]; };
 
-  function canBuild(st, team, type, tx, ty) {
-    const N = st.map.n, S = DATA.tile, b = DATA.buildings[type], size = (b && b.size) || 1;
+  function canBuild(st, team, type, tx, ty, rot) {
+    const N = st.map.n, S = DATA.tile, b = DATA.buildings[type];
     if (!b || !b.cost) return "blocked";
+    const [fw, fh] = footprint(type, rot);
     if (b.needCamp && campLevel(st, team) < b.needCamp) return "locked";
-    if (tx < 2 || ty < 2 || tx + size > N - 2 || ty + size > N - 2) return "far";
+    if (tx < 2 || ty < 2 || tx + fw > N - 2 || ty + fh > N - 2) return "far";
     const R = buildRadius(st, team);
-    for (let y = ty; y < ty + size; y++) for (let x = tx; x < tx + size; x++) {
+    for (let y = ty; y < ty + fh; y++) for (let x = tx; x < tx + fw; x++) {
       if (Math.hypot(x + 0.5 - N / 2, y + 0.5 - N / 2) > R) return "far";
       if (st.map.t[y * N + x] !== T.GRASS && !(type === "gate" && wallAt(st, team, x, y))) return "blocked";
     }
-    const x0 = tx * S, y0 = ty * S, w = size * S;
+    const x0 = tx * S, y0 = ty * S, w = fw * S, hh = fh * S;
     const touches = (e) => {
-      const nx = Math.max(x0, Math.min(e.x, x0 + w)), ny = Math.max(y0, Math.min(e.y, y0 + w));
+      const nx = Math.max(x0, Math.min(e.x, x0 + w)), ny = Math.max(y0, Math.min(e.y, y0 + hh));
       return (e.x - nx) ** 2 + (e.y - ny) ** 2 < (e.r + 1) ** 2;
     };
     if (st.heroes.some((e) => !e.dead && touches(e)) || st.units.some(touches) || st.monsters.some(touches)) return "occupied";
@@ -2108,14 +2121,27 @@ const Core = (() => {
     return w && w.type === "wall" && w.team === team && !w.dead ? w : null;
   }
   // ประตูต้องมีทางเดินทะลุได้ ซ้าย-ขวา หรือ บน-ล่าง ไม่งั้นเป็นประตูตัน
-  function gateOpen(st, team, tx, ty) {
-    return withTeam(team, () => (walkable(st, tx - 1, ty) && walkable(st, tx + 1, ty)) || (walkable(st, tx, ty - 1) && walkable(st, tx, ty + 1)));
+  function gateOpen(st, team, tx, ty, rot) {
+    const [fw, fh] = footprint("gate", rot);
+    return withTeam(team, () => {
+      if (fw > fh) { for (let x = tx; x < tx + fw; x++) if (walkable(st, x, ty - 1) && walkable(st, x, ty + 1)) return true; return false; }
+      for (let y = ty; y < ty + fh; y++) if (walkable(st, tx - 1, y) && walkable(st, tx + 1, y)) return true;
+      return false;
+    });
+  }
+  // ประตูควรวางแนวไหน: ดูกำแพงรอบ ๆ ช่องที่ชี้ ถ้ากำแพงเรียงขึ้นลง → แนวตั้ง
+  function gateRot(st, team, tx, ty) {
+    const N = st.map.n;
+    const link = (x, y) => { if (x < 0 || y < 0 || x >= N || y >= N) return false; const o = st.buildings.find((e) => e.id === st.buildAt[y * N + x]); return !!o && (o.type === "wall" || o.type === "gate") && o.team === team; };
+    const v = (link(tx, ty - 1) ? 1 : 0) + (link(tx, ty + 1) ? 1 : 0) + (link(tx, ty + 2) ? 1 : 0);
+    const h = (link(tx - 1, ty) ? 1 : 0) + (link(tx + 1, ty) ? 1 : 0) + (link(tx + 2, ty) ? 1 : 0);
+    return v > h ? 1 : 0;
   }
 
   function removeBuilding(st, b) {
     const N = st.map.n;
     if (b.type !== "camp") {
-      for (let y = b.ty; y < b.ty + b.size; y++) for (let x = b.tx; x < b.tx + b.size; x++) { st.map.t[y * N + x] = T.GRASS; delete st.buildAt[y * N + x]; }
+      for (let y = b.ty; y < b.ty + (b.h || b.size); y++) for (let x = b.tx; x < b.tx + (b.w || b.size); x++) { st.map.t[y * N + x] = T.GRASS; delete st.buildAt[y * N + x]; }
     } else if (!st.result) {
       st.result = "lose";
       st.events.push({ type: "result", result: "lose" });
@@ -2579,7 +2605,7 @@ const Core = (() => {
     st.tick++;
   }
 
-  return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, afford, phase, expToNext, repairCost, freeSpot,
+  return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, footprint, gateRot, afford, phase, expToNext, repairCost, freeSpot,
     popCap, popUsed, upgradeCost, buildingName, buildRadius, researchCost, campLevel, startLevel, buildCost };
 })();
 
@@ -2603,6 +2629,7 @@ const Input = (() => {
     if (map[e.code]) { keys.add(e.code); e.preventDefault(); emit("key"); }
     else if (e.code === "KeyM" && !e.repeat) emit("map");
     else if (e.code === "KeyB" && !e.repeat) emit("build");
+    else if (e.code === "KeyR" && !e.repeat) emit("rotate");
     else if (e.code === "Escape") emit("esc");
     else if (e.code === "KeyH" && !e.repeat) emit("recall");
     else if (e.code === "KeyI" && !e.repeat) emit("bag");
@@ -3268,7 +3295,7 @@ function artMon(key) {
   return null;
 }
 const ART_BUILD = { wall: "wall1", wall2: "wall2", wall3: "wall3", gate: "gate1", gate2: "gate2", gate3: "gate3", tower: "tower1", tower2: "tower2", tower3: "tower3", barracks: "barracks", infirmary: "infirmary", workshop: "workshop" };
-const ART_BSIZE = { wall: { w: 46, oy: 0.94 }, gate: { w: 44, oy: 0.94 }, tower: { h: 88, oy: 0.96 }, barracks: { w: 80, oy: 0.94 }, infirmary: { w: 80, oy: 0.94 }, workshop: { w: 80, oy: 0.94 } };
+const ART_BSIZE = { wall: { w: 46, oy: 0.94 }, gate: { w: 76, oy: 0.94 }, tower: { h: 88, oy: 0.96 }, barracks: { w: 80, oy: 0.94 }, infirmary: { w: 80, oy: 0.94 }, workshop: { w: 80, oy: 0.94 } };
 
 // ใส่ไอคอนภาพจริงหน้าปุ่ม HUD (ครั้งเดียว)
 function artUi() {
@@ -3893,11 +3920,11 @@ class GameScene extends Phaser.Scene {
     const id = BPanel.selected(); if (!id) return;
     const b = this.state.buildings.find((e) => e.id === id); if (!b) { BPanel.close(); return; }
     const S = DATA.tile, a = 0.6 + Math.sin(time / 200) * 0.25;
-    g.lineStyle(2, 0xffd166, a); g.strokeRect(b.tx * S - 2, b.ty * S - 2, b.size * S + 4, b.size * S + 4);
+    g.lineStyle(2, 0xffd166, a); g.strokeRect(b.tx * S - 2, b.ty * S - 2, (b.w || b.size) * S + 4, (b.h || b.size) * S + 4);
   }
 
   setBuildMode(kind) {
-    this.buildMode = kind;
+    this.buildMode = kind; this.rotPick = null;
     this.zoneRing.setVisible(!!kind);
     this.ghost.clear();
     this.hold.on = false;
@@ -3912,9 +3939,16 @@ class GameScene extends Phaser.Scene {
     const [tx, ty] = this.pointerTile(p), key = ty * DATA.mapTiles + tx;
     if (!fresh && key === this.hold.lastTile) return;
     this.hold.lastTile = key;
-    const res = Core.applyCommand(this.state, { type: "build", heroId: this.localHero, kind: this.buildMode, tx, ty });
+    const res = Core.applyCommand(this.state, { type: "build", heroId: this.localHero, kind: this.buildMode, tx, ty, rot: this.buildRot(tx, ty) });
     if (res !== true && fresh) Toast.show(BUILD_ERR[res] || "ตรงนี้สร้างไม่ได้");
     if (res === true && this.buildMode !== "wall" && this.buildMode !== "gate") Build.close();     // อาคารวางทีละหลัง, กำแพงลากต่อได้
+  }
+
+  // แนวประตู: อัตโนมัติตามกำแพงรอบ ๆ หรือกด R สลับเอง
+  buildRot(tx, ty) {
+    if (this.buildMode !== "gate") return 0;
+    if (this.rotPick != null) return this.rotPick;
+    return Core.gateRot(this.state, this.team, tx, ty);
   }
 
   drawGhost() {
@@ -3922,10 +3956,11 @@ class GameScene extends Phaser.Scene {
     if (!this.buildMode) return;
     const p = this.input.activePointer;
     if (p.wasTouch && !p.isDown) return;
-    const [tx, ty] = this.pointerTile(p), S = DATA.tile, sz = (DATA.buildings[this.buildMode].size || 1) * S;
-    const ok = !Core.canBuild(this.state, this.team, this.buildMode, tx, ty);
-    this.ghost.fillStyle(ok ? 0x7fcf6a : 0xd9573f, 0.35); this.ghost.fillRect(tx * S, ty * S, sz, sz);
-    this.ghost.lineStyle(2, ok ? 0x7fcf6a : 0xd9573f, 0.9); this.ghost.strokeRect(tx * S, ty * S, sz, sz);
+    const [tx, ty] = this.pointerTile(p), S = DATA.tile, rot = this.buildRot(tx, ty);
+    const [fw, fh] = Core.footprint(this.buildMode, rot), gw = fw * S, gh = fh * S;
+    const ok = !Core.canBuild(this.state, this.team, this.buildMode, tx, ty, rot);
+    this.ghost.fillStyle(ok ? 0x7fcf6a : 0xd9573f, 0.35); this.ghost.fillRect(tx * S, ty * S, gw, gh);
+    this.ghost.lineStyle(2, ok ? 0x7fcf6a : 0xd9573f, 0.9); this.ghost.strokeRect(tx * S, ty * S, gw, gh);
     if (this.buildMode === "tower") { this.ghost.lineStyle(1, 0xefe8d2, 0.35); this.ghost.strokeCircle(tx * S + S / 2, ty * S + S / 2, DATA.buildings.tower.rng); }
   }
 
@@ -3986,7 +4021,7 @@ class GameScene extends Phaser.Scene {
   verticalArt(name, gate) {
     const key = "artv_" + name;
     if (!this.textures.exists(key)) {
-      const src = this.textures.get("art_" + name).getSourceImage(), W = 44, H = 104;
+      const src = this.textures.get("art_" + name).getSourceImage(), W = 44, H = gate ? 150 : 104;
       const t = this.textures.createCanvas(key, W, H), g = t.getContext();
       const sx = src.width * (gate ? 0.36 : 0.1), sw = src.width * (gate ? 0.28 : 0.3);
       g.drawImage(src, sx, 0, sw, src.height, 0, 0, W, H);
@@ -3999,11 +4034,17 @@ class GameScene extends Phaser.Scene {
   skinBuilding(img, b, tex) {
     const [base, v] = tex.split(":"), name = ART_BUILD[base];
     if (v && ART_OK.has(name)) {
-      img.setTexture(this.verticalArt(name, b.type === "gate")).setOrigin(0.5, 0.97).setScale(0.5).clearTint();
-      img.base = 0.5; img.art = true;
+      const gate = b.type === "gate";
+      img.setTexture(this.verticalArt(name, gate)).setOrigin(0.5, 0.97).clearTint();
+      img.setScale(gate ? 0.6 : 0.5);   // ประตูแนวตั้งสูง 2 ช่อง (ภาพยืดยาวไว้แล้ว)
+      img.base = gate ? 0.6 : 0.5; img.art = true;
       return;
     }
-    if (!this.skin(img, name, ART_BSIZE[b.type] || { w: 40 })) img.setTexture(base);
+    if (!this.skin(img, name, ART_BSIZE[b.type] || { w: 40 })) {
+      img.setTexture(base).setOrigin(0.5, 1);
+      if (b.type === "gate") img.setScale(b.rot ? 1 : 2, b.rot ? 1.6 : 1); else img.setScale(1);
+      img.base = 1;
+    }
   }
 
   syncBuildings() {
@@ -4020,10 +4061,10 @@ class GameScene extends Phaser.Scene {
         continue;
       }
       seen.add(b.id);
-      const tex = this.buildingTexture(b) + (this.wallVertical(b) ? ":v" : "");
+      const tex = this.buildingTexture(b) + ((b.type === "gate" ? b.rot : this.wallVertical(b)) ? ":v" : "");
       const have = this.buildViews.get(b.id);
       if (have) { if (have.tex !== tex) { have.tex = tex; this.skinBuilding(have, b, tex); } continue; }
-      const S = DATA.tile, bx = (b.tx + b.size / 2) * S, by = (b.ty + b.size) * S;
+      const S = DATA.tile, bx = (b.tx + (b.w || b.size) / 2) * S, by = (b.ty + (b.h || b.size)) * S;
       const img = this.add.image(bx, by + (b.type === "tower" ? 4 : 2), tex.split(":")[0]).setOrigin(0.5, 1).setDepth(by);
       img.tex = tex; this.skinBuilding(img, b, tex);
       const full = img.base || 1;
@@ -4539,6 +4580,15 @@ function recall() {
   Input.on((kind) => {
     if (kind === "map") { toggleMap(); return; }
     if (kind === "build") { Build.toggle(); return; }
+    if (kind === "rotate") {
+      const sc = window.__game && window.__game.scene.getScene("game");
+      if (sc && sc.buildMode === "gate") {
+        const p = sc.input.activePointer, [tx, ty] = sc.pointerTile(p);
+        sc.rotPick = sc.buildRot(tx, ty) ? 0 : 1;
+        Toast.show(sc.rotPick ? "ประตูแนวตั้ง (1×2)" : "ประตูแนวนอน (2×1)");
+      }
+      return;
+    }
     if (kind === "esc") {
       if (Title.howOpen()) { Title.closeHow(); return; }
       if (Bestiary.isOpen()) { Bestiary.close(); return; }
