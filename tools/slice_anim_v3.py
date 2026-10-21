@@ -94,7 +94,12 @@ meta = {}
 for name, fr in raw.items():
     b, act = base_of(name)
     REF = 192 if b.startswith('boss') else (160 if act == 'fx' else 128)
-    sc = REF / ref[b][1]
+    # สเกลแยกต่อท่า: ท่าเดินใช้ความสูงเฉลี่ย ท่าอื่นใช้เฟรมแรก (ท่ายืนตรง) ให้สูงเท่าท่าเดิน
+    # (GPT วาดตาราง 2x2 ตัวใหญ่กว่าตาราง 3x2 ถ้าไม่ปรับ ท่ายืนจะดูใหญ่/เด้ง)
+    h0 = float(np.median([f['h'] for f in fr])) if act in ('walk', 'walk_wood', 'walk_stone') else float(fr[0]['h'])
+    if act in ('walk_wood', 'walk_stone'): h0 = h0  # มีของบนหลัง สูงกว่าเล็กน้อยก็ได้
+    sc = REF / (h0 if act != 'fx' else ref[b][1])
+    print(f'{name:22s} scale-vs-walk {ref[b][1]/h0:.2f}')
     if act == 'fx': sc = 160 / max(max(f['img'].shape[:2]) for f in fr)
     left = max(-f['x0'] for f in fr) * sc; right = max(f['x1'] for f in fr) * sc
     half = int(np.ceil(max(left, right))) + 2
@@ -109,6 +114,6 @@ for name, fr in raw.items():
     strip.save(os.path.join(OUT, name + '.webp'), 'WEBP', quality=86, method=6)
     sp = S[name]
     loop = act in ('walk', 'idle', 'walk_wood', 'walk_stone', 'chop', 'mine', 'heal') or name in ('firepit', 'flag', 'fx_recall')
-    meta[name] = dict(n=len(fr), w=fw, h=Hh, fps=sp['fps'], loop=loop, ref=round(ref[b][1] * sc, 1), oy=round((Hh - 2) / Hh, 4))
+    meta[name] = dict(n=len(fr), w=fw, h=Hh, fps=sp['fps'], loop=loop, ref=REF, oy=round((Hh - 2) / Hh, 4))
 json.dump(meta, open(os.path.join(OUT, 'anim.json'), 'w'), separators=(',', ':'))
 print('done', len(meta))
