@@ -2,6 +2,20 @@
 
 ภาพทั้งหมดในเกมตอนนี้วาดด้วยโค้ดชั่วคราว ไฟล์นี้คือรายการภาพที่ต้องการ ชื่อไฟล์ตรงกับรหัสในเกม เมื่อได้ภาพแล้ววางในโฟลเดอร์ `assets/` ตามชื่อไฟล์ด้านล่าง แล้วบอก Claude ให้เชื่อมภาพเข้าเกม
 
+อัปเดตล่าสุด: เวอร์ชัน 0.11 (21 ต.ค. 2026) · รวม **196 ภาพ** · เพิ่มไอคอนไอเทมรายชิ้น, ไอคอน UI, พื้นตามโซน, เอฟเฟกต์เพิ่ม
+
+## ทำชุดไหนก่อน (แนะนำ)
+
+ไม่ต้องทำครบทีเดียว ภาพไหนยังไม่มีเกมใช้ภาพวาดด้วยโค้ดแทน แนะนำทำตามลำดับนี้ เห็นผลในเกมเร็วที่สุด
+
+| ชุด | ภาพ | จำนวน | ทำไม |
+| --- | --- | --- | --- |
+| A · เห็นตลอดเวลา | `heroes/archer`, `units/*`, `tiles/*`, `buildings/camp1`, `wall1`, `gate1`, `tower1` | 25 | อยู่บนจอทุกวินาที |
+| B · Monster ที่เจอบ่อย | Monster ระดับต่ำ 40 ตัว + `boss0` | 41 | คืนแรกเจอแต่ตัวพวกนี้ |
+| C · ไอคอน | `ui/*`, `items/*` | 42 | HUD กระเป๋า และแผงอาคาร |
+| D · อาคารเลเวลสูง | สิ่งก่อสร้างที่เหลือ | 13 | เห็นเมื่ออัปเกรด |
+| E · ที่เหลือ | Monster กลาง/สูง/บอส, `fx/*`, Hero อื่น | 75 | เจอช่วงท้ายเกม |
+
 ## กติกาทุกภาพ (สำคัญ)
 
 | เรื่อง | ข้อกำหนด |
@@ -13,6 +27,8 @@
 | กรอบ | ตัวละครอยู่กลางภาพ เว้นขอบรอบละ ~8% ไม่ล้นขอบ |
 | ขนาดไฟล์ | ตามที่ระบุในแต่ละหมวด (สี่เหลี่ยมจัตุรัส) |
 | ข้อความ | ห้ามมีตัวหนังสือ โลโก้ หรือลายน้ำในภาพ |
+| สีทีม | ฝ่ายเรา = **ฟ้า #6fb6e8** (ผ้า ธง) · ศัตรูห้ามใช้ฟ้า เพื่อแยกฝ่ายออกเร็ว |
+| อ่านง่าย | ในเกมตัวละครเล็กมาก (ราว 30–60 px บนจอ) ต้องดูออกจากรูปทรงอย่างเดียว ไม่ต้องใส่รายละเอียดเล็ก ๆ |
 
 ### Master prompt (ใช้นำหน้าทุก prompt)
 
@@ -91,19 +107,39 @@ Top-down 3/4 view game sprite ... Subject: a shambling rotting zombie, hunched, 
 | `tiles/stump.png` | ตอไม้ | 64×64 | a cut tree stump |
 | `tiles/pebbles.png` | เศษหิน | 64×64 | a small pile of broken stones |
 | `tiles/water.png` | น้ำ (ต่อกันได้) | 128×128 | seamless tileable dark blue lake water texture, top-down |
+| `tiles/ground_forest.png` | พื้นโซนป่าลึก (ต่อกันได้) | 128×128 | seamless tileable dark forest floor, moss, fallen leaves and roots, top-down |
+| `tiles/ground_rocky.png` | พื้นโซนหุบเขาหิน (ต่อกันได้) | 128×128 | seamless tileable rocky grey gravel ground with sparse dry grass, top-down |
+| `tiles/ground_waste.png` | พื้นโซนดินแดนรกร้าง (ต่อกันได้) | 128×128 | seamless tileable cracked dead ashen wasteland ground with faint red glow, top-down |
+| `tiles/tuft.png` | กอหญ้าประดับ | 64×64 | a small tuft of wild grass |
+| `tiles/flower.png` | ดอกไม้ประดับ | 32×32 | a tiny cluster of pale wildflowers |
+| `tiles/firepit.png` | กองไฟหน้าค่าย | 96×96 | a small stone-ringed campfire with flames |
+| `tiles/loot_bag.png` | ของดรอปบนพื้น | 64×64 | a small glowing leather loot pouch lying on the ground |
 
-## 5. ไอเทม (128×128 px · โฟลเดอร์ `items/`)
+## 5. ไอเทม (18 ชิ้น · 128×128 px · โฟลเดอร์ `items/`)
 
-เป็นไอคอนวางบนพื้นหลังโปร่งใส แยกสีตามระดับ: ธรรมดา = เทา/น้ำตาล, หายาก = ฟ้า, มหากาพย์ = ม่วงเรืองแสง
+ไอคอนวางบนพื้นหลังโปร่งใส หนึ่งไฟล์ต่อชื่อไอเทมในเกม แยกสีตามระดับ: ธรรมดา = เทา/น้ำตาล, หายาก = ฟ้า, มหากาพย์ = ม่วงหรือทองเรืองแสง
+ใช้ Master prompt แบบไอคอน: `Game inventory icon, single object centered, transparent background, no text, dark fantasy soft pixel-art style. Subject:`
 
-| ไฟล์ | prompt |
-| --- | --- |
-| `items/bow_common.png` | a simple wooden bow icon |
-| `items/bow_rare.png` | an ornate hunter's longbow icon with blue gems |
-| `items/bow_epic.png` | a legendary glowing purple moon bow icon |
-| `items/armor_common.png` | a plain leather vest icon |
-| `items/armor_rare.png` | a wolf-fur ranger armor icon with blue trim |
-| `items/armor_epic.png` | a legendary dark purple glowing armor icon |
+| ไฟล์ | ชื่อในเกม | ระดับ | prompt |
+| --- | --- | --- | --- |
+| `items/bow_common1.png` | ธนูไม้ | ธรรมดา | a simple wooden bow icon |
+| `items/bow_common2.png` | ธนูสั้น | ธรรมดา | a short recurve bow icon |
+| `items/bow_common3.png` | ธนูพราน | ธรรมดา | a hunter's bow wrapped in leather icon |
+| `items/bow_rare1.png` | ธนูยาวพราน | หายาก | an ornate ranger longbow with blue gems icon |
+| `items/bow_rare2.png` | ธนูกระดูกหมาป่า | หายาก | a bow carved from wolf bone with fur grip icon |
+| `items/bow_rare3.png` | ธนูไม้มะเกลือ | หายาก | a black ebony wood bow with silver tips icon |
+| `items/bow_epic1.png` | ธนูเงาจันทร์ | มหากาพย์ | a legendary glowing purple crescent moon bow icon |
+| `items/bow_epic2.png` | ธนูเพลิงอรุณ | มหากาพย์ | a legendary bow wreathed in golden dawn fire icon |
+| `items/bow_epic3.png` | ธนูพายุคลั่ง | มหากาพย์ | a legendary bow crackling with storm lightning icon |
+| `items/armor_common1.png` | เสื้อหนังเก่า | ธรรมดา | a worn old leather vest icon |
+| `items/armor_common2.png` | เสื้อผ้าป่าน | ธรรมดา | a plain hemp cloth shirt icon |
+| `items/armor_common3.png` | เสื้อนวม | ธรรมดา | a padded quilted gambeson icon |
+| `items/armor_rare1.png` | เกราะหนังหมาป่า | หายาก | a wolf-fur leather armor with blue trim icon |
+| `items/armor_rare2.png` | เสื้อคลุมพราน | หายาก | a green ranger cloak with hood icon |
+| `items/armor_rare3.png` | เกราะไม้ไผ่สาน | หายาก | a woven bamboo lamellar armor icon |
+| `items/armor_epic1.png` | เกราะเหล็กกล้า | มหากาพย์ | a legendary polished steel plate armor glowing purple icon |
+| `items/armor_epic2.png` | เสื้อคลุมรัตติกาล | มหากาพย์ | a legendary midnight cloak with stars and purple glow icon |
+| `items/armor_epic3.png` | เกราะเกล็ดงู | มหากาพย์ | a legendary serpent scale armor with emerald glow icon |
 
 ## 6. เอฟเฟกต์ (64×64 px · โฟลเดอร์ `fx/`)
 
@@ -113,8 +149,47 @@ Top-down 3/4 view game sprite ... Subject: a shambling rotting zombie, hunched, 
 | `fx/bolt.png` | a small glowing magic projectile orb |
 | `fx/blast.png` | an orange fiery explosion burst seen from above |
 | `fx/heal.png` | a soft green healing sparkle |
+| `fx/hit.png` | a small white-yellow impact spark burst |
+| `fx/volley.png` | a fan of glowing blue arrows spreading out to the right (skill effect) |
+| `fx/levelup.png` | a golden ring of light rising upward with sparkles |
+| `fx/recall.png` | a swirling blue teleport circle seen from above |
+| `fx/sunburn.png` | a monster burning to ash in morning sunlight, orange embers and smoke |
+| `fx/rubble.png` | a pile of broken wood and stone rubble from a destroyed building (ขนาด 128×128) |
+| `fx/web.png` | a sticky white spider web projectile |
+| `fx/fireball.png` | a small fireball projectile flying right |
 
-## 7. Monster 100 ชนิด (โฟลเดอร์ `monsters/`)
+## 7. ไอคอน UI (64×64 px · โฟลเดอร์ `ui/`)
+
+ไอคอนปุ่มและ HUD รูปทรงชัด เส้นขอบเข้ม พื้นหลังโปร่งใส ไม่มีตัวหนังสือ ใช้ Master prompt แบบไอคอนเดียวกับไอเทม
+
+| ไฟล์ | ใช้ที่ | prompt |
+| --- | --- | --- |
+| `ui/wood.png` | ทรัพยากรไม้ | a bundle of three cut logs |
+| `ui/stone.png` | ทรัพยากรหิน | a small pile of grey stone blocks |
+| `ui/hp.png` | หลอด HP | a red heart |
+| `ui/mp.png` | หลอด MP | a blue mana droplet crystal |
+| `ui/exp.png` | EXP / เลเวล | a golden star |
+| `ui/skill_volley.png` | ปุ่มสกิลยิงกระจาย (Q) | three arrows fanning out, glowing blue |
+| `ui/build.png` | ปุ่มสร้าง (B) | a hammer crossed with a wooden plank |
+| `ui/repair.png` | ปุ่มซ่อม | a hammer and wrench with a green plus |
+| `ui/bag.png` | ปุ่มกระเป๋า (I) | a leather backpack |
+| `ui/home.png` | ปุ่มกลับฐาน (H) | a small tent with a blue swirl |
+| `ui/map.png` | ปุ่มแผนที่ (M) | a rolled parchment map |
+| `ui/menu.png` | ปุ่มเมนู (Esc) | a gear cog |
+| `ui/bestiary.png` | สมุดมอนสเตอร์ | an old leather book with a monster claw mark |
+| `ui/night.png` | ตัวบอกกลางคืน / เริ่มกลางคืนเลย | a crescent moon with a red eye glow |
+| `ui/day.png` | ตัวบอกกลางวัน | a sun |
+| `ui/warn.png` | เตือนทิศ Monster บุก | a red exclamation shield |
+| `ui/worker.png` | จ้างคนงาน / โควตาคนงาน | a straw hat with an axe |
+| `ui/army.png` | โควตาทหาร | a crossed sword and bow |
+| `ui/mode_free.png` | โหมดยูนิต อิสระ | a compass with scattered footprints |
+| `ui/mode_follow.png` | โหมดยูนิต ตาม Hero | footprints following a blue banner |
+| `ui/mode_guard.png` | โหมดยูนิต เฝ้าค่าย | a blue shield in front of a palisade |
+| `ui/res_heroweapon.png` | วิจัย อาวุธ Hero | a glowing bow with an upward arrow |
+| `ui/res_unitweapon.png` | วิจัย อาวุธทหาร | a short sword with an upward arrow |
+| `ui/res_unitarmor.png` | วิจัย เกราะทหาร | a round blue shield with an upward arrow |
+
+## 8. Monster 100 ชนิด (โฟลเดอร์ `monsters/`)
 
 ทุกตัวหันขวา ขนาดไฟล์ตามระดับ ตัวระดับสูงและบอสควรดูใหญ่และน่ากลัวกว่า
 
