@@ -191,6 +191,16 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 }
 .inv-slot .inv-cell { width: 44px; }
 .inv-cell svg { width: 62%; height: 62%; }
+.inv-cell img { width: 82%; height: 82%; object-fit: contain; pointer-events: none; }
+/* ไอคอนภาพจริง (เปิดเมื่อโหลดภาพสำเร็จ) */
+.art-ui .ico { width: 16px; height: 16px; margin-right: 4px; vertical-align: -3px; border-radius: 0; background: center / contain no-repeat; }
+.art-ui .ico.wood { background-image: url(assets/sprites/ui_wood.webp); }
+.art-ui .ico.stone { background-image: url(assets/sprites/ui_stone.webp); }
+.art-ui .ico.worker { background-image: url(assets/sprites/ui_worker.webp); }
+.art-ui .ico.army { background-image: url(assets/sprites/ui_army.webp); }
+.art-ui .aico { display: inline-block; width: 18px; height: 18px; margin-right: 5px; vertical-align: -4px; background: center / contain no-repeat; flex: none; }
+.art-ui #skill { background-image: url(assets/sprites/ui_skill_volley.webp); background-size: 40%; background-position: center 14%; background-repeat: no-repeat; padding-top: 22px; }
+.art-ui #skill .skill-name, .art-ui #skill .skill-key { text-shadow: 0 1px 2px #000, 0 0 4px #000; }
 .inv-cell .ilv { position: absolute; right: 3px; bottom: 1px; font-size: 9px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
 .inv-cell.empty { border-style: dashed; border-color: rgba(214, 196, 140, 0.15); cursor: default; color: var(--ink-dim); font-size: 10px; }
 .inv-cell.sel { box-shadow: 0 0 0 2px var(--ink); }
@@ -2745,6 +2755,22 @@ const ICON = {
   weapon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3a12 12 0 0 1 0 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M7 3v18M10 12h11M18 9l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   armor: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l5 4-3 3v11H6V10L3 7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 3c0 2 4 2 4 0" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
 };
+// ไอคอนไอเทมตามชื่อ (ชื่อยาวก่อน เช่น "ธนูไม้มะเกลือ" ก่อน "ธนูไม้") ไม่มีภาพใช้ไอคอนตามระดับ
+const ITEM_ART = (() => {
+  const out = [], tier = ["common", "rare", "epic"];
+  for (const slot of ["weapon", "armor"]) DATA.items.names[slot].forEach((list, t) => list.forEach((nm, i) => out.push([nm, (slot === "weapon" ? "bow_" : "armor_") + tier[t] + (i + 1)])));
+  return out.sort((a, b) => b[0].length - a[0].length);
+})();
+function itemArt(it) {
+  const hit = ITEM_ART.find(([nm]) => it.name.includes(nm));
+  if (hit && ART_OK.has(hit[1])) return hit[1];
+  const n = (it.slot === "weapon" ? "bow_" : "armor_") + it.rarity;
+  return ART_OK.has(n) ? n : null;
+}
+function itemIcon(it) {
+  const n = itemArt(it);
+  return n ? `<img src="${ART_DIR}${n}.webp" alt="">` : ICON[it.slot];
+}
 const BUILD_ERR = {
   far: "สร้างได้เฉพาะในเขตค่าย (วงสีฟ้า)", blocked: "ตรงนี้สร้างไม่ได้", occupied: "มีคนหรือ Monster ยืนขวางอยู่",
   cost: "ทรัพยากรไม่พอ", max: "ประชากรเต็ม · อัปเกรดบ้านหลักเพื่อเพิ่มประชากร",
@@ -2902,7 +2928,7 @@ const Inventory = (() => {
 
   function cell(it, label) {
     if (!it) return `<div class="inv-cell empty">${label || ""}</div>`;
-    return `<button type="button" class="inv-cell${sel === it.id ? " sel" : ""}" data-id="${it.id}" style="--r:${RARITY_CSS[it.rarityIdx]}" title="${it.name}">${ICON[it.slot]}<span class="ilv">${it.ilv}</span></button>`;
+    return `<button type="button" class="inv-cell${sel === it.id ? " sel" : ""}" data-id="${it.id}" style="--r:${RARITY_CSS[it.rarityIdx]}" title="${it.name}">${itemIcon(it)}<span class="ilv">${it.ilv}</span></button>`;
   }
 
   function render() {
@@ -3081,6 +3107,8 @@ const Bestiary = (() => {
   const scene = () => window.__game && window.__game.scene.getScene("game");
   function icon(key) {
     if (icons[key]) return icons[key];
+    const am = artMon(key);
+    if (am && !am.tint) return (icons[key] = ART_DIR + am.name + ".webp");
     const sc = scene(); if (!sc) return "";
     const tex = sc.textures.get(ensureMonTex(sc, key)).getSourceImage();
     try { icons[key] = tex.toDataURL(); } catch (_) { icons[key] = ""; }
@@ -3228,8 +3256,57 @@ const Build = (() => {
 })();
 const FOG_RGB = [12, 15, 10];
 
+/* ===== ภาพวาดจริง (assets/sprites/*.webp) · ไฟล์ไหนโหลดไม่ได้ ใช้ภาพวาดด้วยโค้ดแทน ===== */
+const ART_DIR = "assets/sprites/";
+const ART_FILES = "armor_common armor_common1 armor_common2 armor_common3 armor_epic armor_epic1 armor_epic2 armor_epic3 armor_rare armor_rare2 armor_rare3 barracks bat0 bat1 bat2 bat3 bat4 bonemage0 bonemage1 bonemage2 bonemage3 bonemage4 boss0 boss1 boss2 boss3 boss4 bow_common bow_common1 bow_common2 bow_common3 bow_epic bow_epic1 bow_epic2 bow_epic3 bow_rare bow_rare1 bow_rare2 bow_rare3 camp1 camp2 camp3 camp4 camp5 demon0 demon1 demon2 demon3 demon4 firepit flower fx_arrow fx_blast fx_bolt fx_fireball fx_flame fx_frost fx_frostbolt fx_heal fx_hit fx_levelup fx_recall fx_rubble fx_sunburn fx_volley fx_web gate1 gate2 gate3 ghoul0 ghoul1 ghoul2 ghoul3 ghoul4 golem0 golem1 golem2 golem3 golem4 grass ground_forest ground_rocky ground_waste hero_archer hero_engineer hero_healer hero_mage hero_warrior infirmary knight0 knight1 knight2 knight3 knight4 lich0 lich1 lich2 lich3 lich4 loot_bag orc0 orc1 orc2 orc3 orc4 pebbles rock skel0 skel1 skel2 skel3 skel4 slime0 slime1 slime2 slime3 slime4 spider0 spider1 spider2 spider3 spider4 stump tower1 tower2 tower3 tree1 tree2 tuft u_archer u_medic u_sword ui_army ui_bag ui_bestiary ui_build ui_day ui_exp ui_home ui_hp ui_map ui_menu ui_mode_follow ui_mode_free ui_mode_guard ui_mp ui_night ui_repair ui_res_heroweapon ui_res_unitarmor ui_res_unitweapon ui_skill_volley ui_stone ui_warn ui_wood ui_worker wall1 wall2 wall3 water were0 were1 were2 were3 were4 wisp0 wisp1 wisp2 wisp3 wisp4 wolf0 wolf1 wolf2 wolf3 wolf4 worker worker_stone worker_wood workshop zombie0 zombie1 zombie2 zombie3 zombie4".split(" ");
+const ART_OK = new Set();
+const ART_TINT = { 5: 0x9d86c8, 6: 0xb4b4b4, 7: 0xff9c8c };   // ตัวแปรที่ยังไม่มีภาพ: ย้อมสีจากตัวปกติ (เงา / หิน / คลั่ง)
+function artMon(key) {
+  if (ART_OK.has(key)) return { name: key, tint: null };
+  const m = /^([a-z]+)(\d)$/.exec(key);
+  if (m && ART_OK.has(m[1] + "0")) return { name: m[1] + "0", tint: ART_TINT[m[2]] || null };
+  return null;
+}
+const ART_BUILD = { wall: "wall1", wall2: "wall2", wall3: "wall3", gate: "gate1", gate2: "gate2", gate3: "gate3", tower: "tower1", tower2: "tower2", tower3: "tower3", barracks: "barracks", infirmary: "infirmary", workshop: "workshop" };
+const ART_BSIZE = { wall: { w: 40, oy: 0.94 }, gate: { w: 40, oy: 0.94 }, tower: { h: 88, oy: 0.96 }, barracks: { w: 80, oy: 0.94 }, infirmary: { w: 80, oy: 0.94 }, workshop: { w: 80, oy: 0.94 } };
+
+// ใส่ไอคอนภาพจริงหน้าปุ่ม HUD (ครั้งเดียว)
+function artUi() {
+  if (!ART_OK.has("ui_build") || document.documentElement.classList.contains("art-ui")) return;
+  document.documentElement.classList.add("art-ui");
+  const put = (id, n) => { const el = document.getElementById(id); if (el && ART_OK.has(n)) el.insertAdjacentHTML("afterbegin", `<i class="aico" style="background-image:url(${ART_DIR}${n}.webp)" aria-hidden="true"></i>`); };
+  put("build-toggle", "ui_build"); put("bag-btn", "ui_bag"); put("recall", "ui_home"); put("menu-btn", "ui_menu"); put("skip", "ui_night"); put("repair", "ui_repair"); put("train", "ui_worker");
+}
+
 class GameScene extends Phaser.Scene {
   constructor() { super("game"); }
+
+  // เอฟเฟกต์ภาพจริงแบบขยายแล้วจางหาย
+  puff(name, x, y, o) {
+    if (!ART_OK.has(name)) return null;
+    const img = this.add.image(x, y, "art_" + name).setDepth(o.depth == null ? y + 30 : o.depth);
+    this.skin(img, name, { w: o.w, oy: 0.5, tint: o.tint });
+    if (o.rot != null) img.setRotation(o.rot);
+    const b = img.base; img.setScale(b * (o.from == null ? 0.4 : o.from)).setAlpha(o.alpha == null ? 1 : o.alpha);
+    this.tweens.add({ targets: img, scale: b * (o.to == null ? 1 : o.to), alpha: 0, y: y + (o.dy || 0), duration: o.dur || 400, ease: "Cubic.easeOut", onComplete: () => img.destroy() });
+    return img;
+  }
+
+  preload() {
+    this.load.on("loaderror", () => {});   // ไม่มีไฟล์ภาพ: ใช้ภาพวาดด้วยโค้ด
+    for (const n of ART_FILES) if (!this.textures.exists("art_" + n)) this.load.image("art_" + n, ART_DIR + n + ".webp");
+  }
+
+  // เปลี่ยนภาพเป็นภาพวาดจริงถ้ามี: h = สูง, w = กว้าง, m = ด้านที่ยาวที่สุด (หน่วยพิกเซลในโลก)
+  skin(img, name, o) {
+    if (!name || !ART_OK.has(name)) return false;
+    img.setTexture("art_" + name);
+    const f = img.frame, sc = o.h ? o.h / f.height : o.w ? o.w / f.width : o.m / Math.max(f.width, f.height);
+    img.setOrigin(0.5, o.oy == null ? 0.92 : o.oy).setScale(sc);
+    img.base = sc; img.art = true;
+    if (o.tint) img.setTint(o.tint);
+    return true;
+  }
 
   create(data) {
     this.state = Core.createState(data && data.seed ? data.seed : 20261020);
@@ -3238,8 +3315,11 @@ class GameScene extends Phaser.Scene {
     this.team = 1;
     const { w, h } = this.state.world;
 
+    for (const n of ART_FILES) if (this.textures.exists("art_" + n)) ART_OK.add(n);
+    artUi();
     this.makeTextures();
-    this.add.tileSprite(0, 0, w, h, "ground").setOrigin(0, 0).setDepth(-3e6);
+    const ground = this.add.tileSprite(0, 0, w, h, ART_OK.has("grass") ? "art_grass" : "ground").setOrigin(0, 0).setDepth(-3e6);
+    if (ART_OK.has("grass")) ground.setTileScale(160 / this.textures.get("art_grass").getSourceImage().width);
     this.drawTerrain();
     this.drawCamp();
 
@@ -3585,7 +3665,22 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  // น้ำจากภาพจริง: แบ่งภาพเป็น 4x4 ช่อง ต่อกันไร้รอย ขอบบน/ล่างเติมฝั่ง
+  artWater(i, edge) {
+    const key = "wart" + i + edge;
+    if (!this.textures.exists(key)) {
+      const src = this.textures.get("art_water").getSourceImage(), S = DATA.tile, q = src.width / 4;
+      const t = this.textures.createCanvas(key, S, S), g = t.getContext();
+      g.drawImage(src, (i % 4) * q, ((i / 4) | 0) * q, q, q, 0, 0, S, S);
+      if (edge.includes("T")) { g.fillStyle = "rgba(20,30,18,0.55)"; g.fillRect(0, 0, S, 5); g.fillStyle = "rgba(200,230,255,0.35)"; g.fillRect(0, 5, S, 1.5); }
+      if (edge.includes("B")) { g.fillStyle = "rgba(10,20,30,0.35)"; g.fillRect(0, S - 4, S, 4); }
+      t.refresh();
+    }
+    return key;
+  }
+
   drawTerrain() {
+
     const { n: N, t } = this.state.map, S = DATA.tile, TT = Core.T;
     const r = Core.rng(this.state.seed + 99);
     this.tileImgs = new Map();
@@ -3596,18 +3691,24 @@ class GameScene extends Phaser.Scene {
         const k = t[y * N + x], px = x * S, py = y * S;
         if (k === TT.WATER) {
           // น้ำเป็นภาพทีละช่อง (ซ่อนนอกจอได้) แทนการวาดสี่เหลี่ยมหลายพันอันทุกเฟรม
-          const key = "water" + (isWater(x, y - 1) ? "" : "T") + (isWater(x, y + 1) ? "" : "B") + (r() < 0.12 ? "R" : "");
+          const edge = (isWater(x, y - 1) ? "" : "T") + (isWater(x, y + 1) ? "" : "B");
+          const key = ART_OK.has("water") ? this.artWater((x % 4) + (y % 4) * 4, edge) : "water" + edge + (r() < 0.12 ? "R" : "");
           this.statics.push(this.add.image(px, py, key).setOrigin(0, 0).setDepth(-2.9e6));
         } else if (k === TT.TREE) {
           const ox = (r() - 0.5) * 8, oy = (r() - 0.5) * 6;
-          const img = this.add.image(px + S / 2 + ox, py + S - 2 + oy, r() < 0.5 ? "tree0" : "tree1").setOrigin(0.5, 52 / 56).setDepth(py + S + oy);
+          const pick = r() < 0.5;
+          const img = this.add.image(px + S / 2 + ox, py + S - 2 + oy, pick ? "tree0" : "tree1").setOrigin(0.5, 52 / 56).setDepth(py + S + oy);
+          this.skin(img, pick ? "tree1" : "tree2", { h: 58 + r() * 10, oy: 0.95 });
           this.tileImgs.set(y * N + x, img); this.statics.push(img);
         } else if (k === TT.ROCK) {
           const img = this.add.image(px + S / 2, py + S - 2, "boulder").setOrigin(0.5, 28 / 32).setDepth(py + S);
+          this.skin(img, "rock", { w: 40, oy: 0.9 });
           this.tileImgs.set(y * N + x, img); this.statics.push(img);
         } else if (k === TT.GRASS && r() < 0.06) {
           const kind = r() < 0.7 ? "tuft" : "flower";
-          this.statics.push(this.add.image(px + r() * S, py + r() * S, kind).setDepth(-2e6).setAlpha(0.9));
+          const im = this.add.image(px + r() * S, py + r() * S, kind).setDepth(-2e6).setAlpha(0.9);
+          this.skin(im, kind, { w: kind === "tuft" ? 20 : 14, oy: 0.8 });
+          this.statics.push(im);
         }
       }
     }
@@ -3620,8 +3721,10 @@ class GameScene extends Phaser.Scene {
     g.fillStyle(0x7a6740, 0.35); g.fillCircle(x, y + 10, 104);
     g.lineStyle(2, 0xe2b04a, 0.35); g.strokeCircle(x, y + 10, DATA.campRadius);
     this.campImg = this.add.image(x, y + 30, "tent").setOrigin(0.5, 88 / 96).setDepth(y + 30);
+    this.skin(this.campImg, "camp1", { w: 126, oy: 0.9 });
     this.fire = { x: x + 64, y: y + 54 };
-    this.add.image(this.fire.x, this.fire.y, "firepit").setDepth(this.fire.y - 2);
+    const pit = this.add.image(this.fire.x, this.fire.y, "firepit").setDepth(this.fire.y - 2);
+    this.skin(pit, "firepit", { w: 40, oy: 0.6 });
     this.fireGlow = this.add.graphics().setDepth(-2.4e6).setBlendMode(Phaser.BlendModes.ADD);
     this.flame = this.add.graphics().setDepth(this.fire.y - 1);
     this.campLabel = this.add.text(x, y + 40, "บ้านหลัก Lv 1", { fontFamily: "Sarabun, sans-serif", fontSize: "15px", fontStyle: "bold", color: "#efe8d2", stroke: "#1c2618", strokeThickness: 4 })
@@ -3669,8 +3772,10 @@ class GameScene extends Phaser.Scene {
     const shadow = this.add.image(0, 12, "shadow");
     const body = this.add.image(0, 0, "hero");
     const bow = this.add.image(0, 0, "bow").setRotation(hero.face);
+    const art = this.skin(body, "hero_" + (hero.cls || "archer"), { h: 54, oy: 0.95 }) || this.skin(body, "hero_archer", { h: 54, oy: 0.95 });
+    if (art) bow.setVisible(false);
     root.add([shadow, body, bow]);
-    return { root, body, bow };
+    return { root, body, bow, art };
   }
 
   sendMoveTo(p, fresh) {
@@ -3806,16 +3911,21 @@ class GameScene extends Phaser.Scene {
         const shadow = this.add.image(0, 8, "shadow").setScale(0.6);
         const body = this.add.image(0, 0, { archer: "u_archer", swordsman: "u_sword", medic: "u_medic" }[u.type] || "worker");
         const load = this.add.image(-6, -8, "pebbles").setScale(0.7).setVisible(false);
+        const art = this.skin(body, { archer: "u_archer", swordsman: "u_sword", medic: "u_medic" }[u.type] || "worker", { h: u.type === "worker" ? 36 : 40, oy: 0.95 });
         root.add([shadow, body, load]);
-        v = { root, body, load };
+        v = { root, body, load, art, carry: -1 };
         this.unitViews.set(u.id, v);
       }
       const x = u.px + (u.x - u.px) * a, y = u.py + (u.y - u.py) * a;
       v.root.setPosition(x, y).setDepth(y + 8).setVisible(!u.hidden && this.visibleAt(x, y));
-      v.body.rotation = Phaser.Math.Angle.RotateTo(v.body.rotation, u.face, 0.3);
-      v.body.y = u.moving ? Math.sin(time / 60 + u.id) * 1.5 : 0;
+      const ub = u.moving ? Math.sin(time / 60 + u.id) * 1.5 : 0;
+      if (v.art) { const c = Math.cos(u.face); if (Math.abs(c) > 0.2) v.body.flipX = c < 0; v.body.y = 9 + ub; }
+      else { v.body.rotation = Phaser.Math.Angle.RotateTo(v.body.rotation, u.face, 0.3); v.body.y = ub; }
       if (u.job === "gather") v.body.x = Math.sin(time / 90) * 2; else v.body.x = 0;
-      if (u.type === "worker") v.load.setVisible(u.carry > 0).setTexture(u.carryType === "stone" ? "pebbles" : "stump");
+      if (u.type === "worker" && v.art) {
+        const want = u.carry > 0 ? (u.carryType === "stone" ? "worker_stone" : "worker_wood") : "worker";
+        if (v.carry !== want) { v.carry = want; const fx = v.body.flipX; this.skin(v.body, ART_OK.has(want) ? want : "worker", { h: 36, oy: 0.95 }); v.body.flipX = fx; }
+      } else if (u.type === "worker") v.load.setVisible(u.carry > 0).setTexture(u.carryType === "stone" ? "pebbles" : "stump");
       if (u.type === "swordsman" && u.lunge) { v.body.x = Math.cos(u.face) * u.lunge * 5; u.lunge = Math.max(0, u.lunge - 0.15); }
       v.x = x; v.y = y;
     }
@@ -3833,7 +3943,8 @@ class GameScene extends Phaser.Scene {
       if (b.type === "camp") {
         if (b.lv !== this.campLv) {
           this.campLv = b.lv;
-          this.campImg.setTexture(b.lv >= 3 ? "hall" : "tent").setOrigin(0.5, b.lv >= 3 ? 96 / 104 : 88 / 96).setScale(b.lv >= 5 ? 1.12 : b.lv === 4 ? 1.05 : 1);
+          if (!this.skin(this.campImg, "camp" + b.lv, { w: 118 + b.lv * 8, oy: 0.9 }))
+            this.campImg.setTexture(b.lv >= 3 ? "hall" : "tent").setOrigin(0.5, b.lv >= 3 ? 96 / 104 : 88 / 96).setScale(b.lv >= 5 ? 1.12 : b.lv === 4 ? 1.05 : 1);
           this.campLabel.setText(`บ้านหลัก Lv ${b.lv}`);
           this.drawZoneRing();
         }
@@ -3842,10 +3953,12 @@ class GameScene extends Phaser.Scene {
       seen.add(b.id);
       const tex = this.buildingTexture(b);
       const have = this.buildViews.get(b.id);
-      if (have) { if (have.texture.key !== tex) have.setTexture(tex); continue; }
+      if (have) { if (have.tex !== tex) { have.tex = tex; if (!this.skin(have, ART_BUILD[tex], ART_BSIZE[b.type] || { w: 40 })) have.setTexture(tex); } continue; }
       const S = DATA.tile, bx = (b.tx + b.size / 2) * S, by = (b.ty + b.size) * S;
       const img = this.add.image(bx, by + (b.type === "tower" ? 4 : 2), tex).setOrigin(0.5, 1).setDepth(by);
-      img.setScale(0.6); this.tweens.add({ targets: img, scale: 1, duration: 220, ease: "Back.easeOut" });
+      img.tex = tex; this.skin(img, ART_BUILD[tex], ART_BSIZE[b.type] || { w: 40 });
+      const full = img.base || 1;
+      img.setScale(full * 0.6); this.tweens.add({ targets: img, scale: full, duration: 220, ease: "Back.easeOut" });
       this.buildViews.set(b.id, img);
     }
     for (const [id, img] of this.buildViews) if (!seen.has(id)) { img.destroy(); this.buildViews.delete(id); }
@@ -3873,16 +3986,20 @@ class GameScene extends Phaser.Scene {
           this.popText(e.x + (Math.random() - 0.5) * 10, e.y, e.crit ? e.amount + "!" : String(e.amount), e.crit ? "#ffd166" : "#efe8d2", e.crit ? 19 : 14);
           const v = this.monViews.get(e.id);
           if (v) v.flash = 1;
+          this.puff("fx_hit", e.x + (Math.random() - 0.5) * 8, e.y - 8, { w: e.crit ? 34 : 22, dur: 220, from: 0.5, to: 1.1 });
         }
       } else if (e.type === "death" && e.kind === "monster") {
         const v = this.monViews.get(e.id);
         if (v) {
           this.monViews.delete(e.id);
-          if (e.burn) { v.body.setAlpha(0.8); this.tweens.add({ targets: v.root, alpha: 0, y: v.root.y - 16, duration: 900, onComplete: () => v.root.destroy() }); }
+          if (e.burn) { this.puff("fx_sunburn", v.root.x, v.root.y - 6, { w: 46, dur: 900, from: 0.6, to: 1.2, dy: -14 }); v.body.setAlpha(0.8); this.tweens.add({ targets: v.root, alpha: 0, y: v.root.y - 16, duration: 900, onComplete: () => v.root.destroy() }); }
           else this.tweens.add({ targets: v.root, alpha: 0, scale: 0.4, duration: 260, onComplete: () => v.root.destroy() });
         }
+      } else if (e.type === "death" && e.kind === "building") {
+        if (this.visibleAt(e.x, e.y)) this.puff("fx_rubble", e.x, e.y + 6, { w: 44, dur: 2600, from: 1, to: 1, depth: e.y - 1 });
       } else if (e.type === "levelUp" && e.id === this.localHero) {
         const hv = this.heroViews.get(e.id);
+        this.puff("fx_levelup", hv.root.x, hv.root.y, { w: 90, dur: 800, from: 0.3, to: 1.3, depth: 8.4e6, dy: -20 });
         this.popText(hv.root.x, hv.root.y - 26, `LEVEL ${e.lv}!`, "#ffd166", 22);
         const ring = this.add.graphics().setPosition(hv.root.x, hv.root.y).setDepth(8.4e6);
         ring.lineStyle(3, 0xffd166, 1); ring.strokeCircle(0, 0, 20);
@@ -3901,7 +4018,7 @@ class GameScene extends Phaser.Scene {
         Banner.show("ประตูนี้ตัน · ด้านหนึ่งติดหิน ต้นไม้ หรือน้ำ คนงานเดินผ่านไม่ได้", "warn");
       } else if (e.type === "upgraded") {
         const img = this.buildViews.get(e.id);
-        if (img) this.tweens.add({ targets: img, scale: { from: 1.25, to: 1 }, duration: 320, ease: "Back.easeOut" });
+        if (img) this.tweens.add({ targets: img, scale: { from: 1.25 * (img.base || 1), to: img.base || 1 }, duration: 320, ease: "Back.easeOut" });
         this.popText(e.x, e.y - 30, `Lv ${e.lv}!`, "#ffd166", 16);
         if (e.btype === "camp") Banner.show(`บ้านหลัก Lv ${e.lv} · คนงาน ${Core.popCap(this.state, this.team, "worker")} · ทหาร ${Core.popCap(this.state, this.team, "army")} · เขตสร้างกว้างขึ้น`, "day");
       } else if (e.type === "researched") {
@@ -3911,7 +4028,7 @@ class GameScene extends Phaser.Scene {
       } else if (e.type === "heal") {
         if (this.visibleAt(e.x, e.y)) this.popText(e.x, e.y, "+" + e.n, "#7fe08a", 13);
       } else if (e.type === "repaired" && e.team === this.team) {
-        for (const b of this.state.buildings) if (b.team === this.team) { const img = this.buildViews.get(b.id); if (img) this.tweens.add({ targets: img, scale: { from: 1.12, to: 1 }, duration: 260 }); }
+        for (const b of this.state.buildings) if (b.team === this.team) { const img = this.buildViews.get(b.id); if (img) this.tweens.add({ targets: img, scale: { from: 1.12 * (img.base || 1), to: img.base || 1 }, duration: 260 }); }
       } else if (e.type === "recalled") {
         Toast.show("กลับถึงค่ายแล้ว");
       } else if (e.type === "recallBroken") {
@@ -3922,9 +4039,14 @@ class GameScene extends Phaser.Scene {
         else Banner.show(`เวฟ ${e.idx + 1}/${e.of} อีก ${DATA.waves.nextWarn} วินาที · ${e.total} ตัวจากทิศ${e.dirName}${tag}`, "warn");
       } else if (e.type === "blast") {
         if (this.visibleAt(e.x, e.y)) {
+          if (ART_OK.has("fx_blast")) {
+            const g = this.add.image(e.x, e.y, "art_fx_blast").setDepth(e.y + 30); this.skin(g, "fx_blast", { w: e.r * 2.2, oy: 0.5 });
+            const full = g.base; g.setScale(full * 0.3); this.tweens.add({ targets: g, scale: full, alpha: 0, duration: 420, ease: "Cubic.easeOut", onComplete: () => g.destroy() });
+          } else {
           const g = this.add.graphics().setPosition(e.x, e.y).setDepth(e.y + 30);
           g.fillStyle(0xff8a3c, 0.55); g.fillCircle(0, 0, e.r); g.fillStyle(0xffe08a, 0.8); g.fillCircle(0, 0, e.r * 0.45);
           g.setScale(0.3); this.tweens.add({ targets: g, scale: 1, alpha: 0, duration: 380, ease: "Cubic.easeOut", onComplete: () => g.destroy() });
+          }
           this.cameras.main.shake(120, 0.004);
         }
       } else if (e.type === "waveStart") {
@@ -3954,6 +4076,7 @@ class GameScene extends Phaser.Scene {
           const N = this.state.map.n, S = DATA.tile, x = (e.idx % N + 0.5) * S, y = (((e.idx / N) | 0) + 0.5) * S;
           this.tweens.add({ targets: img, alpha: 0, duration: 250, onComplete: () => img.destroy() });
           const st = this.add.image(x, y + 6, e.kind === "tree" ? "stump" : "pebbles").setDepth(-2e6);
+          this.skin(st, e.kind === "tree" ? "stump" : "pebbles", { w: 26, oy: 0.7 });
           this.statics.push(st); (this.stumps || (this.stumps = new Map())).set(e.idx, st);
         }
       } else if (e.type === "regrow") {
@@ -3963,12 +4086,14 @@ class GameScene extends Phaser.Scene {
         const img = e.kind === "tree"
           ? this.add.image(x + S / 2, y + S - 2, e.idx % 2 ? "tree0" : "tree1").setOrigin(0.5, 52 / 56).setDepth(y + S)
           : this.add.image(x + S / 2, y + S - 2, "boulder").setOrigin(0.5, 28 / 32).setDepth(y + S);
+        if (e.kind === "tree") this.skin(img, e.idx % 2 ? "tree1" : "tree2", { h: 62, oy: 0.95 }); else this.skin(img, "rock", { w: 40, oy: 0.9 });
         this.tileImgs.set(e.idx, img); this.statics.push(img);
-        img.setScale(0.3); this.tweens.add({ targets: img, scale: 1, duration: 600, ease: "Back.easeOut" });
+        const full = img.base || 1; img.setScale(full * 0.3); this.tweens.add({ targets: img, scale: full, duration: 600, ease: "Back.easeOut" });
       } else if (e.type === "noResource" && e.team === this.team) {
         Banner.show("ไม้และหินรอบค่ายหมดแล้ว · คนงานรอต้นไม้งอกใหม่ตอนเช้า หรือ Hero ออกไปเก็บเอง", "warn");
       } else if (e.type === "skill") {
         const h = this.state.heroes[0];
+        this.puff("fx_volley", h.x + Math.cos(h.aim) * 30, h.y + Math.sin(h.aim) * 30, { w: 70, dur: 360, from: 0.6, to: 1.2, rot: h.aim, depth: h.y + 30 });
         const ring = this.add.graphics().setPosition(h.x, h.y).setDepth(h.y + 5);
         ring.lineStyle(3, 0xe2b04a, 0.9); ring.strokeCircle(0, 0, 18);
         this.tweens.add({ targets: ring, alpha: 0, scale: 1.8, duration: 320, onComplete: () => ring.destroy() });
@@ -3986,8 +4111,10 @@ class GameScene extends Phaser.Scene {
         const def = DATA.monsters[m.type];
         const shadow = this.add.image(0, m.fly ? 14 : m.r * def.size * 0.6 + 4, "shadow").setScale(def.size * (m.fly ? 0.6 : 0.85)).setAlpha(m.fly ? 0.5 : 1);
         const body = this.add.image(0, 0, ensureMonTex(this, m.type)).setOrigin(24 / 56, 0.5);
+        const am = artMon(m.type);
+        const art = !!am && this.skin(body, am.name, { m: m.r * 3.6 * def.size, oy: m.fly ? 0.6 : 0.92, tint: am.tint });
         root.add([shadow, body]);
-        v = { root, body, flash: 0, def };
+        v = { root, body, flash: 0, def, art, foot: m.fly ? -6 : m.r * def.size * 0.6 + 4 };
         this.monViews.set(m.id, v);
       }
       const x = m.px + (m.x - m.px) * a, y = m.py + (m.y - m.py) * a;
@@ -3995,12 +4122,14 @@ class GameScene extends Phaser.Scene {
       v.root.setVisible(vis);
       if (!vis) continue;
       v.root.setPosition(x + Math.cos(m.face) * m.lunge * 7, y + Math.sin(m.face) * m.lunge * 7).setDepth(y + 5);
-      v.body.rotation = Phaser.Math.Angle.RotateTo(v.body.rotation, m.face, 0.25);
+      if (v.art) { const c = Math.cos(m.face); if (Math.abs(c) > 0.15) v.body.flipX = c < 0; v.body.y = v.foot; }
+      else v.body.rotation = Phaser.Math.Angle.RotateTo(v.body.rotation, m.face, 0.25);
       if (!this.seenTypes.has(m.type)) Bestiary.see(m.type);
-      if (m.fly) v.body.y = -10 + Math.sin(time / 120 + m.id) * 3;
+      if (m.fly) v.body.y = (v.art ? v.foot : -10) + Math.sin(time / 120 + m.id) * 3;
       const fast = m.arch === "runner" || m.arch === "exploder";
       const wob = m.moving ? Math.sin(time / (fast ? 45 : 110) + m.id) * (fast ? 0.06 : 0.1) : m.arch === "exploder" ? Math.sin(time / 60) * 0.05 : 0;
-      v.body.setScale(1 + v.flash * 0.18, 1 + wob + v.flash * 0.18);
+      const bs = v.body.base || 1;
+      v.body.setScale(bs * (1 + v.flash * 0.18), bs * (1 + wob + v.flash * 0.18));
       v.body.setAlpha(1 - v.flash * 0.45);
       v.flash = Math.max(0, v.flash - 0.12);
       v.x = x; v.y = y;
@@ -4014,7 +4143,10 @@ class GameScene extends Phaser.Scene {
     for (const l of this.state.loot) {
       seen.add(l.id);
       let img = this.lootViews.get(l.id);
-      if (!img) { img = this.add.image(l.x, l.y, "loot_" + l.item.slot).setDepth(l.y - 1); this.lootViews.set(l.id, img); }
+      if (!img) {
+        img = this.add.image(l.x, l.y, "loot_" + l.item.slot).setDepth(l.y - 1); this.lootViews.set(l.id, img);
+        this.skin(img, itemArt(l.item), { m: 30, oy: 0.5 });
+      }
       const vis = this.visibleAt(l.x, l.y);
       img.setVisible(vis);
       if (!vis) continue;
@@ -4052,11 +4184,15 @@ class GameScene extends Phaser.Scene {
       let v = this.boltViews.get(o.id);
       if (!v) {
         const def = DATA.monsters[o.type], col = parseInt((def.accent || def.color).slice(1), 16);
-        v = this.add.graphics(); v.fillStyle(col, 0.35); v.fillCircle(0, 0, 7); v.fillStyle(col, 1); v.fillCircle(0, 0, 3.5); v.fillStyle(0xffffff, 0.9); v.fillCircle(0, 0, 1.5);
+        const fam = def.family || "", vr = o.type.slice(-1);
+        const bn = fam === "spider" || o.type === "boss2" ? "fx_web" : vr === "3" || fam === "wisp" || fam === "demon" ? "fx_fireball" : vr === "4" ? "fx_frostbolt" : "fx_bolt";
+        if (ART_OK.has(bn)) { v = this.add.image(0, 0, "art_" + bn); this.skin(v, bn, { w: bn === "fx_web" ? 26 : 24, oy: 0.5, tint: bn === "fx_bolt" ? col : null }); v.dirArt = bn !== "fx_bolt" && bn !== "fx_web" ? Math.PI : 0; }
+        else { v = this.add.graphics(); v.fillStyle(col, 0.35); v.fillCircle(0, 0, 7); v.fillStyle(col, 1); v.fillCircle(0, 0, 3.5); v.fillStyle(0xffffff, 0.9); v.fillCircle(0, 0, 1.5); }
         this.boltViews.set(o.id, v);
       }
       const x = o.px + (o.x - o.px) * a, y = o.py + (o.y - o.py) * a;
       v.setPosition(x, y).setDepth(y + 25).setVisible(this.visibleAt(x, y));
+      if (v.dirArt != null && (o.x !== o.px || o.y !== o.py)) v.setRotation(Math.atan2(o.y - o.py, o.x - o.px) + v.dirArt);
     }
     for (const [id, v] of this.boltViews) if (!seen.has(id)) { v.destroy(); this.boltViews.delete(id); }
   }
@@ -4066,7 +4202,7 @@ class GameScene extends Phaser.Scene {
     for (const ar of this.state.arrows) {
       seen.add(ar.id);
       let s = this.arrowViews.get(ar.id);
-      if (!s) { s = this.add.image(ar.x, ar.y, "arrow").setRotation(ar.angle); this.arrowViews.set(ar.id, s); }
+      if (!s) { s = this.add.image(ar.x, ar.y, "arrow").setRotation(ar.angle); this.skin(s, "fx_arrow", { w: 28, oy: 0.5 }); this.arrowViews.set(ar.id, s); }
       const x = ar.px + (ar.x - ar.px) * a, y = ar.py + (ar.y - ar.py) * a;
       s.setPosition(x, y).setDepth(y + 20).setVisible(this.visibleAt(x, y));
     }
@@ -4136,7 +4272,8 @@ class GameScene extends Phaser.Scene {
       const aim = hero.aimUntil > this.state.tick ? hero.aim : hero.face;
       view.bow.rotation = Phaser.Math.Angle.RotateTo(view.bow.rotation, aim, 0.4);
       const bob = hero.moving ? Math.sin(time / 70) * 2 : 0;
-      view.body.y = bob; view.bow.y = bob;
+      if (view.art) { const c = Math.cos(aim); if (Math.abs(c) > 0.2) view.body.flipX = c < 0; view.body.y = 14 + bob; }
+      else { view.body.y = bob; view.bow.y = bob; }
       view.body.x = hero.gathering >= 0 ? Math.sin(time / 80) * 2 : 0;
     }
     this.syncMonsters(a, time);
@@ -4154,6 +4291,11 @@ class GameScene extends Phaser.Scene {
     this.drawWaveArrow(time);
     this.recallRing.clear();
     { const h = this.state.heroes[0], hv = this.heroViews.get(h.id);
+      if (!this.recallFx && ART_OK.has("fx_recall")) { this.recallFx = this.add.image(0, 0, "art_fx_recall").setDepth(8.29e6); this.skin(this.recallFx, "fx_recall", { w: 64, oy: 0.5 }); this.recallFx.setVisible(false); }
+      if (this.recallFx) {
+        this.recallFx.setVisible(!!h.recall && !h.dead);
+        if (h.recall) { const k = 1 - h.recall.t / DATA.hero.recallSec; this.recallFx.setPosition(hv.root.x, hv.root.y + 10).setRotation(time / 300).setAlpha(0.4 + k * 0.6).setScale(this.recallFx.base * (0.6 + k * 0.5)); }
+      }
       if (h.recall) {
         const k = 1 - h.recall.t / DATA.hero.recallSec;
         this.recallRing.lineStyle(3, 0x6fb6e8, 0.3); this.recallRing.strokeCircle(hv.root.x, hv.root.y, 24);
@@ -4248,7 +4390,8 @@ const HUD = (() => {
     $("skill").classList.toggle("locked", me.dead || me.skillCd > 0 || me.mp < sk.mp);
 
     $("recall").classList.toggle("recalling", !!me.recall);
-    $("recall").textContent = me.recall ? `กลับฐาน ${me.recall.t.toFixed(1)}` : "กลับฐาน";
+    { const t = me.recall ? `กลับฐาน ${me.recall.t.toFixed(1)}` : "กลับฐาน", el = $("recall"), last = el.lastChild;
+      if (last && last.nodeType === 3) { if (last.nodeValue !== t) last.nodeValue = t; } else el.textContent = t; }
     $("down").hidden = !me.dead;
     if (!me.dead) $("down").classList.remove("waiting");
     if (me.dead) $("down-sec").textContent = Math.max(0, Math.ceil((me.respawnAt - st.tick) * DATA.tickMs / 1000));
