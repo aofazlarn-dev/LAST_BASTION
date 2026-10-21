@@ -4044,8 +4044,58 @@ class GameScene extends Phaser.Scene {
     return key;
   }
 
+  // เพื่อนบ้านของกำแพง: บิต 1 = บน, 2 = ขวา, 4 = ล่าง, 8 = ซ้าย (นับประตูด้วย)
+  wallMask(b) {
+    const st = this.state, N = st.map.n;
+    const link = (x, y) => {
+      if (x < 0 || y < 0 || x >= N || y >= N) return false;
+      const o = st.buildings.find((e) => e.id === st.buildAt[y * N + x]);
+      return !!o && (o.type === "wall" || o.type === "gate") && o.team === b.team;
+    };
+    return (link(b.tx, b.ty - 1) ? 1 : 0) | (link(b.tx + 1, b.ty) ? 2 : 0) | (link(b.tx, b.ty + 1) ? 4 : 0) | (link(b.tx - 1, b.ty) ? 8 : 0);
+  }
+
+  /* กำแพงต่อเนื่อง: ประกอบภาพใหม่ต่อช่องจากภาพจริง
+     แนวนอน = ตัดแถบกลางของกำแพงด้านหน้า ยืดให้กว้างพอดี 1 ช่อง (ช่องติดกันต่อกันสนิท) + ปิดหัวท้ายเฉพาะปลายแถว
+     แนวตั้ง = ตัดแถบกลางของกำแพงด้านข้าง สูงพอดี 1 ช่อง + ยอดบนสุด / ฐานล่างสุดเฉพาะปลายแถว
+     มุม/ทางแยก = แถบทั้งสองแนว + เสามุมทับ */
+  wallArt(lv, mask) {
+    const key = "wc" + lv + "_" + mask;
+    if (this.textures.exists(key)) return key;
+    if (!ART_OK.has("wall" + lv) || !ART_OK.has("wall_side" + lv)) return null;
+    const img = (n) => this.textures.get("art_" + n).getSourceImage();
+    const front = img("wall" + lv), side = img("wall_side" + lv), post = ART_OK.has("wall_corner" + lv) ? img("wall_corner" + lv) : null;
+    const S = DATA.tile, K = 2, CW = 3 * S, CH = 4 * S;
+    const t = this.textures.createCanvas(key, CW * K, CH * K), g = t.getContext();
+    g.scale(K, K);
+    const cx = CW / 2, x0 = cx - S / 2, x1 = cx + S / 2, yb = CH - 4;
+    const up = mask & 1, rt = mask & 2, dn = mask & 4, lf = mask & 8, vert = up || dn, hor = rt || lf;
+    const fh = 44, fw = front.width * fh / front.height, cut = 0.3;
+    const band = (dx0, dx1) => g.drawImage(front, front.width * cut, 0, front.width * (1 - 2 * cut), front.height, dx0, yb - fh, dx1 - dx0, fh);
+    if (!vert) {
+      band(x0, x1);
+      if (!lf) g.drawImage(front, 0, 0, front.width * cut, front.height, x0 - fw * cut, yb - fh, fw * cut, fh);
+      if (!rt) g.drawImage(front, front.width * (1 - cut), 0, front.width * cut, front.height, x1, yb - fh, fw * cut, fh);
+    } else {
+      if (lf) band(x0 - 1, cx + 1);
+      if (rt) band(cx - 1, x1 + 1);
+      const sw = 26, sh = side.height * sw / side.width, cap = sh * 0.26, base = sh * 0.22, top = yb - base - S;
+      g.drawImage(side, 0, side.height * 0.26, side.width, side.height * 0.52, cx - sw / 2, top, sw, S + 1);
+      if (!dn) g.drawImage(side, 0, side.height * 0.78, side.width, side.height * 0.22, cx - sw / 2, yb - base, sw, base);
+      if (!up) g.drawImage(side, 0, 0, side.width, side.height * 0.26, cx - sw / 2, top - cap + 0.5, sw, cap);
+      if (hor && post) { const ph = 54, pw = post.width * ph / post.height; g.drawImage(post, cx - pw / 2, yb - ph, pw, ph); }
+    }
+    t.refresh();
+    t.yb = yb / CH;
+    return key;
+  }
+
   skinBuilding(img, b, tex) {
-    const [base, v] = tex.split(":"), name = ART_BUILD[base], lv = /\d$/.test(name || "") ? name.slice(-1) : "1";
+    const [base0, mk] = tex.split("#"), [base, v] = base0.split(":"), name = ART_BUILD[base], lv = /\d$/.test(name || "") ? name.slice(-1) : "1";
+    if (b.type === "wall" && mk != null) {
+      const key = this.wallArt(lv, +mk);
+      if (key) { img.setTexture(key).setOrigin(0.5, (4 * DATA.tile - 4) / (4 * DATA.tile)).setScale(0.5).clearTint(); img.base = 0.5; img.art = true; img.y = (b.ty + 1) * DATA.tile; return; }
+    }
     // ภาพจริงด้านข้าง / มุม (ชุด v2)
     const sideName = v === "v" ? (b.type === "gate" ? "gate_side" : "wall_side") + lv : v === "c" ? "wall_corner" + lv : null;
     if (sideName && ART_OK.has(sideName)) {
@@ -4082,7 +4132,7 @@ class GameScene extends Phaser.Scene {
       }
       seen.add(b.id);
       const shape = b.type === "gate" ? (b.rot ? "v" : "h") : this.wallShape(b);
-      const tex = this.buildingTexture(b) + (shape === "h" ? "" : ":" + shape);
+      const tex = this.buildingTexture(b) + (shape === "h" ? "" : ":" + shape) + (b.type === "wall" ? "#" + this.wallMask(b) : "");
       const have = this.buildViews.get(b.id);
       if (have) { if (have.tex !== tex) { have.tex = tex; this.skinBuilding(have, b, tex); } continue; }
       const S = DATA.tile, bx = (b.tx + (b.w || b.size) / 2) * S, by = (b.ty + (b.h || b.size)) * S;
