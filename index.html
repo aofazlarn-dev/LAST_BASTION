@@ -3395,7 +3395,8 @@ function artMon(key) {
   return null;
 }
 const ART_BUILD = { wall: "wall1", wall2: "wall2", wall3: "wall3", gate: "gate1", gate2: "gate2", gate3: "gate3", tower: "tower1", tower2: "tower2", tower3: "tower3", barracks: "barracks", infirmary: "infirmary", workshop: "workshop" };
-const ART_BSIZE = { wall: { w: 46, oy: 0.94 }, gate: { w: 76, oy: 0.94 }, tower: { h: 88, oy: 0.96 }, barracks: { w: 80, oy: 0.94 }, infirmary: { w: 80, oy: 0.94 }, workshop: { w: 80, oy: 0.94 } };
+const WALL_SIDE_W = 15;   // ความกว้างกำแพงแนวตั้งบนจอ
+const ART_BSIZE = { wall: { w: 46, oy: 0.94 }, gate: { h: 60, oy: 0.96 }, tower: { h: 88, oy: 0.96 }, barracks: { w: 80, oy: 0.94 }, infirmary: { w: 80, oy: 0.94 }, workshop: { w: 80, oy: 0.94 } };
 
 // ใส่ไอคอนภาพจริงหน้าปุ่ม HUD (ครั้งเดียว)
 function artUi() {
@@ -4275,7 +4276,7 @@ class GameScene extends Phaser.Scene {
     const FH = 50, fBot = yb - 6, fw = front.width * FH / front.height;          // กำแพงหน้า
     const A = 0.22, B = 0.78;                                                   // ช่วงแถบกลาง
     const band = (dx0, dx1) => g.drawImage(front, front.width * A, 0, front.width * (B - A), front.height, dx0, fBot - FH, dx1 - dx0, FH);
-    const SW = 24, sh = side.height * SW / side.width, lift = FH - 16;          // กำแพงข้าง
+    const SW = WALL_SIDE_W, sh = side.height * SW / side.width, lift = FH - 16;          // กำแพงข้าง (บางเท่าความหนาที่เห็นจากด้านบน)
     const sTop = side.height * 0.3, sBot = side.height * 0.8;
     if (hor || !vert) {
       if (!vert) band(x0, x1);
@@ -4288,7 +4289,7 @@ class GameScene extends Phaser.Scene {
       g.drawImage(side, 0, sTop, side.width, sBot - sTop, cx - SW / 2, top, SW, bot - top + 0.5);
       if (!dn) g.drawImage(side, 0, sBot, side.width, side.height - sBot, cx - SW / 2, bot, SW, lift - 2);
       if (!up) { const ch = sTop * SW / side.width; g.drawImage(side, 0, 0, side.width, sTop, cx - SW / 2, top - ch + 0.5, SW, ch); }
-      if (hor) { const ph = FH + 18, pw = post.width * ph / post.height; g.drawImage(post, cx - pw / 2, fBot - ph + 2, pw, ph); }
+      if (hor) { const pw = SW + 4, ph = Math.min(FH + 10, post.height * pw / post.width); g.drawImage(post, cx - pw / 2, fBot - ph + 2, pw, ph); }
     }
     t.refresh();
     return key;
@@ -4406,6 +4407,10 @@ class GameScene extends Phaser.Scene {
     if (sideName && ART_OK.has(sideName)) {
       const gate = b.type === "gate";
       this.skin(img, sideName, gate ? { h: 92, oy: 0.97 } : v === "c" ? { h: 58, oy: 0.95 } : { h: 54, oy: 0.97 });
+      if (gate) {   // ประตูแนวตั้ง: กว้างเท่ากำแพงข้าง (+เล็กน้อย) สูง 2 ช่อง + ความสูงกำแพง ฐานตรงกับกำแพง
+        const S = DATA.tile, H = 2 * S + 52;   // เผื่อยอดธงด้านบนของภาพ
+        img.setDisplaySize(WALL_SIDE_W + 13, H); img.base = img.scaleY; img.y = (b.ty + b.h) * S - 2;
+      }
       return;
     }
     if (v && ART_OK.has(name)) {
@@ -4443,10 +4448,11 @@ class GameScene extends Phaser.Scene {
       const have = this.buildViews.get(b.id);
       if (have) { if (have.tex !== tex) { have.tex = tex; this.skinBuilding(have, b, tex); } continue; }
       const S = DATA.tile, bx = (b.tx + (b.w || b.size) / 2) * S, by = (b.ty + (b.h || b.size)) * S;
-      const img = this.add.image(bx, by + (b.type === "tower" ? 4 : 2), tex.split(":")[0]).setOrigin(0.5, 1).setDepth(by);
+      const img = this.add.image(bx, by + (b.type === "tower" ? 4 : b.type === "gate" ? -5 : 2), tex.split(":")[0]).setOrigin(0.5, 1).setDepth(by);   // ประตูฐานตรงแนวกำแพง
       img.tex = tex; this.skinBuilding(img, b, tex);
       const full = img.base || 1;
-      img.setScale(full * 0.6); this.tweens.add({ targets: img, scale: full, duration: 220, ease: "Back.easeOut" });
+      const fx = img.scaleX, fy = img.scaleY;
+      img.setScale(fx * 0.6, fy * 0.6); this.tweens.add({ targets: img, scaleX: fx, scaleY: fy, duration: 220, ease: "Back.easeOut" });
       this.buildViews.set(b.id, img);
     }
     for (const [id, img] of this.buildViews) if (!seen.has(id)) { img.destroy(); this.buildViews.delete(id); }
@@ -4517,7 +4523,7 @@ class GameScene extends Phaser.Scene {
         Banner.show("ประตูนี้ตัน · ด้านหนึ่งติดหิน ต้นไม้ หรือน้ำ คนงานเดินผ่านไม่ได้", "warn");
       } else if (e.type === "upgraded") {
         const img = this.buildViews.get(e.id);
-        if (img) this.tweens.add({ targets: img, scale: { from: 1.25 * (img.base || 1), to: img.base || 1 }, duration: 320, ease: "Back.easeOut" });
+        if (img) { this.syncBuildings(); const fx = img.scaleX, fy = img.scaleY; this.tweens.add({ targets: img, scaleX: { from: 1.25 * fx, to: fx }, scaleY: { from: 1.25 * fy, to: fy }, duration: 320, ease: "Back.easeOut" }); }
         this.popText(e.x, e.y - 30, `Lv ${e.lv}!`, "#ffd166", 16);
         if (e.btype === "camp") Banner.show(`บ้านหลัก Lv ${e.lv} · คนงาน ${Core.popCap(this.state, this.team, "worker")} · ทหาร ${Core.popCap(this.state, this.team, "army")} · เขตสร้างกว้างขึ้น`, "day");
       } else if (e.type === "researched") {
@@ -4527,7 +4533,7 @@ class GameScene extends Phaser.Scene {
       } else if (e.type === "heal") {
         if (this.visibleAt(e.x, e.y)) { this.popText(e.x, e.y, "+" + e.n, "#7fe08a", 13); this.fxAnim("fx_heal", e.x, e.y + 10, 40); }
       } else if (e.type === "repaired" && e.team === this.team) {
-        for (const b of this.state.buildings) if (b.team === this.team) { const img = this.buildViews.get(b.id); if (img) this.tweens.add({ targets: img, scale: { from: 1.12 * (img.base || 1), to: img.base || 1 }, duration: 260 }); }
+        for (const b of this.state.buildings) if (b.team === this.team) { const img = this.buildViews.get(b.id); if (img) { const fx = img.scaleX, fy = img.scaleY; this.tweens.add({ targets: img, scaleX: { from: 1.12 * fx, to: fx }, scaleY: { from: 1.12 * fy, to: fy }, duration: 260 }); } }
       } else if (e.type === "recalled") {
         Toast.show("กลับถึงค่ายแล้ว");
       } else if (e.type === "recallBroken") {
