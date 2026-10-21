@@ -1317,13 +1317,13 @@ const Core = (() => {
       }
       if (target.kind === "unit") {
         releaseClaim(st, target);
-        for (const m of st.monsters) if (m.target === target.id) { m.target = null; m.mode = "return"; }
+        for (const m of st.monsters) if (m.target === target.id) { m.target = null; m.mode = "idle"; m.homeX = m.x; m.homeY = m.y; }
       }
       if (target.kind === "building") removeBuilding(st, target);
       if (target.kind === "hero") {
         target.respawnAt = st.tick + DATA.hero.respawnSec * 1000 / DATA.tickMs;
         target.path = null;
-        for (const m of st.monsters) if (m.target === target.id) { m.target = null; m.mode = "return"; }
+        for (const m of st.monsters) if (m.target === target.id) { m.target = null; m.mode = "idle"; m.homeX = m.x; m.homeY = m.y; }
       }
     }
   }
@@ -1797,18 +1797,23 @@ const Core = (() => {
       m.atkCd -= dt;
       if (m.wave) { stepSiege(st, m, b, dt); continue; }
       let tgt = m.target ? findEntity(st, m.target) : null;
-      if (tgt && tgt.dead) { tgt = null; m.target = null; m.mode = "return"; }
+      if (tgt && tgt.dead) { tgt = null; m.target = null; m.mode = "idle"; m.homeX = m.x; m.homeY = m.y; }
       if (!tgt && m.mode !== "return") {
         tgt = nearestEnemy(st, m, b.aggro * S);
         if (tgt && (tgt.kind === "hero" || tgt.kind === "unit")) { m.target = tgt.id; m.mode = "chase"; } else tgt = null;
       }
       const homeD = Math.hypot(m.x - m.homeX, m.y - m.homeY);
-      if (tgt && homeD > leash) { m.target = null; m.mode = "return"; tgt = null; }
-      // กลางวัน: เขตค่ายปลอดภัย Monster ไม่ไล่ตามเข้ามา (กลางคืนไม่มีข้อยกเว้น)
-      if (tgt && !night && Math.hypot(tgt.x - st.camp.x, tgt.y - st.camp.y) < (buildRadius(st, 1) + 2) * S) { m.target = null; m.mode = "return"; tgt = null; }
+      // ไล่ได้ไกลไม่จำกัดจากจุดเกิด: เลิกไล่เมื่อเป้าหนีห่างเกินระยะมองเห็น x3 แล้วอยู่แถวนั้นต่อ (ไม่วาร์ป/ไม่เดินกลับ ไม่ฟื้นเลือด)
+      if (tgt && Math.hypot(tgt.x - m.x, tgt.y - m.y) > Math.max(leash, b.aggro * S * 3)) { m.target = null; m.mode = "idle"; tgt = null; m.homeX = m.x; m.homeY = m.y; }
+      // กลางวัน: เขตค่ายปลอดภัย Monster ไม่ไล่ตามเข้ามา ถอยออกไปตั้งหลักนอกเขตค่าย (กลางคืนไม่มีข้อยกเว้น)
+      if (tgt && !night && Math.hypot(tgt.x - st.camp.x, tgt.y - st.camp.y) < (buildRadius(st, 1) + 2) * S) {
+        m.target = null; m.mode = "return"; tgt = null;
+        const a = Math.atan2(m.y - st.camp.y, m.x - st.camp.x), R = (buildRadius(st, 1) + 6) * S, dc = Math.hypot(m.x - st.camp.x, m.y - st.camp.y);
+        if (dc < R) { m.homeX = st.camp.x + Math.cos(a) * R; m.homeY = st.camp.y + Math.sin(a) * R; } else { m.homeX = m.x; m.homeY = m.y; }
+      }
 
       if (m.mode === "return") {
-        if (homeD < S) { m.mode = "idle"; m.hp = m.maxHp; }
+        if (homeD < S) { m.mode = "idle"; }
         else { m.face = Math.atan2(m.homeY - m.y, m.homeX - m.x); m.moving = mmove(st, m, m.homeX - m.x, m.homeY - m.y, m.spd * 1.2 * dt) > 0; }
       } else if (tgt) {
         if (!attackAct(st, m, b, tgt)) {
@@ -3371,6 +3376,17 @@ const FOG_RGB = [12, 15, 10];
 const ART_DIR = "assets/art/";   // ภาพชุด v2 (สไตล์สว่าง)
 const ART_FILES = "armor_common1 armor_common2 armor_common3 armor_epic1 armor_epic2 armor_epic3 armor_rare1 armor_rare2 armor_rare3 barracks bat0 bat1 bat2 bat3 bat4 bat5 bat6 bat7 beetle0 beetle1 beetle2 beetle3 beetle4 bonemage0 bonemage1 bonemage2 bonemage3 bonemage4 boss0 boss1 boss2 boss3 boss4 bow_common1 bow_common2 bow_common3 bow_epic1 bow_epic2 bow_epic3 bow_rare1 bow_rare2 bow_rare3 camp1 camp2 camp3 camp4 camp5 demon0 demon1 demon2 demon3 demon4 dirt firepit flower fx_arrow fx_blast fx_bolt fx_fireball fx_flame fx_frost fx_frostbolt fx_heal fx_hit fx_levelup fx_recall fx_rubble fx_sunburn fx_volley fx_web gate1 gate2 gate3 gate_side1 gate_side2 gate_side3 ghoul0 ghoul1 ghoul2 ghoul3 ghoul4 golem0 golem1 golem2 golem3 golem4 grass ground_rocky hero_archer hero_engineer hero_healer hero_mage hero_warrior infirmary knight0 knight1 knight2 knight3 knight4 lich0 lich1 lich2 lich3 lich4 loot_bag orc0 orc1 orc2 orc3 orc4 pebbles rock skel0 skel1 skel2 skel3 skel4 skel5 skel6 skel7 slime0 slime1 slime2 slime3 slime4 slime5 slime6 slime7 spider0 spider1 spider2 spider3 spider4 stump tower1 tower2 tower3 tree1 tree2 tuft u_archer u_medic u_sword ui_army ui_bag ui_bestiary ui_build ui_day ui_exp ui_home ui_hp ui_map ui_menu ui_mode_follow ui_mode_free ui_mode_guard ui_mp ui_night ui_repair ui_res_heroweapon ui_res_unitarmor ui_res_unitweapon ui_skill_volley ui_stone ui_warn ui_wood ui_worker wall1 wall2 wall3 wall_corner1 wall_corner2 wall_corner3 wall_side1 wall_side2 wall_side3 water were0 were1 were2 were3 were4 wisp0 wisp1 wisp2 wisp3 wisp4 wolf0 wolf1 wolf2 wolf3 wolf4 wolf5 wolf6 wolf7 worker worker_stone worker_wood workshop zombie0 zombie1 zombie2 zombie3 zombie4 zombie5 zombie6 zombie7".split(" ");
 const ART_OK = new Set();
+/* ท่าทางแบบเฟรม (Art Spec v3) · ตัวที่ไม่มีไฟล์ใช้ท่าขยับด้วยโค้ดแทน */
+const ANIM_DIR = "assets/anim/";
+const ANIM = {"hero_archer_idle":{"n":4,"w":164,"h":149,"fps":6,"loop":true,"ref":128.0,"oy":0.9866},"hero_archer_walk":{"n":6,"w":138,"h":136,"fps":10,"loop":true,"ref":128.0,"oy":0.9853},"hero_archer_attack":{"n":6,"w":208,"h":140,"fps":12,"loop":false,"ref":128.0,"oy":0.9857},"hero_archer_hurt":{"n":4,"w":198,"h":140,"fps":12,"loop":false,"ref":128.0,"oy":0.9857},"hero_archer_death":{"n":4,"w":212,"h":146,"fps":10,"loop":false,"ref":128.0,"oy":0.9863},"hero_archer_skill":{"n":6,"w":242,"h":144,"fps":14,"loop":false,"ref":128.0,"oy":0.9861},"worker_idle":{"n":4,"w":146,"h":136,"fps":6,"loop":true,"ref":128.0,"oy":0.9853},"worker_walk":{"n":6,"w":114,"h":135,"fps":10,"loop":true,"ref":128.0,"oy":0.9852},"worker_walk_wood":{"n":6,"w":126,"h":128,"fps":10,"loop":true,"ref":128.0,"oy":0.9844},"worker_walk_stone":{"n":6,"w":126,"h":130,"fps":10,"loop":true,"ref":128.0,"oy":0.9846},"worker_chop":{"n":6,"w":156,"h":140,"fps":12,"loop":true,"ref":128.0,"oy":0.9857},"worker_mine":{"n":6,"w":144,"h":130,"fps":12,"loop":true,"ref":128.0,"oy":0.9846},"worker_death":{"n":4,"w":158,"h":124,"fps":10,"loop":false,"ref":128.0,"oy":0.9839},"u_archer_attack":{"n":6,"w":214,"h":143,"fps":12,"loop":false,"ref":128.0,"oy":0.986},"u_sword_attack":{"n":6,"w":164,"h":138,"fps":12,"loop":false,"ref":128.0,"oy":0.9855},"u_sword_death":{"n":4,"w":206,"h":140,"fps":10,"loop":false,"ref":128.0,"oy":0.9857},"u_medic_idle":{"n":4,"w":186,"h":136,"fps":6,"loop":true,"ref":128.0,"oy":0.9853},"u_medic_heal":{"n":6,"w":190,"h":130,"fps":10,"loop":true,"ref":128.0,"oy":0.9846},"u_medic_death":{"n":4,"w":186,"h":143,"fps":10,"loop":false,"ref":128.0,"oy":0.986},"hero_warrior_idle":{"n":4,"w":200,"h":140,"fps":6,"loop":true,"ref":128.0,"oy":0.9857},"hero_warrior_walk":{"n":6,"w":120,"h":135,"fps":10,"loop":true,"ref":128.0,"oy":0.9852},"hero_warrior_attack":{"n":6,"w":154,"h":133,"fps":12,"loop":false,"ref":128.0,"oy":0.985},"hero_warrior_hurt":{"n":4,"w":184,"h":139,"fps":12,"loop":false,"ref":128.0,"oy":0.9856},"hero_warrior_death":{"n":4,"w":194,"h":133,"fps":10,"loop":false,"ref":128.0,"oy":0.985},"hero_mage_idle":{"n":4,"w":148,"h":140,"fps":6,"loop":true,"ref":128.0,"oy":0.9857},"hero_mage_walk":{"n":6,"w":146,"h":135,"fps":10,"loop":true,"ref":128.0,"oy":0.9852},"hero_mage_attack":{"n":6,"w":190,"h":138,"fps":12,"loop":false,"ref":128.0,"oy":0.9855},"hero_mage_hurt":{"n":4,"w":182,"h":137,"fps":12,"loop":false,"ref":128.0,"oy":0.9854},"hero_mage_death":{"n":4,"w":198,"h":143,"fps":10,"loop":false,"ref":128.0,"oy":0.986},"hero_engineer_idle":{"n":4,"w":152,"h":141,"fps":6,"loop":true,"ref":128.0,"oy":0.9858},"hero_engineer_walk":{"n":6,"w":110,"h":135,"fps":10,"loop":true,"ref":128.0,"oy":0.9852},"hero_engineer_attack":{"n":6,"w":158,"h":128,"fps":12,"loop":false,"ref":128.0,"oy":0.9844},"hero_healer_idle":{"n":4,"w":158,"h":137,"fps":6,"loop":true,"ref":128.0,"oy":0.9854},"hero_healer_walk":{"n":6,"w":144,"h":138,"fps":10,"loop":true,"ref":128.0,"oy":0.9855},"hero_healer_attack":{"n":6,"w":238,"h":139,"fps":12,"loop":false,"ref":128.0,"oy":0.9856},"hero_healer_hurt":{"n":4,"w":184,"h":132,"fps":12,"loop":false,"ref":128.0,"oy":0.9848},"hero_healer_death":{"n":4,"w":196,"h":142,"fps":10,"loop":false,"ref":128.0,"oy":0.9859},"zombie0_walk":{"n":6,"w":164,"h":135,"fps":8,"loop":true,"ref":128.0,"oy":0.9852},"zombie0_attack":{"n":6,"w":224,"h":148,"fps":12,"loop":false,"ref":128.0,"oy":0.9865},"zombie0_death":{"n":4,"w":194,"h":145,"fps":10,"loop":false,"ref":128.0,"oy":0.9862},"wolf0_walk":{"n":6,"w":228,"h":146,"fps":14,"loop":true,"ref":128.0,"oy":0.9863},"wolf0_attack":{"n":6,"w":186,"h":141,"fps":14,"loop":false,"ref":128.0,"oy":0.9858},"wolf0_death":{"n":4,"w":242,"h":201,"fps":10,"loop":false,"ref":128.0,"oy":0.99},"slime0_walk":{"n":6,"w":224,"h":161,"fps":10,"loop":true,"ref":128.0,"oy":0.9876},"slime0_attack":{"n":6,"w":214,"h":198,"fps":14,"loop":false,"ref":128.0,"oy":0.9899},"slime0_death":{"n":4,"w":288,"h":186,"fps":10,"loop":false,"ref":128.0,"oy":0.9892},"bat0_walk":{"n":6,"w":172,"h":147,"fps":12,"loop":true,"ref":128.0,"oy":0.9864},"bat0_attack":{"n":6,"w":200,"h":146,"fps":14,"loop":false,"ref":128.0,"oy":0.9863},"bat0_death":{"n":4,"w":234,"h":160,"fps":10,"loop":false,"ref":128.0,"oy":0.9875},"skel0_walk":{"n":6,"w":166,"h":134,"fps":8,"loop":true,"ref":128.0,"oy":0.9851},"skel0_attack":{"n":6,"w":200,"h":123,"fps":12,"loop":false,"ref":128.0,"oy":0.9837},"skel0_death":{"n":4,"w":198,"h":137,"fps":10,"loop":false,"ref":128.0,"oy":0.9854},"ghoul0_walk":{"n":6,"w":172,"h":136,"fps":8,"loop":true,"ref":128.0,"oy":0.9853},"ghoul0_attack":{"n":6,"w":186,"h":160,"fps":12,"loop":false,"ref":128.0,"oy":0.9875},"ghoul0_death":{"n":4,"w":220,"h":150,"fps":10,"loop":false,"ref":128.0,"oy":0.9867},"spider0_walk":{"n":6,"w":222,"h":141,"fps":14,"loop":true,"ref":128.0,"oy":0.9858},"spider0_attack":{"n":6,"w":206,"h":140,"fps":14,"loop":false,"ref":128.0,"oy":0.9857},"spider0_death":{"n":4,"w":280,"h":185,"fps":10,"loop":false,"ref":128.0,"oy":0.9892},"orc0_walk":{"n":6,"w":186,"h":138,"fps":7,"loop":true,"ref":128.0,"oy":0.9855},"orc0_attack":{"n":6,"w":184,"h":149,"fps":10,"loop":false,"ref":128.0,"oy":0.9866},"orc0_death":{"n":4,"w":218,"h":142,"fps":10,"loop":false,"ref":128.0,"oy":0.9859},"wisp0_walk":{"n":6,"w":158,"h":138,"fps":12,"loop":true,"ref":128.0,"oy":0.9855},"wisp0_attack":{"n":6,"w":182,"h":138,"fps":14,"loop":false,"ref":128.0,"oy":0.9855},"wisp0_death":{"n":4,"w":196,"h":147,"fps":10,"loop":false,"ref":128.0,"oy":0.9864},"bonemage0_walk":{"n":6,"w":162,"h":134,"fps":8,"loop":true,"ref":128.0,"oy":0.9851},"bonemage0_attack":{"n":6,"w":238,"h":133,"fps":12,"loop":false,"ref":128.0,"oy":0.985},"bonemage0_death":{"n":4,"w":198,"h":137,"fps":10,"loop":false,"ref":128.0,"oy":0.9854},"beetle0_walk":{"n":6,"w":188,"h":156,"fps":10,"loop":true,"ref":128.0,"oy":0.9872},"beetle0_attack":{"n":6,"w":208,"h":172,"fps":14,"loop":false,"ref":128.0,"oy":0.9884},"beetle0_death":{"n":4,"w":226,"h":188,"fps":10,"loop":false,"ref":128.0,"oy":0.9894},"knight0_walk":{"n":6,"w":176,"h":137,"fps":8,"loop":true,"ref":128.0,"oy":0.9854},"knight0_death":{"n":4,"w":218,"h":140,"fps":10,"loop":false,"ref":128.0,"oy":0.9857},"were0_walk":{"n":6,"w":222,"h":138,"fps":14,"loop":true,"ref":128.0,"oy":0.9855},"were0_attack":{"n":6,"w":202,"h":130,"fps":14,"loop":false,"ref":128.0,"oy":0.9846},"were0_death":{"n":4,"w":248,"h":181,"fps":10,"loop":false,"ref":128.0,"oy":0.989},"golem0_walk":{"n":6,"w":160,"h":137,"fps":7,"loop":true,"ref":128.0,"oy":0.9854},"golem0_attack":{"n":6,"w":160,"h":141,"fps":10,"loop":false,"ref":128.0,"oy":0.9858},"golem0_death":{"n":4,"w":202,"h":132,"fps":10,"loop":false,"ref":128.0,"oy":0.9848},"demon0_walk":{"n":6,"w":158,"h":146,"fps":12,"loop":true,"ref":128.0,"oy":0.9863},"demon0_attack":{"n":6,"w":180,"h":146,"fps":14,"loop":false,"ref":128.0,"oy":0.9863},"demon0_death":{"n":4,"w":244,"h":153,"fps":10,"loop":false,"ref":128.0,"oy":0.9869},"lich0_walk":{"n":6,"w":150,"h":137,"fps":8,"loop":true,"ref":128.0,"oy":0.9854},"lich0_attack":{"n":6,"w":234,"h":140,"fps":12,"loop":false,"ref":128.0,"oy":0.9857},"lich0_death":{"n":4,"w":208,"h":152,"fps":10,"loop":false,"ref":128.0,"oy":0.9868},"boss0_walk":{"n":6,"w":248,"h":201,"fps":8,"loop":true,"ref":192.0,"oy":0.99},"boss0_attack":{"n":6,"w":316,"h":191,"fps":12,"loop":false,"ref":192.0,"oy":0.9895},"boss0_death":{"n":4,"w":274,"h":201,"fps":10,"loop":false,"ref":192.0,"oy":0.99},"boss0_special":{"n":6,"w":210,"h":199,"fps":10,"loop":false,"ref":192.0,"oy":0.9899},"boss1_walk":{"n":6,"w":358,"h":218,"fps":14,"loop":true,"ref":192.0,"oy":0.9908},"boss1_attack":{"n":6,"w":358,"h":250,"fps":14,"loop":false,"ref":192.0,"oy":0.992},"boss1_death":{"n":4,"w":414,"h":287,"fps":10,"loop":false,"ref":192.0,"oy":0.993},"boss1_special":{"n":6,"w":310,"h":264,"fps":10,"loop":false,"ref":192.0,"oy":0.9924},"boss2_attack":{"n":6,"w":694,"h":204,"fps":12,"loop":false,"ref":192.0,"oy":0.9902},"boss2_special":{"n":6,"w":270,"h":195,"fps":12,"loop":false,"ref":192.0,"oy":0.9897},"boss3_attack":{"n":6,"w":274,"h":249,"fps":10,"loop":false,"ref":192.0,"oy":0.992},"boss3_special":{"n":6,"w":296,"h":225,"fps":10,"loop":false,"ref":192.0,"oy":0.9911},"boss4_walk":{"n":6,"w":232,"h":208,"fps":12,"loop":true,"ref":192.0,"oy":0.9904},"boss4_attack":{"n":6,"w":308,"h":200,"fps":14,"loop":false,"ref":192.0,"oy":0.99},"boss4_death":{"n":4,"w":348,"h":233,"fps":10,"loop":false,"ref":192.0,"oy":0.9914},"boss4_special":{"n":6,"w":334,"h":200,"fps":12,"loop":false,"ref":192.0,"oy":0.99},"fx_blast":{"n":6,"w":168,"h":161,"fps":10,"loop":false,"ref":136.3,"oy":0.9876},"firepit":{"n":4,"w":178,"h":157,"fps":10,"loop":true,"ref":145.0,"oy":0.9873},"fx_levelup":{"n":6,"w":150,"h":164,"fps":10,"loop":false,"ref":130.2,"oy":0.9878},"fx_recall":{"n":4,"w":188,"h":113,"fps":10,"loop":true,"ref":107.4,"oy":0.9823},"fx_heal":{"n":4,"w":136,"h":146,"fps":10,"loop":true,"ref":128.0,"oy":0.9863},"flag":{"n":4,"w":180,"h":158,"fps":10,"loop":true,"ref":152.7,"oy":0.9873}};
+const ANIM_OK = new Set();
+const ANIM_TINT = { 1: 0xc9c07a, 2: 0xa6e07a, 3: 0xffa070, 4: 0xb0dcff, 5: 0xa890d8, 6: 0xbdbdbd, 7: 0xff9a8c };   // ตัวต่างธาตุใช้ท่าของตัวปกติแล้วย้อมสี
+function animBase(key) {   // ชื่อชุดท่าของ Monster: zombie3 → zombie0
+  if (ANIM_OK.has(key + "_walk")) return { base: key, tint: null };
+  const m = /^([a-z]+)(\d)$/.exec(key);
+  if (m && !key.startsWith("boss") && ANIM_OK.has(m[1] + "0_walk")) return { base: m[1] + "0", tint: ANIM_TINT[m[2]] || null };
+  return null;
+}
 const ART_TINT = { 5: 0x9d86c8, 6: 0xb4b4b4, 7: 0xff9c8c };   // ตัวแปรที่ยังไม่มีภาพ: ย้อมสีจากตัวปกติ (เงา / หิน / คลั่ง)
 function artMon(key) {
   if (ART_OK.has(key)) return { name: key, tint: null };
@@ -3396,6 +3412,41 @@ function artUi() {
 class GameScene extends Phaser.Scene {
   constructor() { super("game"); }
 
+  // ผูกชุดท่าเข้ากับตัวละคร: สเกลให้สูงเท่าภาพนิ่ง
+  animBind(v, base, tint) {
+    const ref = ["walk", "idle", "attack"].map((a) => ANIM[base + "_" + a]).find(Boolean);
+    if (!ref || !v.body.play) return false;
+    v.anim = base; v.animTint = tint || null;
+    v.animScale = (v.body.displayHeight || 50) / ref.ref;
+    return true;
+  }
+  // เล่นท่า (ถ้ามี) · คืนค่า false ถ้าตัวนี้ไม่มีท่านั้น
+  animPlay(v, act, restart) {
+    if (!v.anim) return false;
+    const n = v.anim + "_" + act;
+    if (!ANIM_OK.has(n)) return false;
+    if (v.cur !== n || restart) {
+      const fx = v.body.flipX;
+      v.body.play("a_" + n, !restart);
+      v.body.setOrigin(0.5, ANIM[n].oy).setScale(v.animScale);
+      v.body.flipX = fx; v.body.base = v.animScale; v.baseScale = v.animScale; v.cur = n;
+      if (v.animTint) v.body.setTint(v.animTint); else v.body.clearTint();
+    }
+    return true;
+  }
+  animDur(v, act) { const a = v.anim && ANIM[v.anim + "_" + act]; return a ? (a.n / a.fps) * 1000 : 0; }
+  // เลือกท่าตามสถานะ: once = ท่าที่เล่นครั้งเดียว (โจมตี โดนตี สกิล) ค้างไว้จนจบ
+  animState(v, time, loopAct) {
+    if (v.once && time < v.onceUntil) return;
+    v.once = null;
+    if (!this.animPlay(v, loopAct)) this.animPlay(v, "walk");
+  }
+  animOnce(v, act, time) {
+    if (!v.anim || !ANIM_OK.has(v.anim + "_" + act)) return false;
+    this.animPlay(v, act, true); v.once = act; v.onceUntil = time + this.animDur(v, act);
+    return true;
+  }
+
   /* ท่าทางจากภาพนิ่ง (ยังไม่มีเฟรมอนิเมชัน): เดินโยกตัว ยืดหดตามก้าว, หายใจตอนยืน, โน้มตัวตอนโจมตี,
      สับขวานตอนเก็บของ, กระพือปีกตอนบิน, โดนตีกระพริบแดง · หมุนรอบเท้าเพราะจุดหมุนอยู่ที่เท้า */
   pose(v, o) {
@@ -3418,10 +3469,20 @@ class GameScene extends Phaser.Scene {
       const k = a > 0.7 ? -(1 - a) / 0.3 * 0.5 : ease;
       rot += dir * k * (o.heavy ? 0.3 : 0.2); sx *= 1 + ease * 0.12; sy *= 1 - ease * 0.06;
     }
+    if (v.cur) { rot = 0; sx = 1; sy = 1; }
     const fl = v.flash || 0;
     b.rotation = rot;
     b.setScale(v.baseScale * sx * (1 + fl * 0.12), v.baseScale * sy * (1 + fl * 0.12));
-    if (fl > 0.05) b.setTint(0xff7a6a); else if (v.tint) b.setTint(v.tint); else b.clearTint();
+    if (fl > 0.05) b.setTint(0xff7a6a); else if (v.cur && v.animTint) b.setTint(v.animTint); else if (v.tint && !v.cur) b.setTint(v.tint); else b.clearTint();
+  }
+
+  // เอฟเฟกต์แบบเฟรม เล่นครั้งเดียวแล้วหาย
+  fxAnim(name, x, y, w, depth) {
+    if (!ANIM_OK.has(name)) return false;
+    const sp = this.add.sprite(x, y, "an_" + name).setOrigin(0.5, ANIM[name].oy).setDepth(depth == null ? y + 30 : depth);
+    sp.setScale(w / ANIM[name].w * 1.25);
+    sp.play("a_" + name); sp.once("animationcomplete", () => sp.destroy());
+    return true;
   }
 
   // เอฟเฟกต์ภาพจริงแบบขยายแล้วจางหาย
@@ -3438,6 +3499,7 @@ class GameScene extends Phaser.Scene {
   preload() {
     this.load.on("loaderror", () => {});   // ไม่มีไฟล์ภาพ: ใช้ภาพวาดด้วยโค้ด
     for (const n of ART_FILES) if (!this.textures.exists("art_" + n)) this.load.image("art_" + n, ART_DIR + n + ".webp");
+    for (const [n, a] of Object.entries(ANIM)) if (!this.textures.exists("an_" + n)) this.load.spritesheet("an_" + n, ANIM_DIR + n + ".webp", { frameWidth: a.w, frameHeight: a.h });
   }
 
   // เปลี่ยนภาพเป็นภาพวาดจริงถ้ามี: h = สูง, w = กว้าง, m = ด้านที่ยาวที่สุด (หน่วยพิกเซลในโลก)
@@ -3459,6 +3521,10 @@ class GameScene extends Phaser.Scene {
     const { w, h } = this.state.world;
 
     for (const n of ART_FILES) if (this.textures.exists("art_" + n)) ART_OK.add(n);
+    for (const [n, a] of Object.entries(ANIM)) if (this.textures.exists("an_" + n)) {
+      ANIM_OK.add(n);
+      if (!this.anims.exists("a_" + n)) this.anims.create({ key: "a_" + n, frames: this.anims.generateFrameNumbers("an_" + n, { start: 0, end: a.n - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0 });
+    }
     artUi();
     this.makeTextures();
     const ground = this.add.tileSprite(0, 0, w, h, ART_OK.has("grass") ? "art_grass" : "ground").setOrigin(0, 0).setDepth(-3e6);
@@ -3863,16 +3929,17 @@ class GameScene extends Phaser.Scene {
     g.fillStyle(0x6b5a33, 0.4); g.fillCircle(x, y + 10, DATA.campRadius);
     g.fillStyle(0x7a6740, 0.35); g.fillCircle(x, y + 10, 104);
     g.lineStyle(2, 0xe2b04a, 0.35); g.strokeCircle(x, y + 10, DATA.campRadius);
-    this.campImg = this.add.image(x, y + 30, "tent").setOrigin(0.5, 88 / 96).setDepth(y + 30);
+    this.campImg = this.add.sprite(x, y + 30, "tent").setOrigin(0.5, 88 / 96).setDepth(y + 30);
     this.skin(this.campImg, "camp1", { w: 126, oy: 0.9 });
     this.fire = { x: x + 64, y: y + 54 };
-    const pit = this.add.image(this.fire.x, this.fire.y, "firepit").setDepth(this.fire.y - 2);
+    const pit = this.add.sprite(this.fire.x, this.fire.y, "firepit").setDepth(this.fire.y - 2);
     this.skin(pit, "firepit", { w: 40, oy: 0.6 });
+    if (ANIM_OK.has("firepit")) { pit.play("a_firepit"); pit.setOrigin(0.5, 0.75).setScale(40 / ANIM.firepit.w * 1.35); this.flame && this.flame.setVisible(false); this.pitAnim = true; }
     this.fireGlow = this.add.graphics().setDepth(-2.4e6).setBlendMode(Phaser.BlendModes.ADD);
     this.flame = this.add.graphics().setDepth(this.fire.y - 1);
     this.campLabel = this.add.text(x, y + 40, "บ้านหลัก Lv 1", { fontFamily: "Sarabun, sans-serif", fontSize: "15px", fontStyle: "bold", color: "#efe8d2", stroke: "#1c2618", strokeThickness: 4 })
       .setOrigin(0.5, 0).setDepth(y + 31).setResolution(2);
-    this.campLv = 1;
+    this.campLv = 0;
   }
 
   drawFire(time) {
@@ -3881,6 +3948,7 @@ class GameScene extends Phaser.Scene {
     this.fireGlow.fillStyle(0xe2b04a, 0.08 + f * 0.02); this.fireGlow.fillCircle(x, y - 4, 70 + f * 4);
     this.fireGlow.fillStyle(0xe2b04a, 0.1); this.fireGlow.fillCircle(x, y - 4, 34);
     this.flame.clear();
+    if (this.pitAnim) return;   // กองไฟแบบเฟรมจริงแล้ว
     const hgt = 16 + f * 4;
     this.flame.fillStyle(0xd9632b, 1); this.flame.fillTriangle(x - 8, y + 2, x + 8, y + 2, x + f * 2, y - hgt);
     this.flame.fillStyle(0xf2b544, 1); this.flame.fillTriangle(x - 5, y + 2, x + 5, y + 2, x - f * 2, y - hgt * 0.7);
@@ -3913,12 +3981,14 @@ class GameScene extends Phaser.Scene {
   makeHeroView(hero) {
     const root = this.add.container(hero.x, hero.y);
     const shadow = this.add.image(0, 12, "shadow");
-    const body = this.add.image(0, 0, "hero");
+    const body = this.add.sprite(0, 0, "hero");
     const bow = this.add.image(0, 0, "bow").setRotation(hero.face);
     const art = this.skin(body, "hero_" + (hero.cls || "archer"), { h: 54, oy: 0.95 }) || this.skin(body, "hero_archer", { h: 54, oy: 0.95 });
     if (art) bow.setVisible(false);
     root.add([shadow, body, bow]);
-    return { root, body, bow, art };
+    const v = { root, body, bow, art };
+    if (art) this.animBind(v, "hero_" + (hero.cls || "archer"));
+    return v;
   }
 
   sendMoveTo(p, fresh) {
@@ -4069,11 +4139,12 @@ class GameScene extends Phaser.Scene {
       if (!v) {
         const root = this.add.container(u.x, u.y);
         const shadow = this.add.image(0, 8, "shadow").setScale(0.6);
-        const body = this.add.image(0, 0, { archer: "u_archer", swordsman: "u_sword", medic: "u_medic" }[u.type] || "worker");
+        const body = this.add.sprite(0, 0, { archer: "u_archer", swordsman: "u_sword", medic: "u_medic" }[u.type] || "worker");
         const load = this.add.image(-6, -8, "pebbles").setScale(0.7).setVisible(false);
         const art = this.skin(body, { archer: "u_archer", swordsman: "u_sword", medic: "u_medic" }[u.type] || "worker", { h: u.type === "worker" ? 36 : 40, oy: 0.95 });
         root.add([shadow, body, load]);
         v = { root, body, load, art, carry: -1 };
+        if (art) this.animBind(v, { archer: "u_archer", swordsman: "u_sword", medic: "u_medic" }[u.type] || "worker");
         this.unitViews.set(u.id, v);
       }
       const x = u.px + (u.x - u.px) * a, y = u.py + (u.y - u.py) * a;
@@ -4082,11 +4153,22 @@ class GameScene extends Phaser.Scene {
       if (v.art) {
         const c = Math.cos(u.face); if (Math.abs(c) > 0.2) v.body.flipX = c < 0; v.body.y = 9;
         v.baseScale = v.body.base; v.flash = Math.max(0, (v.flash || 0) - 0.1);
+        if (v.anim) {
+          if (v.lastAtk != null && u.atkCd > v.lastAtk + 0.02) this.animOnce(v, "attack", time);
+          v.lastAtk = u.atkCd;
+          let act = u.moving ? "walk" : "idle";
+          if (u.type === "worker") {
+            if (u.job === "gather") act = this.state.map.t[u.res] === Core.T.ROCK ? "mine" : "chop";
+            else if (u.moving && u.carry > 0) act = u.carryType === "stone" ? "walk_stone" : "walk_wood";
+          }
+          if (u.type === "medic" && u.healing && !u.moving) act = "heal";
+          this.animState(v, time, act);
+        }
         this.pose(v, { time, dt: this.game.loop.delta, moving: u.moving, gather: u.job === "gather", cd: u.atkCd, phase: u.id, heavy: u.type === "swordsman" });
       }
       else { v.body.rotation = Phaser.Math.Angle.RotateTo(v.body.rotation, u.face, 0.3); v.body.y = ub; }
       if (!v.art) { if (u.job === "gather") v.body.x = Math.sin(time / 90) * 2; else v.body.x = 0; }
-      if (u.type === "worker" && v.art) {
+      if (u.type === "worker" && v.art && !v.cur) {
         const want = u.carry > 0 ? (u.carryType === "stone" ? "worker_stone" : "worker_wood") : "worker";
         if (v.carry !== want) { v.carry = want; const fx = v.body.flipX; this.skin(v.body, ART_OK.has(want) ? want : "worker", { h: 36, oy: 0.95 }); v.body.flipX = fx; v.baseScale = v.body.base; }
       } else if (u.type === "worker") v.load.setVisible(u.carry > 0).setTexture(u.carryType === "stone" ? "pebbles" : "stump");
@@ -4094,7 +4176,13 @@ class GameScene extends Phaser.Scene {
       else if (v.art) v.body.x = 0;
       v.x = x; v.y = y;
     }
-    for (const [id, v] of this.unitViews) if (!seen.has(id)) { v.root.destroy(); this.unitViews.delete(id); }
+    for (const [id, v] of this.unitViews) if (!seen.has(id)) {
+      this.unitViews.delete(id);
+      if (v.anim && ANIM_OK.has(v.anim + "_death") && v.root.visible) {   // ล้มตายก่อนหายไป
+        this.animPlay(v, "death", true);
+        this.tweens.add({ targets: v.root, alpha: 0, delay: this.animDur(v, "death"), duration: 500, onComplete: () => v.root.destroy() });
+      } else v.root.destroy();
+    }
   }
 
   buildingTexture(b) {
@@ -4154,6 +4242,43 @@ class GameScene extends Phaser.Scene {
 
   /* กำแพงต่อเนื่อง (วาดเป็นบล็อกตรง ไม่ใช้ภาพเอียง): แต่ละช่องมีแกนกลาง + แขนยื่นไปหาเพื่อนบ้าน
      ทุกชิ้นยกขึ้นสูง H (ด้านบน) และมีหน้ากำแพงด้านใต้ → เส้นตรงต่อกันสนิททุกทิศ ลายอิงพิกัดโลกจึงต่อเนื่องข้ามช่อง */
+  /* กำแพงจากภาพจริงชุดใหม่ (ภาพตรง ไม่เอียง)
+     แนวนอน: แถบกลางของกำแพงด้านหน้ายืดพอดี 1 ช่อง + หัวท้ายเฉพาะปลายแถว
+     แนวตั้ง: แถบกลางของกำแพงด้านข้างสูงพอดี 1 ช่อง + ยอดบนสุด / ฐานล่างสุด
+     มุม/ทางแยก: แขนทั้งสองแนว + เสามุมทับ */
+  wallArtImg(lv, mask) {
+    const key = "wi" + lv + "_" + mask;
+    if (this.textures.exists(key)) return key;
+    if (!["wall", "wall_side", "wall_corner"].every((n) => ART_OK.has(n + lv))) return null;
+    const img = (n) => this.textures.get("art_" + n + lv).getSourceImage();
+    const front = img("wall"), side = img("wall_side"), post = img("wall_corner");
+    const S = DATA.tile, K = 2, CW = 3 * S, CH = 4 * S;
+    const t = this.textures.createCanvas(key, CW * K, CH * K), g = t.getContext();
+    g.scale(K, K);
+    const cx = CW / 2, x0 = cx - S / 2, x1 = cx + S / 2, yb = CH - 4;
+    const up = mask & 1, rt = mask & 2, dn = mask & 4, lf = mask & 8, vert = up || dn, hor = rt || lf;
+    const FH = 50, fBot = yb - 6, fw = front.width * FH / front.height;          // กำแพงหน้า
+    const A = 0.22, B = 0.78;                                                   // ช่วงแถบกลาง
+    const band = (dx0, dx1) => g.drawImage(front, front.width * A, 0, front.width * (B - A), front.height, dx0, fBot - FH, dx1 - dx0, FH);
+    const SW = 24, sh = side.height * SW / side.width, lift = FH - 16;          // กำแพงข้าง
+    const sTop = side.height * 0.3, sBot = side.height * 0.8;
+    if (hor || !vert) {
+      if (!vert) band(x0, x1);
+      else { if (lf) band(x0, cx + 1); if (rt) band(cx - 1, x1); }
+      if (!lf && !vert) g.drawImage(front, 0, 0, front.width * A, front.height, x0 - fw * A, fBot - FH, fw * A, FH);
+      if (!rt && !vert) g.drawImage(front, front.width * B, 0, front.width * (1 - B), front.height, x1, fBot - FH, fw * (1 - B), FH);
+    }
+    if (vert) {
+      const top = yb - S - lift, bot = yb - lift;                              // ช่องนี้ (ยกขึ้นเท่าความสูงกำแพง)
+      g.drawImage(side, 0, sTop, side.width, sBot - sTop, cx - SW / 2, top, SW, bot - top + 0.5);
+      if (!dn) g.drawImage(side, 0, sBot, side.width, side.height - sBot, cx - SW / 2, bot, SW, lift - 2);
+      if (!up) { const ch = sTop * SW / side.width; g.drawImage(side, 0, 0, side.width, sTop, cx - SW / 2, top - ch + 0.5, SW, ch); }
+      if (hor) { const ph = FH + 18, pw = post.width * ph / post.height; g.drawImage(post, cx - pw / 2, fBot - ph + 2, pw, ph); }
+    }
+    t.refresh();
+    return key;
+  }
+
   wallArt(lv, mask, tx, ty) {
     const key = "wb" + lv + "_" + mask + "_" + ((tx + ty) % 3 === 0 ? 1 : 0);
     if (this.textures.exists(key)) return key;
@@ -4258,8 +4383,8 @@ class GameScene extends Phaser.Scene {
   skinBuilding(img, b, tex) {
     const [base0, mk] = tex.split("#"), [base, v] = base0.split(":"), name = ART_BUILD[base], lv = /\d$/.test(name || "") ? name.slice(-1) : "1";
     if (b.type === "wall" && mk != null) {
-      const key = this.wallArt(lv, +mk, b.tx, b.ty);
-      if (key) { img.setTexture(key).setOrigin(0.5, (2 * DATA.tile - 4) / (3 * DATA.tile)).setScale(0.5).clearTint(); img.base = 0.5; img.art = true; img.y = (b.ty + 1) * DATA.tile; return; }
+      const key = this.wallArtImg(lv, +mk) || this.wallArt(lv, +mk, b.tx, b.ty);
+      if (key) { img.setTexture(key).setOrigin(0.5, key.startsWith("wi") ? (4 * DATA.tile - 4) / (4 * DATA.tile) : (2 * DATA.tile - 4) / (3 * DATA.tile)).setScale(0.5).clearTint(); img.base = 0.5; img.art = true; img.y = (b.ty + 1) * DATA.tile; return; }
     }
     // ภาพจริงด้านข้าง / มุม (ชุด v2)
     const sideName = v === "v" ? (b.type === "gate" ? "gate_side" : "wall_side") + lv : v === "c" ? "wall_corner" + lv : null;
@@ -4288,7 +4413,9 @@ class GameScene extends Phaser.Scene {
       if (b.type === "camp") {
         if (b.lv !== this.campLv) {
           this.campLv = b.lv;
-          if (!this.skin(this.campImg, "camp" + b.lv, { w: 118 + b.lv * 8, oy: 0.9 }))
+          this.campImg.anims.stop();
+          if (b.lv === 1 && ANIM_OK.has("flag")) { this.campImg.play("a_flag"); this.campImg.setOrigin(0.5, ANIM.flag.oy - 0.04).setScale(126 / ANIM.flag.w * 1.12).clearTint(); }
+          else if (!this.skin(this.campImg, "camp" + b.lv, { w: 118 + b.lv * 8, oy: 0.9 }))
             this.campImg.setTexture(b.lv >= 3 ? "hall" : "tent").setOrigin(0.5, b.lv >= 3 ? 96 / 104 : 88 / 96).setScale(b.lv >= 5 ? 1.12 : b.lv === 4 ? 1.05 : 1);
           this.campLabel.setText(`บ้านหลัก Lv ${b.lv}`);
           this.drawZoneRing();
@@ -4327,7 +4454,7 @@ class GameScene extends Phaser.Scene {
       if (e.type === "hit") {
         if (e.toHero) {
           this.popText(e.x, e.y, "-" + e.amount, "#ff7a66", 15);
-          { const hv = this.heroViews.get(e.id); if (hv) hv.flash = 1; const uv = this.unitViews.get(e.id); if (uv) uv.flash = 1; }
+          { const hv = this.heroViews.get(e.id); if (hv) { hv.flash = 1; if (!hv.once) this.animOnce(hv, "hurt", this.time.now); } const uv = this.unitViews.get(e.id); if (uv) uv.flash = 1; }
           if (e.id === this.state.heroes[0].id) this.cameras.main.shake(90, 0.003);
         } else if (this.visibleAt(e.x, e.y)) {
           this.popText(e.x + (Math.random() - 0.5) * 10, e.y, e.crit ? e.amount + "!" : String(e.amount), e.crit ? "#ffd166" : "#efe8d2", e.crit ? 19 : 14);
@@ -4340,6 +4467,10 @@ class GameScene extends Phaser.Scene {
         if (v) {
           this.monViews.delete(e.id);
           if (e.burn) { this.puff("fx_sunburn", v.root.x, v.root.y - 6, { w: 46, dur: 900, from: 0.6, to: 1.2, dy: -14 }); v.body.setAlpha(0.8); this.tweens.add({ targets: v.root, alpha: 0, y: v.root.y - 16, duration: 900, onComplete: () => v.root.destroy() }); }
+          else if (v.anim && ANIM_OK.has(v.anim + (e.blast ? "_attack" : "_death"))) {   // ท่าตาย (ตัวระเบิด: ท่าระเบิด)
+            this.animPlay(v, e.blast ? "attack" : "death", true); v.body.anims.resume();
+            this.tweens.add({ targets: v.root, alpha: 0, delay: this.animDur(v, e.blast ? "attack" : "death") + 150, duration: 450, onComplete: () => v.root.destroy() });
+          }
           else if (v.art && !e.blast) {   // ล้มลงไปทางด้านหลังแล้วจางหาย
             const dir = v.body.flipX ? 1 : -1;
             v.body.setTint(0xb0a090);
@@ -4352,7 +4483,7 @@ class GameScene extends Phaser.Scene {
         if (this.visibleAt(e.x, e.y)) this.puff("fx_rubble", e.x, e.y + 6, { w: 44, dur: 2600, from: 1, to: 1, depth: e.y - 1 });
       } else if (e.type === "levelUp" && e.id === this.localHero) {
         const hv = this.heroViews.get(e.id);
-        this.puff("fx_levelup", hv.root.x, hv.root.y, { w: 90, dur: 800, from: 0.3, to: 1.3, depth: 8.4e6, dy: -20 });
+        if (!this.fxAnim("fx_levelup", hv.root.x, hv.root.y + 10, 90, 8.4e6)) this.puff("fx_levelup", hv.root.x, hv.root.y, { w: 90, dur: 800, from: 0.3, to: 1.3, depth: 8.4e6, dy: -20 });
         this.popText(hv.root.x, hv.root.y - 26, `LEVEL ${e.lv}!`, "#ffd166", 22);
         const ring = this.add.graphics().setPosition(hv.root.x, hv.root.y).setDepth(8.4e6);
         ring.lineStyle(3, 0xffd166, 1); ring.strokeCircle(0, 0, 20);
@@ -4379,7 +4510,7 @@ class GameScene extends Phaser.Scene {
       } else if (e.type === "trained" && e.unit && e.unit !== "worker") {
         Toast.show(`จ้าง${DATA.units[e.unit].name}แล้ว`);
       } else if (e.type === "heal") {
-        if (this.visibleAt(e.x, e.y)) this.popText(e.x, e.y, "+" + e.n, "#7fe08a", 13);
+        if (this.visibleAt(e.x, e.y)) { this.popText(e.x, e.y, "+" + e.n, "#7fe08a", 13); this.fxAnim("fx_heal", e.x, e.y + 10, 40); }
       } else if (e.type === "repaired" && e.team === this.team) {
         for (const b of this.state.buildings) if (b.team === this.team) { const img = this.buildViews.get(b.id); if (img) this.tweens.add({ targets: img, scale: { from: 1.12 * (img.base || 1), to: img.base || 1 }, duration: 260 }); }
       } else if (e.type === "recalled") {
@@ -4392,7 +4523,8 @@ class GameScene extends Phaser.Scene {
         else Banner.show(`เวฟ ${e.idx + 1}/${e.of} อีก ${DATA.waves.nextWarn} วินาที · ${e.total} ตัวจากทิศ${e.dirName}${tag}`, "warn");
       } else if (e.type === "blast") {
         if (this.visibleAt(e.x, e.y)) {
-          if (ART_OK.has("fx_blast")) {
+          if (this.fxAnim("fx_blast", e.x, e.y, e.r * 2.4)) {}
+          else if (ART_OK.has("fx_blast")) {
             const g = this.add.image(e.x, e.y, "art_fx_blast").setDepth(e.y + 30); this.skin(g, "fx_blast", { w: e.r * 2.2, oy: 0.5 });
             const full = g.base; g.setScale(full * 0.3); this.tweens.add({ targets: g, scale: full, alpha: 0, duration: 420, ease: "Cubic.easeOut", onComplete: () => g.destroy() });
           } else {
@@ -4407,6 +4539,7 @@ class GameScene extends Phaser.Scene {
       } else if (e.type === "bossSpawn") {
         Toast.show(`${e.name} Lv ${e.lv} ปรากฏทางทิศ${e.dirName}`);
       } else if (e.type === "bossRoar") {
+        { const bv = this.monViews.get(e.id); if (bv) { this.animOnce(bv, "special", this.time.now); bv.body.anims.resume(); } }
         const ring = this.add.graphics().setPosition(e.x, e.y).setDepth(8.4e6);
         ring.lineStyle(4, 0x8fbf5a, 0.9); ring.strokeCircle(0, 0, 30);
         this.tweens.add({ targets: ring, alpha: 0, scale: 3, duration: 700, onComplete: () => ring.destroy() });
@@ -4457,6 +4590,7 @@ class GameScene extends Phaser.Scene {
         if (this.visibleAt(e.x, e.y)) this.cameras.main.shake(60, 0.002);
       } else if (e.type === "skill") {
         const h = this.state.heroes[0];
+        { const hv = this.heroViews.get(h.id); if (hv && e.skill !== "haste") this.animOnce(hv, e.skill === "shower" && ANIM_OK.has(hv.anim + "_skill") ? "skill" : "attack", this.time.now); }
         if (e.skill === "shower") {
           this.puff("fx_volley", h.x, h.y - 20, { w: 60, dur: 380, from: 0.6, to: 1.1, rot: -Math.PI / 2, depth: h.y + 30, dy: -40 });
           const ring = this.add.graphics().setPosition(e.x, e.y).setDepth(e.y - 2);
@@ -4487,11 +4621,13 @@ class GameScene extends Phaser.Scene {
         const root = this.add.container(m.x, m.y);
         const def = DATA.monsters[m.type];
         const shadow = this.add.image(0, m.fly ? 14 : m.r * def.size * 0.6 + 4, "shadow").setScale(def.size * (m.fly ? 0.6 : 0.85)).setAlpha(m.fly ? 0.5 : 1);
-        const body = this.add.image(0, 0, ensureMonTex(this, m.type)).setOrigin(24 / 56, 0.5);
+        const body = this.add.sprite(0, 0, ensureMonTex(this, m.type)).setOrigin(24 / 56, 0.5);
         const am = artMon(m.type);
         const art = !!am && this.skin(body, am.name, { m: m.r * 3.6 * def.size, oy: m.fly ? 0.6 : 0.92, tint: am.tint });
         root.add([shadow, body]);
         v = { root, body, flash: 0, def, art, foot: m.fly ? -6 : m.r * def.size * 0.6 + 4, baseScale: body.base || 1, tint: am && am.tint, kb: 0 };
+        const ab = art && animBase(m.type);
+        if (ab) this.animBind(v, ab.base, ab.tint);
         this.monViews.set(m.id, v);
       }
       const x = m.px + (m.x - m.px) * a, y = m.py + (m.y - m.py) * a;
@@ -4506,6 +4642,12 @@ class GameScene extends Phaser.Scene {
       if (m.fly) v.body.y = (v.art ? v.foot : -10) + Math.sin(time / 120 + m.id) * 3;
       const fast = m.arch === "runner" || m.arch === "exploder";
       const wob = m.moving ? Math.sin(time / (fast ? 45 : 110) + m.id) * (fast ? 0.06 : 0.1) : m.arch === "exploder" ? Math.sin(time / 60) * 0.05 : 0;
+      if (v.anim) {
+        if (v.lastAtk != null && m.atkCd > v.lastAtk + 0.02) this.animOnce(v, "attack", time);
+        v.lastAtk = m.atkCd;
+        this.animState(v, time, "walk");
+        if (!v.once) { if (m.moving || m.fly) v.body.anims.resume(); else v.body.anims.pause(); }
+      }
       if (v.art) this.pose(v, { time, dt: this.game.loop.delta, moving: m.moving, fast, fly: m.fly, cd: m.atkCd, phase: m.id, heavy: m.arch === "brute" || m.boss });
       else {
         v.body.setScale(1 + v.flash * 0.18, 1 + wob + v.flash * 0.18);
@@ -4652,7 +4794,10 @@ class GameScene extends Phaser.Scene {
     for (const hero of this.state.heroes) {
       const view = this.heroViews.get(hero.id);
       const x = hero.px + (hero.x - hero.px) * a, y = hero.py + (hero.y - hero.py) * a;
-      view.root.setVisible(!hero.dead);
+      const dying = hero.dead && view.anim && ANIM_OK.has(view.anim + "_death");
+      view.root.setVisible(!hero.dead || dying);
+      if (dying) { if (view.cur !== view.anim + "_death") { this.animPlay(view, "death", true); view.root.setAlpha(0.9); } }
+      else if (view.cur === view.anim + "_death") { view.root.setAlpha(1); view.cur = null; }
       view.root.setPosition(x, y).setDepth(y + 10);
       const aim = hero.aimUntil > this.state.tick ? hero.aim : hero.face;
       view.bow.rotation = Phaser.Math.Angle.RotateTo(view.bow.rotation, aim, 0.4);
@@ -4661,7 +4806,12 @@ class GameScene extends Phaser.Scene {
         const c = Math.cos(aim); if (Math.abs(c) > 0.2) view.body.flipX = c < 0;
         view.baseScale = view.baseScale || view.body.base; view.body.y = 14;
         view.flash = Math.max(0, (view.flash || 0) - 0.1);
-        this.pose(view, { time, dt: delta, moving: hero.moving, gather: hero.gathering >= 0, cd: hero.atkCd });
+        if (view.anim && !hero.dead) {
+          if (view.lastAtk != null && hero.atkCd > view.lastAtk + 0.02 && view.once !== "skill") this.animOnce(view, "attack", time);
+          view.lastAtk = hero.atkCd;
+          this.animState(view, time, hero.moving ? "walk" : "idle");
+        }
+        if (!hero.dead) this.pose(view, { time, dt: delta, moving: hero.moving, gather: hero.gathering >= 0, cd: hero.atkCd });
       }
       else { view.body.y = bob; view.bow.y = bob; }
       if (!view.art) view.body.x = hero.gathering >= 0 ? Math.sin(time / 80) * 2 : 0;
@@ -4681,10 +4831,11 @@ class GameScene extends Phaser.Scene {
     this.drawWaveArrow(time);
     this.recallRing.clear();
     { const h = this.state.heroes[0], hv = this.heroViews.get(h.id);
+      if (!this.recallFx && ANIM_OK.has("fx_recall")) { this.recallFx = this.add.sprite(0, 0, "an_fx_recall").setDepth(8.29e6).setOrigin(0.5, 0.6); this.recallFx.base = 70 / ANIM.fx_recall.w * 1.25; this.recallFx.play("a_fx_recall"); this.recallFx.setVisible(false); this.recallFx.anim = true; }
       if (!this.recallFx && ART_OK.has("fx_recall")) { this.recallFx = this.add.image(0, 0, "art_fx_recall").setDepth(8.29e6); this.skin(this.recallFx, "fx_recall", { w: 64, oy: 0.5 }); this.recallFx.setVisible(false); }
       if (this.recallFx) {
         this.recallFx.setVisible(!!h.recall && !h.dead);
-        if (h.recall) { const k = 1 - h.recall.t / DATA.hero.recallSec; this.recallFx.setPosition(hv.root.x, hv.root.y + 10).setRotation(time / 300).setAlpha(0.4 + k * 0.6).setScale(this.recallFx.base * (0.6 + k * 0.5)); }
+        if (h.recall) { const k = 1 - h.recall.t / DATA.hero.recallSec; this.recallFx.setPosition(hv.root.x, hv.root.y + 10).setRotation(this.recallFx.anim ? 0 : time / 300).setAlpha(0.4 + k * 0.6).setScale(this.recallFx.base * (0.6 + k * 0.5)); }
       }
       if (h.recall) {
         const k = 1 - h.recall.t / DATA.hero.recallSec;
