@@ -225,6 +225,9 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .bp-note { font-size: 12px; color: var(--ink-dim); margin: 0; }
 .btn.poor { opacity: 0.55; }
 .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.seg3 { grid-template-columns: repeat(3, 1fr); }
+.seg3 .btn { padding: 5px 2px; font-size: 12px; }
+.bp-mode { display: grid; grid-template-columns: 64px 1fr; gap: 8px; align-items: center; font-size: 12.5px; }
 .seg .btn.on { background: rgba(111, 182, 232, 0.18); border-color: #6fb6e8; color: #cfe6f7; }
 .loot-tip {
   position: fixed; z-index: 6; pointer-events: none; width: 250px;
@@ -416,6 +419,18 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .howto-keys th { text-align: left; color: var(--ink-dim); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--panel-line); }
 .howto-keys td { padding: 4px 6px; border-bottom: 1px solid rgba(214, 196, 140, 0.1); }
 .menu-stats { margin-top: -2px; }
+.bestiary { z-index: 31; }
+.best-card { width: min(720px, 100%); }
+.best-card .howto-head span { flex: 1; margin-left: 10px; font-size: 13px; color: var(--ink-dim); }
+.best-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.best-tabs .btn.on { background: rgba(226, 176, 74, 0.16); border-color: var(--accent); color: var(--accent); }
+.best-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; max-height: min(60vh, 520px); overflow-y: auto; }
+.best-item { display: grid; grid-template-columns: 48px 1fr; gap: 8px; align-items: center; padding: 7px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(214, 196, 140, 0.15); border-radius: 6px; min-width: 0; }
+.best-item img { width: 48px; height: 41px; object-fit: contain; image-rendering: auto; }
+.best-item .q { width: 48px; height: 41px; display: grid; place-items: center; font-family: var(--font-pixel); color: var(--ink-dim); background: rgba(0, 0, 0, 0.35); border-radius: 4px; }
+.best-item b { display: block; font-size: 12.5px; line-height: 1.3; }
+.best-item small { display: block; font-size: 11px; color: var(--ink-dim); line-height: 1.35; }
+.best-item.boss { border-color: rgba(224, 67, 58, 0.5); }
 .menu-ver { font-size: 11px; color: var(--ink-dim); }
 
 .err { position: fixed; inset: 0; display: grid; place-items: center; padding-inline: 16px; text-align: center; font-size: 15px; }
@@ -601,7 +616,8 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
     <ol class="howto-steps">
       <li><b>กลางวัน 4 นาที</b> เดินสำรวจ ยืนติดต้นไม้หรือก้อนหินเพื่อเก็บไม้/หิน ฆ่า Monster เพื่อเก็บ EXP และของดรอป</li>
       <li><b>ก่อนค่ำ 30 วินาที</b> จะมีประกาศว่า Monster จะบุกจากทิศไหน ลูกศรแดงรอบตัวชี้ทาง</li>
-      <li><b>กลางคืน 2 นาที</b> Monster บุกค่ายหลายเวฟ คนละทิศ เวฟสุดท้ายมีบอส (ล้มได้ของดีหลายชิ้น) Monster ทั่วแผนที่ดุร้ายและเลเวลสูงขึ้น ระวังออกไปไกล</li>
+      <li><b>กลางคืน 2 นาที</b> Monster บุกค่ายไม่หยุด 3–6 เวฟ คนละทิศ และมีกลุ่มเล็กแทรกตลอด เวฟสุดท้ายมีบอส แต่ละคืนโหดขึ้น 2 เท่า ระวังพวกยิงไกล (ยิงป้อมได้) พวกระเบิดตัว และพวกบินข้ามกำแพง</li>
+      <li><b>กลางวัน</b> เขตค่ายปลอดภัย Monster ไม่ไล่ตามเข้ามา แต่ข้างนอกมี Monster 100 ชนิดตั้งแต่ระดับต่ำถึงสูง ดูที่เจอแล้วใน "สมุดมอนสเตอร์" (เมนู)</li>
       <li><b>รอดครบ 5 คืน</b> ชนะ · ค่ายพักแรมพังคือแพ้ · HP ฟื้นเฉพาะในเขตค่าย</li>
     </ol>
     <table class="howto-keys">
@@ -620,6 +636,14 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
   </div>
 </div>
 
+<div class="howto bestiary" id="bestiary" hidden>
+  <div class="howto-card best-card" role="dialog" aria-modal="true" aria-labelledby="best-title">
+    <div class="howto-head"><b id="best-title">สมุดมอนสเตอร์</b><span id="best-count"></span><button type="button" class="btn" id="best-close">ปิด</button></div>
+    <div class="best-tabs" id="best-tabs"></div>
+    <div class="best-grid" id="best-grid"></div>
+  </div>
+</div>
+
 <div class="menu" id="menu" hidden>
   <div class="menu-card" role="dialog" aria-modal="true" aria-labelledby="menu-title">
     <div class="menu-title" id="menu-title">หยุดเกมชั่วคราว</div>
@@ -632,10 +656,11 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
     <div class="menu-actions">
       <button type="button" class="btn big primary" data-act="resume">เล่นต่อ</button>
       <button type="button" class="btn big" data-act="howto">วิธีเล่น</button>
+      <button type="button" class="btn big" data-act="bestiary">สมุดมอนสเตอร์ <span id="m-seen"></span></button>
       <button type="button" class="btn big" data-act="same">เริ่มใหม่แผนที่เดิม</button>
       <button type="button" class="btn big" data-act="title">กลับหน้าแรก</button>
     </div>
-    <div class="menu-ver">ต้นแบบ 0.8 · พร้อมทดสอบ</div>
+    <div class="menu-ver">ต้นแบบ 0.10 · Monster 100 ชนิด</div>
     <div class="menu-keys">Esc เปิด/ปิดเมนู · H กลับฐาน · B สร้าง · Q สกิล · M แผนที่</div>
   </div>
 </div>
@@ -694,11 +719,7 @@ const DATA = {
   skills: {
     volley: { name: "ยิงกระจาย", mp: 20, cd: 6, arrows: 7, spread: 0.95, dmgMul: 0.8 },
   },
-  monsters: {
-    zombie: { name: "ซอมบี้", hp: 40, atk: 8, def: 1, as: 0.7, spd: 66, r: 13, aggro: 5, reach: 10 },
-    wolf: { name: "หมาป่า", hp: 24, atk: 4.5, def: 0, as: 1.1, spd: 185, r: 12, aggro: 6, reach: 8 },
-    boss: { name: "ราชาซอมบี้", hp: 520, atk: 12, def: 4, as: 0.55, spd: 56, r: 15, aggro: 6, reach: 18 },   // r = ขนาดชน (ภาพใหญ่กว่านี้)
-  },
+  monsters: {},   // สร้างอัตโนมัติ 100 ชนิดด้านล่าง (buildRoster)
   stockStart: { wood: 60, stone: 30 },
   resources: {                      // ไม้จากต้นไม้, หินจากก้อนหิน
     tree: { give: "wood", amount: 9, sec: 0.6 },
@@ -748,18 +769,112 @@ const DATA = {
   worker: { name: "คนงาน", cost: { wood: 15 }, max: 6, hp: 40, spd: 120, r: 9, carry: 8, gatherSec: 0.6, range: 19, flee: 4, avoid: 5, vision: 4 },
   cycle: { daySec: 240, nightSec: 120, warnSec: 30, nights: 5, skipTo: 10 },   // กลางวัน 4 นาที กลางคืน 2 นาที
   waves: {
-    count: [2, 3, 3, 3, 3],             // จำนวนเวฟในแต่ละคืน (คืนหลังจากนี้ใช้ค่าสุดท้าย)
-    base: 8, perNight: 1, perWave: 2,   // ขนาดเวฟ = base + perNight×คืน + perWave×ลำดับเวฟ (ความโหดมาจากตัวคูณด้านล่าง)
-    wolfFrom: 2, wolfShare: 0.3, lvPerNight: 2, dist: [32, 38], batches: 5, batchEvery: 2, nextWarn: 10,
+    count: [3, 4, 5, 5, 6],             // จำนวนเวฟในแต่ละคืน (คืนหลังจากนี้ใช้ค่าสุดท้าย)
+    base: 10, perNight: 3, perWave: 2,  // ขนาดเวฟ = base + perNight×คืน + perWave×ลำดับเวฟ
+    // ระดับ Monster ในเวฟของแต่ละคืน: [ต่ำ, กลาง, สูง]
+    tiers: [[1, 0, 0], [0.65, 0.35, 0], [0.25, 0.55, 0.2], [0.05, 0.5, 0.45], [0, 0.25, 0.75]],
+    trickleEvery: 6, trickleBase: 1,     // ระหว่างเวฟมีกลุ่มเล็กบุกแทรกตลอดคืน
+    dist: [32, 38], batches: 5, batchEvery: 2, nextWarn: 10,
     basePower: 0.4, nightMul: 2, waveMul: 1.12,   // ความโหด (HP และพลังโจมตี): คืนแรก x0.4 แล้ว x2 ทุกคืน, แต่ละเวฟในคืนเดียวกัน x1.12
   },
   night: {                              // กลางคืน Monster ทั่วแผนที่ดุร้ายขึ้น
     aggro: 1.6, spd: 1.15, atk: 1.25,
     roamers: { base: 50, perNight: 20, lvBonus: 3, dist: [15, 50], mulPerNight: 0.5 },
   },
-  boss: { lvBase: 2, lvPerNight: 2, drops: [2, 3], minRarity: 1, epicChance: 0.25, summonEvery: 15, summonCount: 2 },
-  spawn: { population: 520, safeRadius: 14, zoneDensity: [1, 0.75, 0.55, 0.4], leash: 16, refillEvery: 2, sleepRadius: 26 },
+  boss: { lvBase: 2, lvPerNight: 2, drops: [2, 3], minRarity: 1, epicChance: 0.25, summonEvery: 14, summonCount: 3 },
+  unitModes: { archer: "guard", swordsman: "guard", medic: "free" },   // ค่าเริ่มต้น: free อิสระ / follow ตาม Hero / guard เฝ้าค่าย
+  // ระดับ Monster ทั่วแผนที่ตามโซน: [ต่ำ, กลาง, สูง]
+  zoneTiers: [[0.85, 0.15, 0], [0.35, 0.55, 0.1], [0.05, 0.55, 0.4], [0, 0.2, 0.8]],
+  spawn: { population: 620, safeRadius: 14, zoneDensity: [1, 0.8, 0.6, 0.45], leash: 16, refillEvery: 2, sleepRadius: 26 },
 };
+
+/* ===== data/ : Monster 100 ชนิด (ต่ำ 40 · กลาง 30 · สูง 25 · บอส 5) =====
+   แต่ละตระกูลมีพฤติกรรมของตัวเอง แล้วแตกเป็นสายพันธุ์ย่อยที่สีและค่าพลังต่างกัน */
+(function buildRoster() {
+  // พฤติกรรม: melee เดินตี · runner วิ่งเร็ว · brute ตัวถึกทุบกำแพงแรง · ranged ยิงไกล · exploder วิ่งชนแล้วระเบิด · flyer บินข้ามกำแพง
+  const ARCH = {
+    melee:    { hp: 40, atk: 8,   def: 1, as: 0.7, spd: 66,  r: 13, aggro: 5, reach: 10, bld: 1 },
+    runner:   { hp: 24, atk: 4.5, def: 0, as: 1.1, spd: 185, r: 12, aggro: 6, reach: 8,  bld: 0.6 },
+    brute:    { hp: 95, atk: 12,  def: 3, as: 0.5, spd: 52,  r: 16, aggro: 4, reach: 12, bld: 2.6 },
+    ranged:   { hp: 26, atk: 6,   def: 0, as: 0.55, spd: 70, r: 12, aggro: 7, reach: 8,  bld: 1, range: 180, bolt: 300 },
+    exploder: { hp: 22, atk: 26,  def: 0, as: 1,   spd: 128, r: 12, aggro: 6, reach: 6,  bld: 2.2, blast: 62 },
+    flyer:    { hp: 20, atk: 5,   def: 0, as: 1,   spd: 150, r: 11, aggro: 7, reach: 8,  bld: 0.8, fly: true },
+  };
+  const TIER = {
+    low:  { hp: 1,   atk: 1,   exp: 1,  drop: 1,   size: 1 },
+    mid:  { hp: 2.3, atk: 1.7, exp: 2,  drop: 1.6, size: 1.15 },
+    high: { hp: 4.8, atk: 2.8, exp: 4,  drop: 2.6, size: 1.3 },
+    boss: { hp: 16,  atk: 3,   exp: 14, drop: 0,   size: 1.9 },
+  };
+  // ตระกูล: [รหัส, ชื่อ, พฤติกรรม, ทรงที่วาด, สีหลัก, ระดับ]
+  const FAMILY = [
+    ["zombie", "ซอมบี้", "melee", "zombie", "#6f8f4e", "low"],
+    ["wolf", "หมาป่า", "runner", "wolf", "#6c6f78", "low"],
+    ["slime", "สไลม์", "exploder", "slime", "#6cc04a", "low"],
+    ["bat", "ค้างคาว", "flyer", "bat", "#4a3d5c", "low"],
+    ["skel", "โครงกระดูกนักธนู", "ranged", "skeleton", "#d8d2bd", "low"],
+    ["ghoul", "กูล", "melee", "zombie", "#7d6a8f", "mid"],
+    ["spider", "แมงมุมยักษ์", "runner", "spider", "#3b3330", "mid"],
+    ["orc", "ออร์ก", "brute", "orc", "#5d8a3c", "mid"],
+    ["wisp", "ภูตไฟ", "flyer", "wisp", "#ff9a3c", "mid"],
+    ["bonemage", "นักเวทกระดูก", "ranged", "skeleton", "#b9c7e0", "mid"],
+    ["beetle", "ด้วงระเบิด", "exploder", "beetle", "#9b5a2e", "mid"],
+    ["knight", "อัศวินมรณะ", "melee", "knight", "#4c5564", "high"],
+    ["were", "มนุษย์หมาป่า", "runner", "wolf", "#4a3a2e", "high"],
+    ["golem", "โกเลมหิน", "brute", "golem", "#8b8878", "high"],
+    ["demon", "ปีศาจปีก", "flyer", "demon", "#8f2f2f", "high"],
+    ["lich", "ลิชมรณะ", "ranged", "lich", "#3f6f7a", "high"],
+  ];
+  // สายพันธุ์ย่อย: [ชื่อต่อท้าย, สีเสริม, ตัวคูณ hp, atk, def, spd, as]
+  const VARIANT = [
+    ["", null, 1, 1, 1, 1, 1],
+    ["เน่า", "#8a7a3a", 1.25, 0.95, 1, 0.9, 1],
+    ["พิษ", "#7ad04a", 1, 1.25, 1, 1, 1],
+    ["เพลิง", "#e2602a", 0.95, 1.3, 1, 1.05, 1.1],
+    ["น้ำแข็ง", "#7fc4e8", 1.15, 1, 1.6, 0.9, 0.95],
+    ["เงา", "#3a3550", 0.9, 1.15, 1, 1.25, 1.05],
+    ["หิน", "#8b8878", 1.5, 1, 2, 0.8, 0.9],
+    ["คลั่ง", "#c0392b", 0.95, 1.45, 0.6, 1.15, 1.25],
+  ];
+  const PER_TIER = { low: 8, mid: 5, high: 5 };
+  const out = {}, order = { low: [], mid: [], high: [], boss: [] };
+  let n = 0;
+  for (const [fam, fname, arch, shape, color, tier] of FAMILY) {
+    for (let v = 0; v < PER_TIER[tier]; v++) {
+      const [vn, vcol, mh, ma, md, ms, mas] = VARIANT[v], A = ARCH[arch], T = TIER[tier];
+      const key = `${fam}${v}`;
+      out[key] = {
+        key, no: ++n, name: vn ? `${fname}${vn}` : fname, tier, arch, family: fam, shape, color, accent: vcol,
+        hp: Math.round(A.hp * T.hp * mh), atk: +(A.atk * T.atk * ma).toFixed(1), def: +(A.def * T.hp * 0.5 * md + (tier === "high" ? 2 : 0)).toFixed(1),
+        as: +(A.as * mas).toFixed(2), spd: Math.round(A.spd * ms * (tier === "high" ? 1.05 : 1)), r: Math.round(A.r * Math.sqrt(T.size)),
+        aggro: A.aggro, reach: A.reach, bld: A.bld, range: A.range ? A.range + (tier === "high" ? 40 : tier === "mid" ? 20 : 0) : 0,
+        bolt: A.bolt || 0, blast: A.blast ? Math.round(A.blast * T.size) : 0, fly: !!A.fly, exp: T.exp, drop: T.drop, size: T.size,
+      };
+      order[tier].push(key);
+    }
+  }
+  // บอส 5 ตัว (หนึ่งตัวต่อคืน แล้ววนซ้ำ)
+  const BOSSES = [
+    ["boss0", "ราชาซอมบี้", "melee", "zombie", "#56703b", "zombie0"],
+    ["boss1", "จ้าวฝูงหมาป่า", "runner", "wolf", "#4e5057", "wolf0"],
+    ["boss2", "ราชินีแมงมุม", "ranged", "spider", "#2b2320", "spider0"],
+    ["boss3", "โกเลมโบราณ", "brute", "golem", "#6d6a5e", "golem0"],
+    ["boss4", "มังกรเงา", "flyer", "dragon", "#2e2a44", "demon0"],
+  ];
+  for (const [key, name, arch, shape, color, minion] of BOSSES) {
+    const A = ARCH[arch], T = TIER.boss;
+    out[key] = {
+      key, no: ++n, name, tier: "boss", arch, family: key, shape, color, accent: "#e2b04a", minion,
+      hp: Math.round(520 * (arch === "brute" ? 1.4 : arch === "flyer" ? 0.8 : 1)), atk: arch === "brute" ? 16 : 12, def: 4,
+      as: 0.55, spd: arch === "runner" ? 95 : arch === "flyer" ? 80 : 56, r: 15, aggro: 6, reach: 18, bld: arch === "brute" ? 3 : 1.4,
+      range: arch === "ranged" ? 220 : 0, bolt: arch === "ranged" ? 280 : 0, blast: 0, fly: arch === "flyer", exp: T.exp, drop: 0, size: T.size,
+    };
+    order.boss.push(key);
+  }
+  DATA.monsters = out;
+  DATA.roster = order;
+  DATA.tierName = { low: "ต่ำ", mid: "กลาง", high: "สูง", boss: "บอส" };
+})();
 
 /* ===== core/ : ตรรกะเกม ไม่ยุ่งกับ Phaser (ย้ายไปเซิร์ฟเวอร์ได้) ===== */
 const Core = (() => {
@@ -845,7 +960,7 @@ const Core = (() => {
       heroes: [],
       monsters: [], arrows: [], events: [], kills: {}, loot: [],
       units: [], buildings: [], stock: { 1: { ...DATA.stockStart } }, resLeft: {}, claims: {}, mapVersion: 0,
-      research: { 1: { heroWeapon: 0, unitWeapon: 0, unitArmor: 0 } }, soldierMode: { 1: "guard" },
+      research: { 1: { heroWeapon: 0, unitWeapon: 0, unitArmor: 0 } }, unitMode: { 1: { ...DATA.unitModes } }, bolts: [], trickleT: 0,
       clock: 0, day: 1, wave: null, field: null, fieldVersion: -1, fieldTick: -999, buildAt: {}, result: null, endless: false,
       spawnTimer: 0,
       fog: {}, fogKey: {}, fogVis: {}, explored: {}, fogVersion: 0,
@@ -1029,10 +1144,10 @@ const Core = (() => {
         st.loot.push({ id: st.nextId++, x: m.x + Math.cos(a) * 26, y: m.y + Math.sin(a) * 26, item, ttl: DATA.items.lootSec * 2 });
         st.events.push({ type: "drop", x: m.x, y: m.y, rarity: item.rarity });
       }
-      st.events.push({ type: "bossDown", id: m.id, x: m.x, y: m.y });
+      st.events.push({ type: "bossDown", id: m.id, x: m.x, y: m.y, name: DATA.monsters[m.type].name });
       return;
     }
-    const chance = m.wave ? DATA.items.dropChance.wave : DATA.items.dropChance.normal;
+    const chance = (m.wave ? DATA.items.dropChance.wave : DATA.items.dropChance.normal) * (DATA.monsters[m.type].drop || 1);
     if (rand(st) >= chance) return;
     const item = makeItem(st, rand(st) < 0.55 ? "weapon" : "armor", rollRarity(st, m.lv), m.lv);
     st.loot.push({ id: st.nextId++, x: m.x, y: m.y, item, ttl: DATA.items.lootSec });
@@ -1073,9 +1188,15 @@ const Core = (() => {
       id: st.nextId++, kind: "monster", type, team: 0, lv, x, y, px: x, py: y, homeX: x, homeY: y, r: b.r,
       hp, maxHp: hp, atk: b.atk * (1 + 0.08 * (lv - 1)), def: b.def + lv * 0.2, as: b.as, spd: b.spd, baseSpd: b.spd,
       face: rand(st) * Math.PI * 2, target: null, mode: "idle", wanderAt: 0, wx: x, wy: y,
-      atkCd: 0, side: 1, moving: false, lunge: 0, dead: false,
+      atkCd: rand(st), side: 1, moving: false, lunge: 0, dead: false, tier: b.tier, arch: b.arch, fly: b.fly,
     };
   }
+
+  function pickTier(st, weights) {
+    const x = rand(st) * (weights[0] + weights[1] + weights[2]);
+    return x < weights[0] ? "low" : x < weights[0] + weights[1] ? "mid" : "high";
+  }
+  function pickType(st, tier) { const pool = DATA.roster[tier]; return pool[Math.floor(rand(st) * pool.length)]; }
 
   function spawnPack(st, awayFromHeroes) {
     const N = st.map.n, S = DATA.tile, c = N / 2;
@@ -1089,12 +1210,11 @@ const Core = (() => {
     }
     const z = zoneIndex(d);
     if (rand(st) > DATA.spawn.zoneDensity[z]) return;      // โซนใกล้ค่ายหนาแน่นกว่า
-    const wolfChance = [0.15, 0.6, 0.4, 0.5][z];
-    const type = rand(st) < wolfChance ? "wolf" : "zombie";
-    const count = type === "wolf" ? 2 + Math.floor(rand(st) * (z === 0 ? 2 : 3)) : 1 + Math.floor(rand(st) * 3);
+    const type = pickType(st, pickTier(st, DATA.zoneTiers[z])), def = DATA.monsters[type];
+    const count = def.arch === "runner" || def.arch === "flyer" ? 2 + Math.floor(rand(st) * 3) : def.arch === "brute" ? 1 + Math.floor(rand(st) * 2) : 1 + Math.floor(rand(st) * 3);
     for (let i = 0; i < count; i++) {
       const x = (tx + 0.5) * S + (rand(st) - 0.5) * 70, y = (ty + 0.5) * S + (rand(st) - 0.5) * 70;
-      if (blockedAt(st, x, y, DATA.monsters[type].r)) continue;
+      if (!def.fly && blockedAt(st, x, y, def.r)) continue;
       st.monsters.push(makeMonster(st, type, x, y));
     }
   }
@@ -1104,7 +1224,7 @@ const Core = (() => {
     const out = [];
     for (const h of st.heroes) if (!h.dead && h.team !== team) out.push(h);
     for (const u of st.units) if (!u.dead && !u.hidden && u.team !== team) out.push(u);
-    for (const m of st.monsters) if (!m.dead && m.team !== team) out.push(m);
+    if (team !== 0) for (const m of st.monsters) if (!m.dead && m.team !== team) out.push(m);
     return out;
   }
 
@@ -1132,7 +1252,7 @@ const Core = (() => {
       st.events.push({ type: "death", id: target.id, kind: target.kind, x: target.x, y: target.y });
       if (target.kind === "monster") {
         st.kills[attacker.team] = (st.kills[attacker.team] || 0) + 1;
-        giveExp(st, attacker.team, Math.round((8 + target.lv * 4) * (target.type === "wolf" ? 0.8 : target.boss ? 12 : 1)));
+        giveExp(st, attacker.team, Math.round((8 + target.lv * 4) * (DATA.monsters[target.type].exp || 1) * (target.arch === "runner" ? 0.8 : 1)));
         maybeDrop(st, target);
       }
       if (target.kind === "unit") {
@@ -1162,7 +1282,7 @@ const Core = (() => {
     if (h.dead) {
       if (st.tick >= h.respawnAt) {
         h.dead = false; h.hp = h.maxHp; h.mp = h.maxMp; h.skillCd = 0;
-        h.x = h.px = st.camp.x; h.y = h.py = st.camp.y + 90; h.path = null;
+        placeAt(h, campSpawn(st, h.team));
         st.events.push({ type: "respawn", id: h.id });
       }
       return;
@@ -1216,6 +1336,71 @@ const Core = (() => {
       if (a.life > 0) keep.push(a);
     }
     st.arrows = keep;
+  }
+
+  // บินได้: ไม่ชนอะไรเลย แค่อยู่ในแผนที่
+  function moveFree(st, m, dx, dy) {
+    const x0 = m.x, y0 = m.y;
+    m.x = Math.min(st.world.w - 40, Math.max(40, m.x + dx)); m.y = Math.min(st.world.h - 40, Math.max(40, m.y + dy));
+    return Math.hypot(m.x - x0, m.y - y0);
+  }
+  function mmove(st, m, dx, dy, len) {
+    if (m.fly) { const d = Math.hypot(dx, dy) || 1; return moveFree(st, m, dx / d * len, dy / d * len); }
+    return steer(st, m, dx, dy, len);
+  }
+  const MONSTER_SHIM = { kind: "monster", team: 0, crit: 0 };
+
+  function fireBolt(st, m, b, tgt, dmg) {
+    st.bolts.push({ id: st.nextId++, x: m.x, y: m.y - 8, px: m.x, py: m.y - 8, tid: tgt.id, dmg, spd: b.bolt || 280, life: 3, type: m.type });
+  }
+  function stepBolts(st, dt) {
+    const keep = [];
+    for (const o of st.bolts) {
+      o.px = o.x; o.py = o.y; o.life -= dt;
+      const t = findEntity(st, o.tid);
+      if (!t || t.dead || o.life <= 0) continue;
+      const dx = t.x - o.x, dy = t.y - o.y, d = Math.hypot(dx, dy), step = o.spd * dt;
+      if (d <= step + t.r) { damage(st, t, MONSTER_SHIM, o.dmg, 1); continue; }
+      o.x += dx / d * step; o.y += dy / d * step;
+      keep.push(o);
+    }
+    st.bolts = keep;
+  }
+
+  function explode(st, m, b) {
+    const R = b.blast, dmg = m.atk * (m.atkMul || 1);
+    for (const e of [...st.heroes, ...st.units]) if (!e.dead && !e.hidden && e.team !== 0 && Math.hypot(e.x - m.x, e.y - m.y) < R + e.r) damage(st, e, MONSTER_SHIM, dmg, 1);
+    for (const bl of [...st.buildings]) if (!bl.dead && distToBuilding(m, bl) < R) damage(st, bl, MONSTER_SHIM, dmg * b.bld, 1);
+    m.dead = true;
+    st.events.push({ type: "blast", x: m.x, y: m.y, r: R });
+    st.events.push({ type: "death", id: m.id, kind: "monster", x: m.x, y: m.y, blast: true });
+  }
+
+  // โจมตีเป้าหมาย (คน หรือ สิ่งก่อสร้าง) ตามพฤติกรรม คืนค่า true ถ้าอยู่ในระยะแล้ว
+  function attackAct(st, m, b, tgt) {
+    const isB = tgt.kind === "building";
+    const dist = isB ? distToBuilding(m, tgt) : Math.hypot(tgt.x - m.x, tgt.y - m.y) - tgt.r;
+    m.face = Math.atan2(tgt.y - m.y, tgt.x - m.x);
+    const mul = (m.atkMul || 1) * (isB ? b.bld : 1);
+    if (b.range) {
+      if (dist > b.range) return false;
+      if (m.atkCd <= 0) { m.atkCd = 1 / m.as; m.lunge = 0.6; fireBolt(st, m, b, tgt, m.atk * mul); }
+      return true;
+    }
+    if (dist > m.r + b.reach) return false;
+    if (b.blast) { explode(st, m, b); return true; }
+    if (m.atkCd <= 0) { m.atkCd = 1 / m.as; m.lunge = 1; damage(st, tgt, m, m.atk * mul, 1); }
+    return true;
+  }
+
+  function nearestBuilding(st, m, range, skipWalls) {
+    let best = null, bd = range;
+    for (const bl of st.buildings) {
+      if (bl.dead || bl.team === 0 || (skipWalls && (bl.type === "wall" || bl.type === "gate"))) continue;
+      const d = distToBuilding(m, bl);
+      if (d < bd) { bd = d; best = bl; }
+    }
+    return best;
   }
 
   function steer(st, m, dx, dy, len) {
@@ -1276,7 +1461,8 @@ const Core = (() => {
       const dir = base + i * (Math.PI * 2 / count) + (rand(st) - 0.5) * 0.9;
       const total = W.base + W.perNight * night + W.perWave * i;
       waves.push({ night, idx: i, of: count, dir, dirName: dirName(dir), total, toSpawn: total, spawnT: 0,
-        at: C.daySec + i * gap, warned: i === 0, started: false, boss: i === count - 1, bossSpawned: false });
+        at: C.daySec + i * gap, warned: i === 0, started: false, boss: i === count - 1, bossSpawned: false,
+        bossType: DATA.roster.boss[(night - 1) % DATA.roster.boss.length] });
     }
     return { night, waves };
   }
@@ -1300,17 +1486,24 @@ const Core = (() => {
   function powerLevel(p) { return Math.max(1, Math.round(4 + Math.log2(p) * 4)); }   // เลเวลที่แสดง (ใช้คิด EXP และของดรอป)
   function wavePower(wv) { const W = DATA.waves; return W.basePower * Math.pow(W.nightMul, wv.night - 1) * Math.pow(W.waveMul, wv.idx); }
 
+  function waveTier(st, night) { const T = DATA.waves.tiers; return pickTier(st, T[Math.min(night, T.length) - 1]); }
+
+  function spawnRaider(st, night, power, p) {
+    const S = DATA.tile, type = pickType(st, waveTier(st, night));
+    const m = makeMonster(st, type, (p[0] + 0.5) * S, (p[1] + 0.5) * S, 3);
+    m.wave = true; m.mode = "siege"; empower(m, power); m.lv = powerLevel(m.power) + ({ low: 0, mid: 4, high: 8 })[m.tier];
+    st.monsters.push(m);
+    return m;
+  }
+
   function spawnWaveBatch(st, wv) {
-    const W = DATA.waves, S = DATA.tile;
+    const W = DATA.waves;
     const n = Math.min(wv.toSpawn, Math.ceil(wv.total / W.batches));
     let spawned = 0;
     for (let k = 0; k < n; k++) {
       const p = spawnPoint(st, wv.dir, 0.8);
       if (!p) continue;
-      const type = wv.night >= W.wolfFrom && rand(st) < W.wolfShare ? "wolf" : "zombie";
-      const m = makeMonster(st, type, (p[0] + 0.5) * S, (p[1] + 0.5) * S, 3);
-      m.wave = true; m.mode = "siege"; empower(m, wavePower(wv)); m.lv = powerLevel(m.power);
-      st.monsters.push(m);
+      spawnRaider(st, wv.night, wavePower(wv), p);
       wv.toSpawn--; spawned++;
     }
     if (spawned === 0 && n > 0) wv.dir += 0.4;   // ทางนี้เกิดไม่ได้ (น้ำ/ป่าทึบ) ลองขยับทิศ
@@ -1321,10 +1514,10 @@ const Core = (() => {
     let p = spawnPoint(st, wv.dir, 0.3);
     for (let k = 1; !p && k <= 8; k++) p = spawnPoint(st, wv.dir + k * 0.7, 0.9);   // ทิศนี้ไม่มีที่ว่าง ลองทิศข้างเคียง
     if (!p) return false;
-    const m = makeMonster(st, "boss", (p[0] + 0.5) * S, (p[1] + 0.5) * S, 3);
-    m.wave = true; m.mode = "siege"; m.boss = true; m.summonT = B.summonEvery; empower(m, wavePower(wv)); m.lv = powerLevel(m.power) + 2;
+    const m = makeMonster(st, wv.bossType, (p[0] + 0.5) * S, (p[1] + 0.5) * S, 3);
+    m.wave = true; m.mode = "siege"; m.boss = true; m.summonT = B.summonEvery; empower(m, wavePower(wv)); m.lv = powerLevel(m.power) + 10;
     st.monsters.push(m);
-    st.events.push({ type: "bossSpawn", id: m.id, night: wv.night, dirName: wv.dirName, lv: m.lv });
+    st.events.push({ type: "bossSpawn", id: m.id, night: wv.night, dirName: wv.dirName, lv: m.lv, name: DATA.monsters[wv.bossType].name });
     return true;
   }
 
@@ -1340,7 +1533,7 @@ const Core = (() => {
       const fog = st.fog[1];
       if (fog && fog[ty * N + tx] === 2) continue;           // ไม่โผล่ต่อหน้า
       const x = (tx + 0.5) * S, y = (ty + 0.5) * S;
-      const type = rand(st) < 0.45 ? "wolf" : "zombie";
+      const type = pickType(st, pickTier(st, DATA.zoneTiers[Math.min(3, zoneIndex(d) + 1)]));
       const m = makeMonster(st, type, x, y, Math.min(50, levelAt(d) + R.lvBonus));
       m.nightSpawn = true; empower(m, 1 + R.mulPerNight * (st.day - 1));
       st.monsters.push(m); made++;
@@ -1355,8 +1548,8 @@ const Core = (() => {
     for (let i = 0; i < B.summonCount; i++) {
       const a = rand(st) * Math.PI * 2, x = m.x + Math.cos(a) * 40, y = m.y + Math.sin(a) * 40;
       if (blockedAt(st, x, y, 12)) continue;
-      const s = makeMonster(st, "zombie", x, y, 3);
-      s.wave = true; s.mode = "siege"; empower(s, (m.power || 1) * 0.7); s.lv = powerLevel(s.power);
+      const s = makeMonster(st, DATA.monsters[m.type].minion, x, y, 3);
+      s.wave = true; s.mode = "siege"; empower(s, (m.power || 1) * 0.8); s.lv = powerLevel(s.power);
       st.monsters.push(s);
     }
     st.events.push({ type: "bossRoar", id: m.id, x: m.x, y: m.y });
@@ -1380,13 +1573,23 @@ const Core = (() => {
         if (!wv.started && st.clock >= wv.at) {
           wv.started = true;
           if (wv.idx === 0) { st.events.push({ type: "night", night: wv.night }); spawnRoamers(st); }
-          else st.events.push({ type: "waveStart", night: wv.night, idx: wv.idx, of: wv.of, boss: wv.boss });
+          else st.events.push({ type: "waveStart", night: wv.night, idx: wv.idx, of: wv.of, boss: wv.boss, name: DATA.monsters[wv.bossType].name });
         }
         if (wv.started && wv.toSpawn > 0) {
           wv.spawnT -= dt;
           if (wv.spawnT <= 0) { wv.spawnT = W.batchEvery; spawnWaveBatch(st, wv); }
         }
         if (wv.boss && wv.started && !wv.bossSpawned) wv.bossSpawned = spawnBoss(st, wv);
+      }
+      // บุกแทรกตลอดคืน: กลุ่มเล็กจากทิศสุ่ม
+      if (phase(st) === "night") {
+        st.trickleT -= dt;
+        if (st.trickleT <= 0) {
+          st.trickleT = W.trickleEvery;
+          const night = st.nightPlan.night, n = W.trickleBase + Math.floor(night / 2), dir = rand(st) * Math.PI * 2;
+          const power = W.basePower * Math.pow(W.nightMul, night - 1) * 0.8;
+          for (let k = 0; k < n; k++) { const p = spawnPoint(st, dir, 0.6); if (p) spawnRaider(st, night, power, p); }
+        }
       }
     }
     if (st.clock >= C.daySec + C.nightSec) {
@@ -1408,21 +1611,34 @@ const Core = (() => {
   function stepSiege(st, m, b, dt) {
     const S = DATA.tile, N = st.map.n;
     if (m.boss) stepBossAbility(st, m, dt);
-    // 1) มีคนอยู่ใกล้ → ไล่ตีก่อน (แต่ไม่ไล่ไกล)
+    // 1) มีคนอยู่ใกล้ → ตีก่อน (แต่ไม่ไล่ไกล)
     let tgt = m.target ? findEntity(st, m.target) : null;
     if (tgt && (tgt.dead || tgt.hidden || Math.hypot(tgt.x - m.x, tgt.y - m.y) > b.aggro * S * 2)) { m.target = null; tgt = null; }
     if (!tgt) {
-      const e = nearestEnemy(st, m, b.aggro * S * 0.7);
+      const e = nearestEnemy(st, m, b.range ? b.range + 30 : b.aggro * S * 0.7);
       if (e && (e.kind === "hero" || e.kind === "unit")) { m.target = e.id; tgt = e; }
     }
     if (tgt) {
-      const dx = tgt.x - m.x, dy = tgt.y - m.y, d = Math.hypot(dx, dy);
-      m.face = Math.atan2(dy, dx);
-      if (d <= m.r + tgt.r + b.reach) { if (m.atkCd <= 0) { m.atkCd = 1 / m.as; m.lunge = 1; damage(st, tgt, m, m.atk * (m.atkMul || 1), 1); } }
-      else m.moving = steer(st, m, dx, dy, Math.min(m.spd * dt, d - (m.r + tgt.r + b.reach) + 1)) > 0;
+      if (!attackAct(st, m, b, tgt)) m.moving = mmove(st, m, tgt.x - m.x, tgt.y - m.y, m.spd * dt) > 0;
       return;
     }
-    // 2) เดินตามแผนที่ระยะทางไปค่าย ถ้าทางถูกขวางด้วยสิ่งก่อสร้าง ให้ทุบ
+    // 2) ยิงไกล: ยิงสิ่งก่อสร้างที่อยู่ในระยะ (ป้อม กำแพง ค่าย)
+    if (b.range) {
+      const bl = nearestBuilding(st, m, b.range, false);
+      if (bl) { attackAct(st, m, b, bl); return; }
+    }
+    // 3) บิน: ข้ามกำแพง ตรงไปที่อาคารด้านใน (ป้อม ค่าย และอื่น ๆ)
+    if (m.fly) {
+      let bl = m.siegeOn ? st.buildings.find((x) => x.id === m.siegeOn && !x.dead) : null;
+      if (!bl) { bl = nearestBuilding(st, m, 1e9, true) || campOf(st, 1); m.siegeOn = bl ? bl.id : null; }
+      if (!bl) return;
+      if (!attackAct(st, m, b, bl)) {
+        const dx = bl.x - m.x, dy = bl.y - m.y, d = Math.hypot(dx, dy) || 1;
+        moveFree(st, m, dx / d * m.spd * dt, dy / d * m.spd * dt); m.moving = true;
+      }
+      return;
+    }
+    // 4) เดินตามแผนที่ระยะทางไปค่าย ถ้าทางถูกขวางด้วยสิ่งก่อสร้าง ให้ทุบ (ตัวระเบิดจะระเบิดใส่)
     ensureField(st);
     const f = st.field, tx = Math.floor(m.x / S), ty = Math.floor(m.y / S), cur = ty * N + tx;
     let best = -1, bd = Number.isFinite(f[cur]) ? f[cur] : Infinity;
@@ -1441,13 +1657,7 @@ const Core = (() => {
     const k = st.map.t[best];
     if (k === T.BUILD || k === T.GATE || k === T.CAMP) {
       const bld = findEntity(st, st.buildAt[best]);
-      if (bld && !bld.dead) {
-        m.face = Math.atan2(bld.y - m.y, bld.x - m.x);
-        if (distToBuilding(m, bld) <= m.r + b.reach) {
-          if (m.atkCd <= 0) { m.atkCd = 1 / m.as; m.lunge = 1; damage(st, bld, m, m.atk * (m.atkMul || 1), 1); }
-          return;
-        }
-      }
+      if (bld && !bld.dead && attackAct(st, m, b, bld)) return;
     }
     const gx = (best % N + 0.5) * S, gy = (((best / N) | 0) + 0.5) * S;
     m.face = Math.atan2(gy - m.y, gx - m.x);
@@ -1478,17 +1688,16 @@ const Core = (() => {
       }
       const homeD = Math.hypot(m.x - m.homeX, m.y - m.homeY);
       if (tgt && homeD > leash) { m.target = null; m.mode = "return"; tgt = null; }
+      // กลางวัน: เขตค่ายปลอดภัย Monster ไม่ไล่ตามเข้ามา (กลางคืนไม่มีข้อยกเว้น)
+      if (tgt && !night && Math.hypot(tgt.x - st.camp.x, tgt.y - st.camp.y) < (buildRadius(st, 1) + 2) * S) { m.target = null; m.mode = "return"; tgt = null; }
 
       if (m.mode === "return") {
         if (homeD < S) { m.mode = "idle"; m.hp = m.maxHp; }
-        else { m.face = Math.atan2(m.homeY - m.y, m.homeX - m.x); m.moving = steer(st, m, m.homeX - m.x, m.homeY - m.y, m.spd * 1.2 * dt) > 0; }
+        else { m.face = Math.atan2(m.homeY - m.y, m.homeX - m.x); m.moving = mmove(st, m, m.homeX - m.x, m.homeY - m.y, m.spd * 1.2 * dt) > 0; }
       } else if (tgt) {
-        const dx = tgt.x - m.x, dy = tgt.y - m.y, d = Math.hypot(dx, dy);
-        m.face = Math.atan2(dy, dx);
-        if (d <= m.r + tgt.r + b.reach) {
-          if (m.atkCd <= 0) { m.atkCd = 1 / m.as; m.lunge = 1; damage(st, tgt, m, m.atk * (m.atkMul || 1), 1); }
-        } else {
-          m.moving = steer(st, m, dx, dy, Math.min(m.spd * dt, d - (m.r + tgt.r + b.reach) + 1)) > 0;
+        if (!attackAct(st, m, b, tgt)) {
+          const dx = tgt.x - m.x, dy = tgt.y - m.y, d = Math.hypot(dx, dy);
+          m.moving = mmove(st, m, dx, dy, Math.min(m.spd * dt, Math.max(1, d - (m.r + tgt.r + b.reach) + 1))) > 0;
         }
       } else {
         m.mode = "idle";
@@ -1499,7 +1708,7 @@ const Core = (() => {
         const dx = m.wx - m.x, dy = m.wy - m.y, d = Math.hypot(dx, dy);
         if (d > 6) {
           m.face = Math.atan2(dy, dx);
-          if (moveSlide(st, m, dx / d * m.spd * 0.35 * dt, dy / d * m.spd * 0.35 * dt) < 0.1) m.wanderAt = st.tick;
+          if ((m.fly ? moveFree(st, m, dx / d * m.spd * 0.35 * dt, dy / d * m.spd * 0.35 * dt) : moveSlide(st, m, dx / d * m.spd * 0.35 * dt, dy / d * m.spd * 0.35 * dt)) < 0.1) m.wanderAt = st.tick;
           else m.moving = true;
         }
       }
@@ -1507,12 +1716,14 @@ const Core = (() => {
     // ไม่ให้ Monster ซ้อนกัน
     for (let i = 0; i < awake.length; i++) {
       for (let j = i + 1; j < awake.length; j++) {
-        const a = awake[i], c = awake[j], dx = c.x - a.x, dy = c.y - a.y, min = a.r + c.r;
+        const a = awake[i], c = awake[j];
+        if (a.fly !== c.fly) continue;
+        const dx = c.x - a.x, dy = c.y - a.y, min = a.r + c.r;
         const d2 = dx * dx + dy * dy;
         if (d2 >= min * min || d2 === 0) continue;
         const d = Math.sqrt(d2), push = (min - d) / 2;
-        moveSlide(st, a, -dx / d * push, -dy / d * push);
-        moveSlide(st, c, dx / d * push, dy / d * push);
+        if (a.fly) { moveFree(st, a, -dx / d * push, -dy / d * push); moveFree(st, c, dx / d * push, dy / d * push); }
+        else { moveSlide(st, a, -dx / d * push, -dy / d * push); moveSlide(st, c, dx / d * push, dy / d * push); }
       }
     }
     st.monsters = st.monsters.filter((m) => !m.dead);
@@ -1558,6 +1769,52 @@ const Core = (() => {
     });
     return Math.hypot(h.x - x0, h.y - y0);
   }
+  // ช่องที่เดินออกไปถึงโลกภายนอกได้ (ไม่ติดอยู่ในซอกกำแพง) คำนวณใหม่เมื่อแผนที่เปลี่ยน
+  function reachMap(st, team) {
+    const key = st.mapVersion + ":" + team;
+    if (st.reach && st.reachKey === key) return st.reach;
+    const N = st.map.n, seen = new Uint8Array(N * N), q = new Int32Array(N * N);
+    let head = 0, tail = 0;
+    withTeam(team, () => {
+      const c = N / 2;
+      for (let y = 2; y < N - 2; y++) for (let x = 2; x < N - 2; x++) {
+        if (Math.hypot(x - c, y - c) < 45 || !walkable(st, x, y)) continue;   // เริ่มจากพื้นที่ไกลค่าย
+        const i = y * N + x; seen[i] = 1; q[tail++] = i;
+      }
+      while (head < tail) {
+        const i = q[head++], x = i % N, y = (i / N) | 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx, ny = y + dy, ni = ny * N + nx;
+          if (seen[ni] || !walkable(st, nx, ny)) continue;
+          seen[ni] = 1; q[tail++] = ni;
+        }
+      }
+    });
+    st.reach = seen; st.reachKey = key;
+    return seen;
+  }
+
+  // หาจุดว่างใกล้ที่สุด (ไม่ทับสิ่งก่อสร้าง/ต้นไม้/น้ำ และเดินออกไปข้างนอกได้) สำหรับวาร์ป ฟื้นตัว หรือออกจากกระโจม
+  function freeSpot(st, x, y, r, team) {
+    const reach = reachMap(st, team || 1), N = st.map.n, S = DATA.tile;
+    return withTeam(team || 1, () => {
+      const ok = (px, py) => px > 40 && py > 40 && px < st.world.w - 40 && py < st.world.h - 40 &&
+        reach[Math.floor(py / S) * N + Math.floor(px / S)] && !blockedAt(st, px, py, r + 1);
+      if (ok(x, y)) return { x, y };
+      for (let rad = 16; rad <= 400; rad += 12) {
+        const n = Math.max(8, Math.round(rad / 6));
+        for (let k = 0; k < n; k++) {
+          const a = (k / n) * Math.PI * 2 + Math.PI / 2, px = x + Math.cos(a) * rad, py = y + Math.sin(a) * rad;
+          if (ok(px, py)) return { x: px, y: py };
+        }
+      }
+      return { x, y };
+    });
+  }
+  function placeAt(e, p) { e.x = e.px = p.x; e.y = e.py = p.y; e.path = null; e.stuck = 0; }
+  function campDoor(st, team) { return freeSpot(st, st.camp.x, st.camp.y + 62, DATA.worker.r, team); }
+  function campSpawn(st, team) { return freeSpot(st, st.camp.x, st.camp.y + 90, DATA.heroRadius, team); }
+
   function lineClear(st, ax, ay, bx, by) {
     const d = Math.hypot(bx - ax, by - ay), n = Math.ceil(d / 8);
     for (let i = 1; i <= n; i++) if (blockedAt(st, ax + (bx - ax) * i / n, ay + (by - ay) * i / n, DATA.heroRadius + 1)) return false;
@@ -1730,7 +1987,7 @@ const Core = (() => {
       if (popUsed(st, h.team) >= popCap(st, h.team)) return "max";
       if (!afford(st.stock[h.team], def.cost)) return "cost";
       pay(st.stock[h.team], def.cost);
-      const ox = (rand(st) - 0.5) * 40, door = { x: from.x + ox, y: from.y + from.r + 14 };
+      const ox = (rand(st) - 0.5) * 40, door = freeSpot(st, from.x + ox, from.y + from.r + 14, (def.r || 10), h.team);
       const u = kind === "worker" ? makeWorker(st, h.team, door.x, door.y) : makeUnit(st, kind, h.team, door.x, door.y);
       st.units.push(u);
       st.events.push({ type: "trained", id: u.id, x: u.x, y: u.y, unit: kind });
@@ -1763,9 +2020,10 @@ const Core = (() => {
       st.events.push({ type: "researched", key: cmd.key, lv: cur[cmd.key] });
       return true;
     }
-    if (cmd.type === "soldierMode") {
-      st.soldierMode[h.team] = cmd.mode === "follow" ? "follow" : "guard";
-      for (const u of st.units) if (u.team === h.team && u.type !== "worker" && u.type !== "medic") { u.path = null; u.target = null; }
+    if (cmd.type === "unitMode") {
+      if (!DATA.units[cmd.unit] || !["free", "follow", "guard"].includes(cmd.mode)) return "blocked";
+      st.unitMode[h.team][cmd.unit] = cmd.mode;
+      for (const u of st.units) if (u.team === h.team && u.type === cmd.unit) { u.path = null; u.target = null; }
       return true;
     }
     return false;
@@ -1887,8 +2145,8 @@ const Core = (() => {
       const idx = y * N + x;
       if (resourceKind(st, idx) !== kind || st.claims[idx] || (st.badRes && st.badRes[idx] > st.tick)) continue;
       const px = (x + 0.5) * S, py = (y + 0.5) * S;
-      if (danger.some((m) => Math.abs(m.x - px) < DATA.worker.avoid * S && Math.abs(m.y - py) < DATA.worker.avoid * S)) continue;   // มี Monster อยู่ใกล้ ไม่ไป
-      const d = Math.hypot(px - u.x, py - u.y);
+      const risky = danger.some((m) => Math.abs(m.x - px) < DATA.worker.avoid * S && Math.abs(m.y - py) < DATA.worker.avoid * S);   // มี Monster อยู่ใกล้
+      const d = Math.hypot(px - u.x, py - u.y) + (risky ? 1e6 : 0);   // ไปที่ปลอดภัยก่อน ถ้าไม่มีเลยค่อยไปที่เสี่ยง
       if (d < bd) { bd = d; best = idx; }
     }
     return best;
@@ -1902,42 +2160,90 @@ const Core = (() => {
     if (st.tick >= u.repathAt) { u.repathAt = st.tick + 30; u.path = planPath(st, u, x, y); if (u.path) followPath(st, u, dt, spd); }
   }
 
-  function stepSoldier(st, u, dt) {
-    const S = DATA.tile, d = DATA.units[u.type], follow = st.soldierMode[u.team] === "follow";
-    const hero = st.heroes.find((h) => h.team === u.team && !h.dead);
-    const anchor = follow && hero ? { x: hero.x + Math.cos(u.id) * 50, y: hero.y + Math.sin(u.id) * 50 } : u.post;
-    u.atkCd -= dt;
-    let tgt = u.target ? st.monsters.find((m) => m.id === u.target && !m.dead) : null;
-    const leash = d.leash * S * (follow ? 0.8 : 1);
-    if (tgt && Math.hypot(tgt.x - anchor.x, tgt.y - anchor.y) > leash) tgt = null;
-    if (!tgt) {
-      const seek = u.type === "archer" ? u.rng + 60 : 6 * S;
-      const e = nearestEnemy(st, u, seek);
-      tgt = e && e.kind === "monster" && Math.hypot(e.x - anchor.x, e.y - anchor.y) < leash ? e : null;
-    }
-    u.target = tgt ? tgt.id : null;
-    if (tgt) {
-      const dx = tgt.x - u.x, dy = tgt.y - u.y, dist = Math.hypot(dx, dy);
-      u.face = Math.atan2(dy, dx); u.path = null;
-      if (u.type === "archer") {
-        if (dist <= u.rng) { if (u.atkCd <= 0) { fireArrow(st, u, u.face, 1); u.atkCd = 1 / u.as; } }
-        else u.moving = steer(st, u, dx, dy, u.spd * dt) > 0;
-      } else {
-        if (dist <= u.r + tgt.r + d.reach) { if (u.atkCd <= 0) { u.atkCd = 1 / u.as; u.lunge = 1; damage(st, tgt, u, u.atk, 1); } }
-        else u.moving = steer(st, u, dx, dy, Math.min(u.spd * dt, dist - (u.r + tgt.r + d.reach) + 1)) > 0;
-      }
-      return;
-    }
-    moveTowards(st, u, anchor.x, anchor.y, dt, u.spd);
+  // Monster ที่กำลังบุกค่าย (อยู่ในเขตป้องกัน)
+  function raidersNear(st, team, extra) {
+    const R = (buildRadius(st, team) + extra) * DATA.tile;
+    return st.monsters.filter((m) => !m.dead && Math.hypot(m.x - st.camp.x, m.y - st.camp.y) < R);
   }
 
-  /* ----- หมอ: ออกไปรักษาคนเจ็บทั้งในและนอกเมือง ----- */
+  function soldierAttack(st, u, tgt, dt) {
+    const d = DATA.units[u.type], dx = tgt.x - u.x, dy = tgt.y - u.y, dist = Math.hypot(dx, dy);
+    u.face = Math.atan2(dy, dx);
+    if (u.type === "archer") {
+      if (dist <= u.rng) { u.path = null; if (u.atkCd <= 0) { fireArrow(st, u, u.face, 1); u.atkCd = 1 / u.as; } return; }
+    } else if (dist <= u.r + tgt.r + d.reach) {
+      u.path = null; if (u.atkCd <= 0) { u.atkCd = 1 / u.as; u.lunge = 1; damage(st, tgt, u, u.atk, 1); } return;
+    }
+    // ใกล้ ๆ เดินตรงเข้าไป ไกลหรือมีของขวางให้หาเส้นทาง (ออกประตูได้)
+    if (dist < 4 * DATA.tile && steer(st, u, dx, dy, u.spd * dt) > u.spd * dt * 0.4) { u.moving = true; u.path = null; return; }
+    moveTowards(st, u, tgt.x, tgt.y, dt, u.spd);
+  }
+
+  /* ทหาร 3 โหมด
+     guard  เฝ้าค่าย: เดินลาดตระเวนวนรอบค่าย ด้านในแนวกำแพง มี Monster บุกเข้ามาในเขต วิ่งไปไล่ตีแล้วกลับมาเดินต่อ
+     follow ตาม Hero: เดินตาม ตี Monster ที่เข้าใกล้ Hero
+     free   อิสระ: ล่า Monster รอบค่ายเอง กลางคืนกลับมาช่วยป้องกันค่าย */
+  function stepSoldier(st, u, dt) {
+    const S = DATA.tile, d = DATA.units[u.type], mode = st.unitMode[u.team][u.type] || "guard";
+    const hero = st.heroes.find((h) => h.team === u.team && !h.dead);
+    u.atkCd -= dt;
+    let tgt = u.target ? st.monsters.find((m) => m.id === u.target && !m.dead) : null;
+    const night = phase(st) === "night" || !!st.wave;
+    const defend = mode === "guard" || (mode === "free" && night) || (mode === "follow" && !hero);
+
+    if (defend) {
+      // ศัตรูในเขตค่าย: เลือกตัวที่ใกล้ตัวเองที่สุด (ทหารแต่ละคนกระจายกันไปคนละตัว)
+      const zone = raidersNear(st, u.team, night ? 4 : 1);   // กลางวันไม่ออกไปไกลกว่าแนวค่าย
+      if (tgt && !zone.includes(tgt)) tgt = null;
+      if (!tgt || st.tick % 20 === u.id % 20) {
+        let best = null, bd = Infinity;
+        for (const m of zone) { const dd = Math.hypot(m.x - u.x, m.y - u.y) * (m.boss ? 0.8 : 1); if (dd < bd) { bd = dd; best = m; } }
+        if (best) tgt = best;
+      }
+      u.target = tgt ? tgt.id : null;
+      if (tgt) { soldierAttack(st, u, tgt, dt); return; }
+      // ลาดตระเวน: วงรอบค่าย ด้านในกำแพง
+      const R = Math.max(3, buildRadius(st, u.team) - 3.5) * S;
+      if (u.patrolA == null) { u.patrolA = rand(st) * Math.PI * 2; u.patrolDir = u.id % 2 ? 1 : -1; }
+      const px = st.camp.x + Math.cos(u.patrolA) * R, py = st.camp.y + Math.sin(u.patrolA) * R;
+      if (Math.hypot(px - u.x, py - u.y) < 22) u.patrolA += u.patrolDir * (40 / R);
+      moveTowards(st, u, px, py, dt, u.spd * 0.75);
+      return;
+    }
+
+    const anchor = mode === "follow" ? { x: hero.x + Math.cos(u.id) * 50, y: hero.y + Math.sin(u.id) * 50 } : null;
+    const leash = mode === "follow" ? 8 * S : 26 * S;
+    const centre = mode === "follow" ? hero : st.camp;
+    if (tgt && Math.hypot(tgt.x - centre.x, tgt.y - centre.y) > leash) tgt = null;
+    if (!tgt) {
+      const e = nearestEnemy(st, u, mode === "follow" ? (u.type === "archer" ? u.rng + 40 : 5 * S) : 9 * S);
+      tgt = e && e.kind === "monster" && Math.hypot(e.x - centre.x, e.y - centre.y) < leash ? e : null;
+    }
+    u.target = tgt ? tgt.id : null;
+    if (tgt) { soldierAttack(st, u, tgt, dt); return; }
+    if (mode === "follow") { moveTowards(st, u, anchor.x, anchor.y, dt, u.spd); return; }
+    // อิสระ: เดินหาเหยื่อในรัศมี 20 ช่องจากค่าย
+    if (!u.roamTo || Math.hypot(u.roamTo.x - u.x, u.roamTo.y - u.y) < 24 || st.tick > (u.roamUntil || 0)) {
+      const a = rand(st) * Math.PI * 2, r = (6 + rand(st) * 14) * S;
+      u.roamTo = { x: st.camp.x + Math.cos(a) * r, y: st.camp.y + Math.sin(a) * r }; u.roamUntil = st.tick + 400;
+    }
+    moveTowards(st, u, u.roamTo.x, u.roamTo.y, dt, u.spd * 0.8);
+  }
+
+  /* หมอ 3 โหมด
+     free   อิสระ: ไปรักษาคนเจ็บทุกที่ในรัศมีรอบค่าย (รวมนอกเมือง)
+     follow ตาม Hero: เดินตาม Hero รักษา Hero และคนรอบตัว
+     guard  เฝ้าค่าย: รักษาเฉพาะคนในเขตค่าย ไม่ออกนอกเมือง */
   function stepMedic(st, u, dt) {
-    const S = DATA.tile, d = DATA.units.medic, home = st.buildings.find((b) => b.team === u.team && b.type === "infirmary") || campOf(st, u.team);
-    const roam = d.roam * S;
+    const S = DATA.tile, d = DATA.units.medic, mode = st.unitMode[u.team].medic || "free";
+    const home = st.buildings.find((b) => b.team === u.team && b.type === "infirmary") || campOf(st, u.team);
+    const hero = st.heroes.find((h) => h.team === u.team && !h.dead);
+    const follow = mode === "follow" && hero;
+    const centre = follow ? hero : st.camp;
+    const roam = (follow ? 8 : mode === "guard" ? buildRadius(st, u.team) + 1 : d.roam) * S;
     let pat = u.target ? findEntity(st, u.target) : null;
-    const hurt = (e) => !e.dead && !e.hidden && e.team === u.team && e !== u && e.hp < e.maxHp * 0.9 && Math.hypot(e.x - st.camp.x, e.y - st.camp.y) < roam;
-    if (pat && (!hurt(pat) && pat.hp >= pat.maxHp)) pat = null;
+    const hurt = (e) => !e.dead && !e.hidden && e.team === u.team && e !== u && e.hp < e.maxHp * 0.9 && Math.hypot(e.x - centre.x, e.y - centre.y) < roam;
+    if (pat && !hurt(pat)) pat = null;
     if (!pat || st.tick % 40 === 0) {
       let best = null, bd = Infinity;
       for (const e of [...st.heroes, ...st.units]) {
@@ -1947,7 +2253,7 @@ const Core = (() => {
       }
       if (best) pat = best;
     }
-    if (u.hp < u.maxHp * 0.35) pat = null;   // หมอบาดเจ็บหนัก กลับบ้านก่อน
+    if (u.hp < u.maxHp * 0.35 && !follow) pat = null;   // หมอบาดเจ็บหนัก กลับบ้านก่อน
     u.target = pat ? pat.id : null;
     if (pat) {
       const dist = Math.hypot(pat.x - u.x, pat.y - u.y);
@@ -1964,13 +2270,13 @@ const Core = (() => {
       return;
     }
     u.healing = false;
-    // ไม่มีใครเจ็บ: ฮีลตัวเองช้า ๆ แล้วรอที่สถานพยาบาล
     u.hp = Math.min(u.maxHp, u.hp + u.maxHp * 0.03 * dt);
-    moveTowards(st, u, home.x + Math.cos(u.id) * 30, home.y + home.r + 16, dt, u.spd);
+    if (follow) moveTowards(st, u, hero.x - Math.cos(hero.face) * 40, hero.y - Math.sin(hero.face) * 40, dt, u.spd);
+    else moveTowards(st, u, home.x + Math.cos(u.id) * 30, home.y + home.r + 16, dt, u.spd);
   }
 
   function stepUnits(st, dt) {
-    const S = DATA.tile, W = DATA.worker, door = { x: st.camp.x, y: st.camp.y + 62 };
+    const S = DATA.tile, W = DATA.worker, door = campDoor(st, 1);
     for (const u of st.units) {
       u.px = u.x; u.py = u.y; u.moving = false;
       if (u.dead) continue;
@@ -1991,8 +2297,8 @@ const Core = (() => {
         }
         continue;
       }
-      if (u.job === "shelter") { u.job = "seek"; u.hidden = false; u.x = u.px = door.x; u.y = u.py = door.y; }
-      const threat = st.monsters.some((m) => !m.dead && Math.hypot(m.x - u.x, m.y - u.y) < W.flee * S) || st.tick - (u.lastHurt || -999) < 20;
+      if (u.job === "shelter") { u.job = "seek"; u.hidden = false; placeAt(u, door); u.wait = 0; }
+      const threat = st.monsters.some((m) => !m.dead && Math.hypot(m.x - u.x, m.y - u.y) < (m.arch === "ranged" ? W.flee + 3 : m.fly ? W.flee + 1 : W.flee) * S) || st.tick - (u.lastHurt || -999) < 20;
       if (threat && u.job !== "flee") {
         if (u.res >= 0) (st.badRes || (st.badRes = {}))[u.res] = st.tick + 400;   // จำว่าจุดนี้อันตราย
         releaseClaim(st, u); u.job = "flee"; u.path = planPath(st, u, door.x, door.y);
@@ -2117,7 +2423,7 @@ const Core = (() => {
           h.recall.t -= dt;
           if (h.recall.t <= 0) {
             h.recall = null;
-            h.x = h.px = st.camp.x; h.y = h.py = st.camp.y + 90;
+            placeAt(h, campSpawn(st, h.team));
             st.events.push({ type: "recalled", id: h.id });
           }
           continue;
@@ -2154,12 +2460,18 @@ const Core = (() => {
     stepUnits(st, dt);
     stepBuildings(st, dt);
     stepArrows(st, dt);
+    stepBolts(st, dt);
     stepMonsters(st, dt);
+    // กันติด: ถ้า Hero หรือยูนิตอยู่ในตำแหน่งที่ทับสิ่งก่อสร้าง ย้ายไปจุดว่างข้างเคียง
+    if (st.tick % 10 === 0) for (const e of [...st.heroes, ...st.units]) {
+      if (e.dead || e.hidden) continue;
+      if (withTeam(e.team, () => blockedAt(st, e.x, e.y, e.r))) placeAt(e, freeSpot(st, e.x, e.y, e.r, e.team));
+    }
     updateVision(st);
     st.tick++;
   }
 
-  return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, afford, phase, expToNext, repairCost,
+  return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, afford, phase, expToNext, repairCost, freeSpot,
     popCap, popUsed, upgradeCost, buildingName, buildRadius, researchCost, campLevel };
 })();
 
@@ -2233,6 +2545,85 @@ const Input = (() => {
 })();
 
 /* ===== scenes/ : Phaser วาดภาพตามสถานะ ===== */
+/* ===== ภาพ Monster 100 ชนิด: วาดจากทรงของตระกูล + สีของสายพันธุ์ (หันขวา) ===== */
+function mixHex(a, b, t) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const ch = (sh) => Math.round(((pa >> sh) & 255) * (1 - t) + ((pb >> sh) & 255) * t);
+  return "#" + ((1 << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).slice(1);
+}
+function shade(c, k) { return k < 0 ? mixHex(c, "#000000", -k) : mixHex(c, "#ffffff", k); }
+const MON_ICON = { melee: "เดินเข้าตี", runner: "วิ่งเร็ว มาเป็นฝูง", brute: "ถึก ทุบกำแพงแรง", ranged: "ยิงจากระยะไกล ยิงป้อมได้", exploder: "วิ่งชนแล้วระเบิด", flyer: "บินข้ามกำแพง" };
+
+function drawMonsterShape(g, def) {
+  const base = def.accent ? mixHex(def.color, def.accent, 0.45) : def.color;
+  const dark = shade(base, -0.35), light = shade(base, 0.3), eye = def.tier === "high" || def.tier === "boss" ? "#ff3b2a" : "#ffd23a";
+  const C = (x, y, r, f) => { g.fillStyle = f; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); };
+  const E = (x, y, rx, ry, f, rot) => { g.fillStyle = f; g.beginPath(); g.ellipse(x, y, rx, ry, rot || 0, 0, Math.PI * 2); g.fill(); };
+  const P = (pts, f) => { g.fillStyle = f; g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); g.closePath(); g.fill(); };
+  const L = (x1, y1, x2, y2, w, c) => { g.strokeStyle = c; g.lineWidth = w; g.lineCap = "round"; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); };
+  const eyes = (x, y, gap, r) => { C(x, y - gap, r, eye); C(x, y + gap, r, eye); };
+  switch (def.shape) {
+    case "zombie":
+      g.fillStyle = shade(base, -0.15); g.fillRect(28, 13, 14, 6); g.fillRect(28, 29, 14, 6);
+      C(24, 24, 13, dark); C(24, 24, 10, base); E(20, 24, 6, 7, shade(base, -0.5)); eyes(30, 24, 4, 1.8); break;
+    case "wolf":
+      P([6, 24, 16, 20, 16, 28], dark); E(27, 24, 13, 8, base); E(26, 24, 8, 4, light); C(41, 24, 7, base);
+      P([46, 22, 53, 24, 46, 26], base); P([37, 18, 40, 11, 43, 18], dark); P([37, 30, 40, 37, 43, 30], dark); eyes(44, 24, 3, 1.3); break;
+    case "slime":
+      E(26, 27, 15, 12, dark); E(26, 25, 13, 10, base); E(21, 20, 5, 3, shade(base, 0.55)); eyes(32, 25, 4, 2); break;
+    case "bat":
+      P([24, 24, 4, 8, 10, 22, 2, 30], dark); P([24, 24, 4, 40, 10, 26, 2, 18], dark);
+      P([26, 24, 44, 8, 38, 22, 46, 30], dark); P([26, 24, 44, 40, 38, 26, 46, 18], dark);
+      C(25, 24, 7, base); eyes(29, 24, 2.5, 1.4); break;
+    case "skeleton":
+      L(30, 10, 30, 38, 2.5, "#8a6038"); g.strokeStyle = "#c9a46a"; g.lineWidth = 2; g.beginPath(); g.arc(30, 24, 14, -1.1, 1.1); g.stroke();
+      C(22, 24, 11, shade(base, -0.2)); C(22, 24, 8.5, base); g.fillStyle = "#2a2a2a"; g.fillRect(24, 19, 4, 3.5); g.fillRect(24, 26, 4, 3.5);
+      L(15, 18, 15, 30, 1.5, shade(base, -0.4)); break;
+    case "spider":
+      for (const k of [-1, 1]) for (let i = 0; i < 4; i++) { const a = -0.9 + i * 0.6; L(24, 24, 24 + Math.cos(a) * 17, 24 + k * (8 + Math.sin(Math.abs(a)) * 10), 2.2, dark); }
+      E(18, 24, 10, 9, base); C(30, 24, 6, dark); E(16, 24, 4, 3, light); eyes(34, 24, 2.5, 1.4); break;
+    case "orc":
+      L(32, 34, 46, 40, 5, "#6b4a2a"); C(46, 40, 4, "#4a321c");
+      C(24, 24, 15, dark); C(24, 24, 12, base); C(32, 24, 6, shade(base, -0.15)); g.fillStyle = "#efe8d2"; g.fillRect(35, 19, 3, 4); g.fillRect(35, 25, 3, 4); eyes(31, 24, 4, 1.6); break;
+    case "wisp":
+      C(24, 24, 15, shade(base, -0.1) + "55"); C(24, 24, 11, base + "aa"); C(24, 24, 7, shade(base, 0.45)); C(26, 24, 3, "#fff6d8"); break;
+    case "beetle":
+      E(24, 24, 15, 11, dark); E(24, 24, 13, 9, base); L(10, 24, 37, 24, 1.5, dark); C(18, 19, 2.5, light); C(26, 29, 2.5, light); C(38, 24, 5, dark); C(42, 24, 2.5, "#ffb03a"); break;
+    case "knight":
+      L(32, 34, 50, 34, 3, "#d8dbe0"); L(30, 32, 34, 36, 3, "#6b4a2a");
+      C(24, 24, 14, "#2b2f36"); C(24, 24, 11, base); g.fillStyle = "#1a1c20"; g.fillRect(29, 20, 6, 8); g.fillStyle = eye; g.fillRect(31, 22, 3, 1.5); g.fillRect(31, 25, 3, 1.5);
+      E(20, 33, 6, 8, shade(base, 0.15), 0.3); break;
+    case "golem":
+      g.fillStyle = dark; g.fillRect(8, 10, 32, 28); g.fillStyle = base; g.fillRect(10, 12, 28, 24);
+      g.fillStyle = shade(base, -0.2); g.fillRect(10, 22, 28, 2); g.fillRect(22, 12, 2, 24);
+      g.fillStyle = base; g.fillRect(38, 8, 10, 10); g.fillRect(38, 30, 10, 10); g.fillStyle = eye; g.fillRect(32, 18, 3, 3); g.fillRect(32, 27, 3, 3); break;
+    case "demon":
+      P([22, 24, 6, 4, 14, 20], shade(base, -0.4)); P([22, 24, 6, 44, 14, 28], shade(base, -0.4));
+      C(24, 24, 11, dark); C(24, 24, 8.5, base); P([30, 16, 38, 10, 33, 19], "#e8e3d3"); P([30, 32, 38, 38, 33, 29], "#e8e3d3"); eyes(31, 24, 3, 1.6); break;
+    case "lich":
+      L(30, 8, 30, 40, 2.5, "#4a321c"); C(30, 8, 4, def.color === "#3f6f7a" ? "#7ff0ff" : "#c07cff");
+      P([10, 24, 26, 10, 34, 24, 26, 38], dark); C(24, 24, 8, base); C(27, 24, 5, "#111"); eyes(29, 24, 2.5, 1.5); break;
+    case "dragon":
+      P([28, 24, 6, 2, 14, 20], shade(base, -0.3)); P([28, 24, 6, 46, 14, 28], shade(base, -0.3));
+      P([2, 24, 12, 21, 12, 27], dark); E(24, 24, 14, 8, base); C(40, 24, 7, base); P([45, 21, 54, 24, 45, 27], base); eyes(43, 24, 3, 1.6); break;
+  }
+  if (def.accent && def.shape !== "wisp") { g.strokeStyle = def.accent; g.lineWidth = 1.5; g.globalAlpha = 0.85; g.beginPath(); g.arc(24, 24, 18, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1; }
+  if (def.tier === "boss") {   // มงกุฎบอส
+    P([12, 14, 12, 34, 18, 30, 14, 24, 18, 18], "#e2b04a");
+    C(12, 14, 2, "#ff5a3c"); C(12, 34, 2, "#ff5a3c");
+  }
+}
+
+function ensureMonTex(scene, key) {
+  const tex = "mon_" + key;
+  if (scene.textures.exists(tex)) return tex;
+  const def = DATA.monsters[key], k = def.size, W = Math.ceil(56 * k), H = Math.ceil(48 * k);
+  const t = scene.textures.createCanvas(tex, W, H), g = t.getContext();
+  g.scale(k, k); drawMonsterShape(g, def);
+  t.refresh();
+  return tex;
+}
+
 function canvasTexture(scene, key, w, h, draw) {
   if (scene.textures.exists(key)) return;
   const tex = scene.textures.createCanvas(key, w, h);
@@ -2351,10 +2742,11 @@ const BPanel = (() => {
     }
     if (D.hires) {
       html += `<div class="bp-sec">จ้างยูนิต · ประชากร ${Core.popUsed(st, b.team)} / ${Core.popCap(st, b.team)}</div>` + D.hires.map((u) => hireRow(u, DATA.units[u])).join("");
-      if (b.type === "barracks") {
-        const mode = st.soldierMode[b.team];
-        html += `<div class="bp-sec">คำสั่งทหาร</div><div class="seg"><button type="button" class="btn${mode === "guard" ? " on" : ""}" data-act="mode:guard">เฝ้าฐาน</button><button type="button" class="btn${mode === "follow" ? " on" : ""}" data-act="mode:follow">ตาม Hero</button></div>`;
-      }
+      html += `<div class="bp-sec">คำสั่ง</div>` + D.hires.map((u) => {
+        const mode = st.unitMode[b.team][u];
+        const opt = (m, label) => `<button type="button" class="btn${mode === m ? " on" : ""}" data-act="mode:${u}:${m}">${label}</button>`;
+        return `<div class="bp-mode"><span>${DATA.units[u].name}</span><div class="seg seg3">${opt("free", "อิสระ")}${opt("follow", "ตาม Hero")}${opt("guard", "เฝ้าค่าย")}</div></div>`;
+      }).join("") + `<p class="bp-note">${b.type === "infirmary" ? "อิสระ: รักษาทุกที่รอบค่าย · ตาม Hero: เดินตามรักษา · เฝ้าค่าย: รักษาเฉพาะในค่าย" : "อิสระ: ล่า Monster รอบค่าย กลางคืนกลับมาช่วย · ตาม Hero: คุ้มกัน · เฝ้าค่าย: ลาดตระเวนรอบค่าย ไล่ตีตัวที่บุก"}</p>`;
     }
     if (b.type === "workshop") {
       html += `<div class="bp-sec">พัฒนาอาวุธและเกราะ</div>` + Object.entries(DATA.research).map(([k, R]) => {
@@ -2369,7 +2761,7 @@ const BPanel = (() => {
   el.addEventListener("click", (e) => {
     const a = e.target.closest("[data-act]"); if (!a) return;
     const sc = scene(), st = sc.state, b = st.buildings.find((x) => x.id === sel); if (!b) return;
-    const [act, arg] = a.dataset.act.split(":");
+    const [act, arg, arg2] = a.dataset.act.split(":");
     const send = (c) => Core.applyCommand(st, { heroId: sc.localHero, ...c });
     let r = true;
     if (act === "upgrade") r = send({ type: "upgrade", id: b.id });
@@ -2380,7 +2772,7 @@ const BPanel = (() => {
     } else if (act === "repair") r = send({ type: "repair" });
     else if (act === "hire") r = send({ type: "hire", unit: arg });
     else if (act === "research") r = send({ type: "research", key: arg });
-    else if (act === "mode") { r = send({ type: "soldierMode", mode: arg }); Toast.show(arg === "follow" ? "ทหารจะตาม Hero" : "ทหารกลับไปเฝ้าฐาน"); }
+    else if (act === "mode") { r = send({ type: "unitMode", unit: arg, mode: arg2 }); if (r === true) Toast.show(`${DATA.units[arg].name}: ${{ free: "อิสระ", follow: "ตาม Hero", guard: "เฝ้าค่าย" }[arg2]}`); }
     if (r !== true) Toast.show(BUILD_ERR[r] || "ทำไม่ได้");
     sig = ""; render();
   });
@@ -2395,7 +2787,7 @@ const BPanel = (() => {
       const sc = scene(); if (!sc) return;
       const st = sc.state, b = st.buildings.find((e) => e.id === sel);
       if (!b) { close(); return; }
-      const s2 = [b.lv, Math.ceil(b.hp), st.stock[sc.team].wood, st.stock[sc.team].stone, st.units.length, JSON.stringify(st.research[sc.team]), st.soldierMode[sc.team]].join("|");
+      const s2 = [b.lv, Math.ceil(b.hp), st.stock[sc.team].wood, st.stock[sc.team].stone, st.units.length, JSON.stringify(st.research[sc.team]), JSON.stringify(st.unitMode[sc.team])].join("|");
       if (s2 !== sig) { sig = s2; render(); }
     },
   };
@@ -2578,6 +2970,47 @@ const Title = (() => {
   };
 })();
 
+/* ===== สมุดมอนสเตอร์: ชนิดที่เคยเห็น (จำไว้ในเบราว์เซอร์นี้) ===== */
+const Bestiary = (() => {
+  const el = document.getElementById("bestiary"), grid = document.getElementById("best-grid"), tabs = document.getElementById("best-tabs");
+  let seen = new Set();
+  try { seen = new Set(JSON.parse(localStorage.getItem("lb_seen") || "[]")); } catch (_) {}
+  const save = () => { try { localStorage.setItem("lb_seen", JSON.stringify([...seen])); } catch (_) {} };
+  const icons = {};
+  let tier = "low";
+  const scene = () => window.__game && window.__game.scene.getScene("game");
+  function icon(key) {
+    if (icons[key]) return icons[key];
+    const sc = scene(); if (!sc) return "";
+    const tex = sc.textures.get(ensureMonTex(sc, key)).getSourceImage();
+    try { icons[key] = tex.toDataURL(); } catch (_) { icons[key] = ""; }
+    return icons[key];
+  }
+  function render() {
+    const total = Object.keys(DATA.monsters).length;
+    document.getElementById("best-count").textContent = `พบแล้ว ${seen.size} / ${total} ชนิด`;
+    tabs.innerHTML = ["low", "mid", "high", "boss"].map((t) => {
+      const n = DATA.roster[t].filter((k) => seen.has(k)).length;
+      return `<button type="button" class="btn${t === tier ? " on" : ""}" data-tier="${t}">ระดับ${DATA.tierName[t]} ${n}/${DATA.roster[t].length}</button>`;
+    }).join("");
+    grid.innerHTML = DATA.roster[tier].map((k) => {
+      const d = DATA.monsters[k];
+      if (!seen.has(k)) return `<div class="best-item"><span class="q">?</span><div><b>#${d.no} ???</b><small>ยังไม่เคยพบ</small></div></div>`;
+      return `<div class="best-item${d.tier === "boss" ? " boss" : ""}"><img src="${icon(k)}" alt=""><div><b>#${d.no} ${d.name}</b><small>${MON_ICON[d.arch]} · HP ${d.hp} · ATK ${d.atk}</small></div></div>`;
+    }).join("");
+  }
+  tabs.addEventListener("click", (e) => { const b = e.target.closest("[data-tier]"); if (b) { tier = b.dataset.tier; render(); } });
+  document.getElementById("best-close").addEventListener("click", () => { el.hidden = true; });
+  el.addEventListener("click", (e) => { if (e.target === el) el.hidden = true; });
+  return {
+    set: () => seen,
+    see(key) { if (!seen.has(key)) { seen.add(key); save(); const d = DATA.monsters[key]; if (d) Toast.show(`พบ Monster ใหม่: ${d.name} (${DATA.tierName[d.tier]})`); } },
+    open() { el.hidden = false; render(); },
+    isOpen: () => !el.hidden, close() { el.hidden = true; },
+    count: () => seen.size,
+  };
+})();
+
 /* ===== เมนูหยุดเกม (Esc / ปุ่มเมนู) ===== */
 const Menu = (() => {
   const el = document.getElementById("menu");
@@ -2590,6 +3023,7 @@ const Menu = (() => {
     document.getElementById("m-kills").textContent = st.kills[1] || 0;
     document.getElementById("m-explored").textContent = ((st.explored[1] / (DATA.mapTiles * DATA.mapTiles)) * 100).toFixed(1) + "%";
     document.getElementById("m-build").textContent = st.buildings.filter((b) => b.type !== "camp").length;
+    document.getElementById("m-seen").textContent = `${Bestiary.count()}/100`;
     el.hidden = false;
     el.querySelector("[data-act=resume]").focus();
   }
@@ -2706,6 +3140,8 @@ class GameScene extends Phaser.Scene {
     this.heroViews = new Map();
     for (const hero of this.state.heroes) this.heroViews.set(hero.id, this.makeHeroView(hero));
     this.monViews = new Map();
+    this.boltViews = new Map();
+    this.seenTypes = Bestiary.set();
     this.arrowViews = new Map();
     this.unitViews = new Map();
     this.buildViews = new Map();
@@ -3376,17 +3812,24 @@ class GameScene extends Phaser.Scene {
         const tag = e.boss ? " · เวฟสุดท้ายมีบอส!" : "";
         if (e.idx === 0) Banner.show(`คืนที่ ${e.night} ใกล้มาถึง · ${e.of} เวฟ · เวฟแรก ${e.total} ตัวบุกจากทิศ${e.dirName}${e.of === 1 ? tag : ""}`, "warn");
         else Banner.show(`เวฟ ${e.idx + 1}/${e.of} อีก ${DATA.waves.nextWarn} วินาที · ${e.total} ตัวจากทิศ${e.dirName}${tag}`, "warn");
+      } else if (e.type === "blast") {
+        if (this.visibleAt(e.x, e.y)) {
+          const g = this.add.graphics().setPosition(e.x, e.y).setDepth(e.y + 30);
+          g.fillStyle(0xff8a3c, 0.55); g.fillCircle(0, 0, e.r); g.fillStyle(0xffe08a, 0.8); g.fillCircle(0, 0, e.r * 0.45);
+          g.setScale(0.3); this.tweens.add({ targets: g, scale: 1, alpha: 0, duration: 380, ease: "Cubic.easeOut", onComplete: () => g.destroy() });
+          this.cameras.main.shake(120, 0.004);
+        }
       } else if (e.type === "waveStart") {
-        Banner.show(e.boss ? `เวฟสุดท้าย! ${DATA.monsters.boss.name} มาแล้ว` : `เวฟ ${e.idx + 1}/${e.of} บุกแล้ว!`, "night");
+        Banner.show(e.boss ? `เวฟสุดท้าย! ${e.name} มาแล้ว` : `เวฟ ${e.idx + 1}/${e.of} บุกแล้ว!`, "night");
       } else if (e.type === "bossSpawn") {
-        Toast.show(`${DATA.monsters.boss.name} Lv ${e.lv} ปรากฏทางทิศ${e.dirName}`);
+        Toast.show(`${e.name} Lv ${e.lv} ปรากฏทางทิศ${e.dirName}`);
       } else if (e.type === "bossRoar") {
         const ring = this.add.graphics().setPosition(e.x, e.y).setDepth(8.4e6);
         ring.lineStyle(4, 0x8fbf5a, 0.9); ring.strokeCircle(0, 0, 30);
         this.tweens.add({ targets: ring, alpha: 0, scale: 3, duration: 700, onComplete: () => ring.destroy() });
         if (this.visibleAt(e.x, e.y)) this.cameras.main.shake(160, 0.004);
       } else if (e.type === "bossDown") {
-        Banner.show(`ล้ม${DATA.monsters.boss.name}แล้ว! เก็บของดรอปได้เลย`, "day");
+        Banner.show(`ล้ม${e.name}แล้ว! เก็บของดรอปได้เลย`, "day");
       } else if (e.type === "night") {
         Banner.show(`คืนที่ ${e.night} เริ่มแล้ว · ป้องกันค่ายไว้!`, "night");
       } else if (e.type === "dawn") {
@@ -3420,10 +3863,11 @@ class GameScene extends Phaser.Scene {
       let v = this.monViews.get(m.id);
       if (!v) {
         const root = this.add.container(m.x, m.y);
-        const shadow = this.add.image(0, m.boss ? 20 : m.r - 2, "shadow").setScale(m.boss ? 1.7 : m.type === "wolf" ? 1 : 0.85);
-        const body = this.add.image(0, 0, m.type);
+        const def = DATA.monsters[m.type];
+        const shadow = this.add.image(0, m.fly ? 14 : m.r * def.size * 0.6 + 4, "shadow").setScale(def.size * (m.fly ? 0.6 : 0.85)).setAlpha(m.fly ? 0.5 : 1);
+        const body = this.add.image(0, 0, ensureMonTex(this, m.type)).setOrigin(24 / 56, 0.5);
         root.add([shadow, body]);
-        v = { root, body, flash: 0 };
+        v = { root, body, flash: 0, def };
         this.monViews.set(m.id, v);
       }
       const x = m.px + (m.x - m.px) * a, y = m.py + (m.y - m.py) * a;
@@ -3432,7 +3876,10 @@ class GameScene extends Phaser.Scene {
       if (!vis) continue;
       v.root.setPosition(x + Math.cos(m.face) * m.lunge * 7, y + Math.sin(m.face) * m.lunge * 7).setDepth(y + 5);
       v.body.rotation = Phaser.Math.Angle.RotateTo(v.body.rotation, m.face, 0.25);
-      const wob = m.moving ? Math.sin(time / (m.type === "wolf" ? 45 : 110) + m.id) * (m.type === "wolf" ? 0.06 : 0.1) : 0;
+      if (!this.seenTypes.has(m.type)) Bestiary.see(m.type);
+      if (m.fly) v.body.y = -10 + Math.sin(time / 120 + m.id) * 3;
+      const fast = m.arch === "runner" || m.arch === "exploder";
+      const wob = m.moving ? Math.sin(time / (fast ? 45 : 110) + m.id) * (fast ? 0.06 : 0.1) : m.arch === "exploder" ? Math.sin(time / 60) * 0.05 : 0;
       v.body.setScale(1 + v.flash * 0.18, 1 + wob + v.flash * 0.18);
       v.body.setAlpha(1 - v.flash * 0.45);
       v.flash = Math.max(0, v.flash - 0.12);
@@ -3476,6 +3923,22 @@ class GameScene extends Phaser.Scene {
     const top = best && document.elementFromPoint(cx, cy);
     if (best && top && top.tagName === "CANVAS") Inventory.showTip(best.item, cx, cy);
     else Inventory.hideTip();
+  }
+
+  syncBolts(a) {
+    const seen = new Set();
+    for (const o of this.state.bolts) {
+      seen.add(o.id);
+      let v = this.boltViews.get(o.id);
+      if (!v) {
+        const def = DATA.monsters[o.type], col = parseInt((def.accent || def.color).slice(1), 16);
+        v = this.add.graphics(); v.fillStyle(col, 0.35); v.fillCircle(0, 0, 7); v.fillStyle(col, 1); v.fillCircle(0, 0, 3.5); v.fillStyle(0xffffff, 0.9); v.fillCircle(0, 0, 1.5);
+        this.boltViews.set(o.id, v);
+      }
+      const x = o.px + (o.x - o.px) * a, y = o.py + (o.y - o.py) * a;
+      v.setPosition(x, y).setDepth(y + 25).setVisible(this.visibleAt(x, y));
+    }
+    for (const [id, v] of this.boltViews) if (!seen.has(id)) { v.destroy(); this.boltViews.delete(id); }
   }
 
   syncArrows(a) {
@@ -3560,6 +4023,7 @@ class GameScene extends Phaser.Scene {
     this.syncUnits(a, time);
     this.syncBuildings();
     this.syncArrows(a);
+    this.syncBolts(a);
     this.syncLoot(time);
     this.hoverLoot();
     this.drawBars();
@@ -3636,7 +4100,7 @@ const HUD = (() => {
     const boss = st.monsters.find((m) => m.boss && !m.dead);
     $("boss-bar").hidden = !boss;
     if (boss) {
-      $("boss-name").textContent = `${DATA.monsters.boss.name} · Lv ${boss.lv}`;
+      $("boss-name").textContent = `${DATA.monsters[boss.type].name} · Lv ${boss.lv}`;
       $("boss-fill").style.width = (boss.hp / boss.maxHp) * 100 + "%";
       $("boss-hp").textContent = `${Math.ceil(boss.hp)} / ${boss.maxHp}`;
     }
@@ -3729,6 +4193,7 @@ function recall() {
     if (kind === "build") { Build.toggle(); return; }
     if (kind === "esc") {
       if (Title.howOpen()) { Title.closeHow(); return; }
+      if (Bestiary.isOpen()) { Bestiary.close(); return; }
       if (Title.isOpen()) return;
       if (document.getElementById("build-toggle").classList.contains("on")) { Build.close(); return; }
       if (Inventory.isOpen()) { Inventory.close(); return; }
@@ -3773,6 +4238,7 @@ function recall() {
   const act = (a) => {
     if (a === "resume") Menu.close();
     else if (a === "howto") Title.openHow();
+    else if (a === "bestiary") Bestiary.open();
     else if (a === "title") { Menu.close(); Build.close(); Inventory.close(); Result.hide(); Title.show(); }
     else if (a === "wait") document.getElementById("down").classList.add("waiting");
     else if (a === "same") restart(curSeed());
