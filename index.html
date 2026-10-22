@@ -728,7 +728,7 @@ const DATA = {
     // Mage: ยิงลูกไฟไกล ระเบิดเป็นวงเล็ก สกิลวงกว้างหลายสกิล
     mage: { name: "Mage", hp: 105, mp: 170, atk: 17, def: 2, as: 0.85, spd: 160, rng: 230, crit: 0.1, vision: 7, splash: 52, skills: ["meteor", "nova", "chain"], start: "ไม้เท้าฝึกหัด" },
   },
-  hero: { mpRegen: 6, campRegenPct: 0.1, respawnSec: 10, recallSec: 3, arrowSpeed: 640, arrowLife: 0.5 },
+  hero: { gatherMul: 5, mpRegen: 6, campRegenPct: 0.1, respawnSec: 10, recallSec: 3, arrowSpeed: 640, arrowLife: 0.5 },
   levels: { max: 50, hp: 12, atk: 2, def: 0.6, healOnLevel: 0.3, nightBonus: 40 },
   items: {
     bag: 12, pickupR: 30, lootSec: 120,
@@ -2882,8 +2882,9 @@ const Core = (() => {
             h.gatherT = 0;
             const r = harvest(st, idx, 1);
             if (r.got) {
-              st.stock[h.team][r.res] = (st.stock[h.team][r.res] || 0) + r.got;
-              st.events.push({ type: "gain", x: h.x, y: h.y - 20, res: r.res, n: r.got, team: h.team });
+              const got = r.got * DATA.hero.gatherMul;   // Hero เก็บได้ x5 (ต้นไม้/หินหมดเร็วเท่าเดิม)
+              st.stock[h.team][r.res] = (st.stock[h.team][r.res] || 0) + got;
+              st.events.push({ type: "gain", x: h.x, y: h.y - 20, res: r.res, n: got, team: h.team });
             }
           }
         } else h.gatherT = 0;
