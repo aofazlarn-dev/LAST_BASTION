@@ -818,8 +818,9 @@ const DATA = {
   },
   // ยูนิตช่วยเหลือ (ใช้ประชากรร่วมกับคนงาน)
   units: {
-    archer: { name: "พลธนู", cost: { wood: 25, stone: 5 }, hp: 70, atk: 9, def: 1, as: 1, rng: 200, spd: 112, r: 10, vision: 6, leash: 10 },
-    swordsman: { name: "นักดาบ", cost: { wood: 30, stone: 8 }, hp: 150, atk: 13, def: 4, as: 0.9, reach: 10, spd: 125, r: 11, vision: 5, leash: 10 },
+    // ทหารเริ่มต้นเท่า Hero Lv1 (พลธนู = Archer, นักดาบ = Warrior) และเลเวลอัปได้จากการฆ่า Monster
+    archer: { name: "พลธนู", cost: { wood: 25, stone: 5 }, hp: 120, atk: 14, def: 3, as: 1.4, rng: 260, spd: 140, r: 10, vision: 8, leash: 10, crit: 0.15, lvAtk: 2 },
+    swordsman: { name: "นักดาบ", cost: { wood: 30, stone: 8 }, hp: 230, atk: 24, def: 7, as: 1.0, reach: 12, spd: 140, r: 11, vision: 6, leash: 10, crit: 0.1, lvAtk: 3.5 },
     medic: { name: "หมอ", cost: { wood: 30, stone: 5 }, hp: 60, def: 1, heal: 14, rng: 70, spd: 122, r: 10, vision: 6, roam: 26 },
     mechanic: { name: "ช่างซ่อม", cost: { wood: 30, stone: 10 }, hp: 80, def: 2, repair: 24, rng: 26, spd: 118, r: 10, vision: 5 },   // ซ่อมสิ่งก่อสร้างเอง ฟรี
   },
@@ -1144,9 +1145,11 @@ const Core = (() => {
     const R = st.research[u.team] || {}, d = u.type === "worker" ? DATA.worker : DATA.units[u.type];
     const ratio = u.maxHp ? u.hp / u.maxHp : 1;
     const arm = (R.unitArmor || 0) * DATA.research.unitArmor.per, wpn = (R.unitWeapon || 0) * DATA.research.unitWeapon.per;
-    u.maxHp = Math.round(d.hp * (1 + arm)); u.hp = Math.max(1, Math.round(u.maxHp * ratio));
-    u.def = (d.def || 0) * (1 + arm);
-    if (d.atk) u.atk = d.atk * (1 + wpn);
+    const L = (u.lv || 1) - 1, G = DATA.levels;   // เลเวลทหาร: เพิ่มแบบเดียวกับ Hero
+    u.maxHp = Math.round((d.hp + (d.lvAtk ? G.hp * L : 0)) * (1 + arm)); u.hp = Math.max(1, Math.round(u.maxHp * ratio));
+    u.def = ((d.def || 0) + (d.lvAtk ? G.def * L : 0)) * (1 + arm);
+    if (d.atk) u.atk = (d.atk + (d.lvAtk || 0) * L) * (1 + wpn);
+    if (d.crit) u.crit = d.crit;
   }
 
   function makeWorker(st, team, x, y) {
@@ -1185,6 +1188,16 @@ const Core = (() => {
     h.maxHp = Math.round(st.hp); h.hp = Math.min(h.maxHp, Math.max(1, Math.round(ratio * h.maxHp)));
   }
 
+  // ทหารที่ฆ่า Monster ได้ EXP เลเวลอัปเหมือน Hero
+  function giveUnitExp(st, u, amount) {
+    if (!u || u.kind !== "unit" || u.dead || !DATA.units[u.type] || !DATA.units[u.type].lvAtk) return;
+    u.lv = u.lv || 1; u.exp = (u.exp || 0) + amount;
+    while (u.lv < DATA.levels.max && u.exp >= expToNext(u.lv)) {
+      u.exp -= expToNext(u.lv); u.lv++;
+      recalcUnit(st, u); u.hp = Math.min(u.maxHp, u.hp + u.maxHp * DATA.levels.healOnLevel);
+      st.events.push({ type: "unitLevelUp", id: u.id, lv: u.lv, x: u.x, y: u.y });
+    }
+  }
   function giveExp(st, team, amount) {
     for (const h of st.heroes) {
       if (h.team !== team || h.lv >= DATA.levels.max) continue;
@@ -1346,6 +1359,7 @@ const Core = (() => {
       st.events.push({ type: "death", id: target.id, kind: target.kind, x: target.x, y: target.y });
       if (target.kind === "monster") {
         st.kills[attacker.team] = (st.kills[attacker.team] || 0) + 1;
+        if (attacker.kind === "unit") giveUnitExp(st, attacker, Math.round((8 + target.lv * 4) * (DATA.monsters[target.type].exp || 1)));
         giveExp(st, attacker.team, Math.round((8 + target.lv * 4) * (DATA.monsters[target.type].exp || 1) * (target.arch === "runner" ? 0.8 : 1)));
         maybeDrop(st, target);
       }
@@ -2479,7 +2493,7 @@ const Core = (() => {
     if (st.inside && st.insideKey === key) return st.inside;
     st.insideKey = key; st.inside = null;
     const N = st.map.n, S = DATA.tile, c = N / 2, lim = buildRadius(st, team) + 3, t = st.map.t;
-    const blocked = (i) => t[i] === T.BUILD || t[i] === T.GATE || t[i] === T.WATER;
+    const blocked = (i) => t[i] === T.BUILD || t[i] === T.GATE || t[i] === T.WATER || t[i] === T.TREE || t[i] === T.ROCK;   // ต้นไม้/หิน/น้ำ นับเป็นแนวป้องกันด้วย
     const ins = new Uint8Array(N * N), q = new Int32Array(N * N);
     let head = 0, tail = 0;
     const s0 = Math.floor((st.camp.y + 70) / S) * N + Math.floor(st.camp.x / S);
@@ -2567,7 +2581,24 @@ const Core = (() => {
         for (const m of zone) { const dd = Math.hypot(m.x - u.x, m.y - u.y) * (m.boss ? 0.8 : 1); if (dd < bd) { bd = dd; best = m; } }
         if (best) tgt = best;
       }
+      // เฝ้าค่าย (กำแพงยังล้อมไม่ครบ): ไม่ออกนอกเขตค่าย นักดาบตีเฉพาะตัวที่เข้ามาในเขต พลธนูยิงจากขอบเขต
+      const RR = (buildRadius(st, u.team) - 1) * S, dc = (e) => Math.hypot(e.x - st.camp.x, e.y - st.camp.y);
+      if (mode === "guard" && tgt && dc(tgt) > RR + (u.type === "archer" ? u.rng : d.reach + 20)) tgt = null;
+      if (mode === "guard" && dc(u) > RR + 6) {   // หลุดออกนอกเขต: เดินกลับเข้าค่ายก่อน (ยิงได้ระหว่างทางสำหรับพลธนู)
+        if (tgt && u.type === "archer" && Math.hypot(tgt.x - u.x, tgt.y - u.y) <= u.rng && u.atkCd <= 0) { u.face = Math.atan2(tgt.y - u.y, tgt.x - u.x); fireArrow(st, u, u.face, 1); u.atkCd = 1 / u.as; }
+        const a = Math.atan2(u.y - st.camp.y, u.x - st.camp.x);
+        moveTowards(st, u, st.camp.x + Math.cos(a) * (RR - 40), st.camp.y + Math.sin(a) * (RR - 40), dt, u.spd);
+        return;
+      }
       u.target = tgt ? tgt.id : null;
+      if (tgt && mode === "guard" && dc(tgt) > RR - 10) {
+        const dist = Math.hypot(tgt.x - u.x, tgt.y - u.y); u.face = Math.atan2(tgt.y - u.y, tgt.x - u.x);
+        const reach = u.type === "archer" ? u.rng : u.r + tgt.r + d.reach + 6;
+        if (dist <= reach) { u.path = null; if (u.atkCd <= 0) { if (u.type === "archer") fireArrow(st, u, u.face, 1); else { u.lunge = 1; damage(st, tgt, u, u.atk, 1); } u.atkCd = 1 / u.as; } return; }
+        const a = Math.atan2(tgt.y - st.camp.y, tgt.x - st.camp.x);   // ไปยืนที่ขอบเขตค่ายด้านที่ใกล้เป้า
+        moveTowards(st, u, st.camp.x + Math.cos(a) * (RR - 12), st.camp.y + Math.sin(a) * (RR - 12), dt, u.spd);
+        return;
+      }
       if (tgt) { soldierAttack(st, u, tgt, dt); return; }
       // ลาดตระเวน: วงรอบค่าย ด้านในกำแพง
       const R = Math.max(3, buildRadius(st, u.team) - 3.5) * S;
@@ -4419,12 +4450,17 @@ class GameScene extends Phaser.Scene {
         const art = this.skin(body, { archer: "u_archer", swordsman: "u_sword", medic: "u_medic", mechanic: "hero_engineer" }[u.type] || "worker", { h: u.type === "worker" ? 36 : 40, oy: 0.95 });
         root.add([shadow, body, load]);
         v = { root, body, load, art, carry: -1 };
+        if (u.type === "archer" || u.type === "swordsman") {   // ป้ายเลเวลทหาร
+          v.lvTag = this.add.text(0, -34, "", { fontFamily: "Sarabun, sans-serif", fontSize: "10px", fontStyle: "bold", color: "#ffd166", stroke: "#1c2618", strokeThickness: 3 }).setOrigin(0.5).setResolution(2);
+          root.add(v.lvTag);
+        }
         { const sn = { archer: "u_archer", swordsman: "u_sword", medic: "u_medic", mechanic: "hero_engineer" }[u.type] || "worker";
           if (art) this.animBind(v, sn, null, sn, { h: u.type === "worker" ? 36 : 40, oy: 0.95 }); }
         this.unitViews.set(u.id, v);
       }
       const x = u.px + (u.x - u.px) * a, y = u.py + (u.y - u.py) * a;
       v.root.setPosition(x, y).setDepth(y + 8).setVisible(!u.hidden && this.visibleAt(x, y));
+      if (v.lvTag && v.lvTag.text !== "Lv " + (u.lv || 1)) v.lvTag.setText("Lv " + (u.lv || 1));
       const ub = u.moving ? Math.sin(time / 60 + u.id) * 1.5 : 0;
       if (v.art) {
         const c = Math.cos(u.face); if (Math.abs(c) > 0.2) v.body.flipX = c < 0; v.body.y = 9;
@@ -4841,6 +4877,8 @@ class GameScene extends Phaser.Scene {
         if (e.btype === "camp") Banner.show(`บ้านหลัก Lv ${e.lv} · คนงาน ${Core.popCap(this.state, this.team, "worker")} · ทหาร ${Core.popCap(this.state, this.team, "army")} · เขตสร้างกว้างขึ้น`, "day");
       } else if (e.type === "researched") {
         Toast.show(`วิจัย ${DATA.research[e.key].name} Lv ${e.lv} แล้ว`);
+      } else if (e.type === "unitLevelUp") {
+        if (this.visibleAt(e.x, e.y)) { this.popText(e.x, e.y - 30, `Lv ${e.lv}!`, "#ffd166", 14); this.puff("fx_levelup", e.x, e.y, { w: 50, dur: 600, from: 0.3, to: 1.1, depth: e.y + 30, dy: -10 }); }
       } else if (e.type === "trained" && e.unit && e.unit !== "worker") {
         Toast.show(`จ้าง${DATA.units[e.unit].name}แล้ว`);
       } else if (e.type === "repairTick") {
