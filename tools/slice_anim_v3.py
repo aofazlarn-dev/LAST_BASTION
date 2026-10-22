@@ -67,6 +67,7 @@ def frames_of(path, C, R, nframes):
     return out
 
 def base_of(name):
+    if name.startswith('fx_'): return name, 'fx'
     for a in ('_walk_wood', '_walk_stone', '_walk', '_idle', '_attack', '_death', '_hurt', '_skill', '_special', '_heal', '_chop', '_mine'):
         if name.endswith(a): return name[:-len(a)], a[1:]
     return name, 'fx'
