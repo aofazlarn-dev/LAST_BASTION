@@ -566,7 +566,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
     <button type="button" class="build-item" data-build="tower"><b>ป้อมธนู</b><span class="cost"></span><span class="note">ยิง Monster เอง</span></button>
     <button type="button" class="build-item" data-build="barracks"><b>ค่ายทหาร</b><span class="cost"></span><span class="note">จ้างพลธนู นักดาบ</span></button>
     <button type="button" class="build-item" data-build="infirmary"><b>สถานพยาบาล</b><span class="cost"></span><span class="note">จ้างหมอรักษาคนเจ็บ</span></button>
-    <button type="button" class="build-item" data-build="workshop"><b>Workshop</b><span class="cost"></span><span class="note">พัฒนาอาวุธ Hero และทหาร</span></button>
+    <button type="button" class="build-item" data-build="workshop"><b>Workshop</b><span class="cost"></span><span class="note">พัฒนาอาวุธ · จ้างช่างซ่อม</span></button>
     <button type="button" class="build-item" id="repair"><b>ซ่อมทั้งหมด</b><span class="cost" id="repair-cost">ไม่มีอะไรเสียหาย</span><span class="note">กำแพง ป้อม ประตู และค่าย</span></button>
     <button type="button" class="build-item" id="train"><b>ฝึกคนงาน</b><span class="cost"></span><span class="note">เก็บไม้/หินให้เอง</span></button>
   </div>
@@ -793,20 +793,21 @@ const DATA = {
     },
     barracks: { name: "ค่ายทหาร", cost: { wood: 70, stone: 20 }, hp: 450, def: 5, vision: 5, size: 2, needCamp: 2, hires: ["archer", "swordsman"] },
     infirmary: { name: "สถานพยาบาล", cost: { wood: 60, stone: 15 }, hp: 350, def: 4, vision: 5, size: 2, needCamp: 2, hires: ["medic"] },
-    workshop: { name: "Workshop", cost: { wood: 90, stone: 30 }, hp: 400, def: 5, vision: 5, size: 2, needCamp: 3 },
+    workshop: { name: "Workshop", cost: { wood: 90, stone: 30 }, hp: 400, def: 5, vision: 5, size: 2, needCamp: 3, hires: ["mechanic"] },
   },
   // ยูนิตช่วยเหลือ (ใช้ประชากรร่วมกับคนงาน)
   units: {
     archer: { name: "พลธนู", cost: { wood: 25, stone: 5 }, hp: 70, atk: 9, def: 1, as: 1, rng: 200, spd: 112, r: 10, vision: 6, leash: 10 },
     swordsman: { name: "นักดาบ", cost: { wood: 30, stone: 8 }, hp: 150, atk: 13, def: 4, as: 0.9, reach: 10, spd: 125, r: 11, vision: 5, leash: 10 },
     medic: { name: "หมอ", cost: { wood: 30, stone: 5 }, hp: 60, def: 1, heal: 14, rng: 70, spd: 122, r: 10, vision: 6, roam: 26 },
+    mechanic: { name: "ช่างซ่อม", cost: { wood: 30, stone: 10 }, hp: 80, def: 2, repair: 24, rng: 26, spd: 118, r: 10, vision: 5 },   // ซ่อมสิ่งก่อสร้างเอง ใช้ไม้/หินตามที่ซ่อม
   },
   research: {
     heroWeapon: { name: "อาวุธ Hero", note: "พลังโจมตี Hero", max: 5, per: 0.15, cost: { wood: 45, stone: 15 } },
     unitWeapon: { name: "อาวุธทหาร", note: "พลังโจมตีพลธนูและนักดาบ", max: 5, per: 0.25, cost: { wood: 40, stone: 15 } },
     unitArmor: { name: "เกราะทหาร", note: "พลังชีวิตและป้องกันของยูนิตทั้งหมด", max: 5, per: 0.25, cost: { wood: 40, stone: 18 } },
   },
-  worker: { name: "คนงาน", cost: { wood: 15 }, max: 6, hp: 40, spd: 120, r: 9, carry: 8, gatherSec: 0.6, range: 19, farRange: [28, 38], flee: 4, avoid: 5, vision: 4,
+  worker: { name: "คนงาน", cost: { wood: 15 }, max: 6, hp: 40, spd: 120, r: 9, carry: 8, gatherSec: 0.6, range: 19, farRange: [28, 38, 52, 70],   // ไกลสุดตามพื้นที่ที่ Hero เปิดแผนที่แล้วเท่านั้น flee: 4, avoid: 5, vision: 4,
     regrow: { tree: 0.5, rock: 0.3, keepOut: 3 } },   // รอบค่ายหมดค่อยออกไปไกลขึ้น · ตอนเช้าต้นไม้/หินงอกใหม่บางส่วน (ไม่งอกในเขตค่าย)
   cycle: { daySec: 240, nightSec: 120, warnSec: 30, nights: 5, skipTo: 10 },   // กลางวัน 4 นาที กลางคืน 2 นาที
   waves: {
@@ -2326,8 +2327,10 @@ const Core = (() => {
     const lim = (R + DATA.worker.avoid + 2) * S;
     const danger = st.monsters.filter((m) => !m.dead && Math.abs(m.x - st.camp.x) < lim && Math.abs(m.y - st.camp.y) < lim);
     let best = -1, bd = Infinity;
-    for (let y = c - R; y <= c + R; y++) for (let x = c - R; x <= c + R; x++) {
+    const fog = st.fog[u.team], known = buildRadius(st, u.team) + 6;
+    for (let y = Math.max(2, c - R); y <= Math.min(N - 3, c + R); y++) for (let x = Math.max(2, c - R); x <= Math.min(N - 3, c + R); x++) {
       if (Math.hypot(x + 0.5 - c, y + 0.5 - c) > R) continue;
+      if (fog && !fog[y * N + x] && Math.hypot(x + 0.5 - c, y + 0.5 - c) > known) continue;   // คนงานรู้จักเฉพาะรอบค่าย + พื้นที่ที่ Hero สำรวจแล้ว
       const idx = y * N + x;
       if (resourceKind(st, idx) !== kind || st.claims[idx] || (st.badRes && st.badRes[idx] > st.tick)) continue;
       const px = (x + 0.5) * S, py = (y + 0.5) * S;
@@ -2370,6 +2373,49 @@ const Core = (() => {
      guard  เฝ้าค่าย: เดินลาดตระเวนวนรอบค่าย ด้านในแนวกำแพง มี Monster บุกเข้ามาในเขต วิ่งไปไล่ตีแล้วกลับมาเดินต่อ
      follow ตาม Hero: เดินตาม ตี Monster ที่เข้าใกล้ Hero
      free   อิสระ: ล่า Monster รอบค่ายเอง กลางคืนกลับมาช่วยป้องกันค่าย */
+  /* พื้นที่ด้านในกำแพง: BFS จากหน้าค่าย ห้ามผ่านกำแพง/ประตู/อาคาร ถ้าหลุดไกลกว่าเขตค่าย = ยังล้อมไม่ครบ (null)
+     out[] = ระยะ (ช่อง) จากช่องนอกไปถึงด้านในที่ใกล้ที่สุด, near[] = ช่องด้านในที่ใกล้ที่สุด, edge = ช่องด้านในติดกำแพง */
+  function insideMap(st, team) {
+    const key = st.mapVersion + ":" + team;
+    if (st.inside && st.insideKey === key) return st.inside;
+    st.insideKey = key; st.inside = null;
+    const N = st.map.n, S = DATA.tile, c = N / 2, lim = buildRadius(st, team) + 3, t = st.map.t;
+    const blocked = (i) => t[i] === T.BUILD || t[i] === T.GATE || t[i] === T.WATER;
+    const ins = new Uint8Array(N * N), q = new Int32Array(N * N);
+    let head = 0, tail = 0;
+    const s0 = Math.floor((st.camp.y + 70) / S) * N + Math.floor(st.camp.x / S);
+    if (blocked(s0)) return null;
+    ins[s0] = 1; q[tail++] = s0;
+    while (head < tail) {
+      const i = q[head++], x = i % N, y = (i / N) | 0;
+      if (Math.hypot(x + 0.5 - c, y + 0.5 - c) > lim) return null;   // ยังไม่ปิดล้อม
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ni = (y + dy) * N + x + dx;
+        if (ins[ni] || blocked(ni) || t[ni] === T.CAMP && false) continue;
+        ins[ni] = 1; q[tail++] = ni;
+      }
+    }
+    // ระยะจากด้านนอกถึงด้านใน (BFS หลายจุดเริ่มจากช่องด้านใน)
+    const out = new Int16Array(N * N).fill(-1), near = new Int32Array(N * N).fill(-1), edge = [];
+    head = 0; tail = 0;
+    for (let i = 0; i < N * N; i++) if (ins[i]) { out[i] = 0; near[i] = i; q[tail++] = i; }
+    while (head < tail) {
+      const i = q[head++], x = i % N, y = (i / N) | 0;
+      if (out[i] > 12) continue;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+        const ni = ny * N + nx;
+        if (ins[i] && !ins[ni] && blocked(ni) && edge[edge.length - 1] !== i) edge.push(i);
+        if (out[ni] >= 0) continue;
+        out[ni] = out[i] + 1; near[ni] = near[i]; q[tail++] = ni;
+      }
+    }
+    const cx = st.camp.x, cy = st.camp.y;
+    const ring = [...new Set(edge)].map((i) => ({ x: (i % N + 0.5) * S, y: (((i / N) | 0) + 0.5) * S })).sort((a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx));
+    st.inside = { ins, out, near, ring };
+    return st.inside;
+  }
+
   function stepSoldier(st, u, dt) {
     const S = DATA.tile, d = DATA.units[u.type], mode = st.unitMode[u.team][u.type] || "guard";
     const hero = st.heroes.find((h) => h.team === u.team && !h.dead);
@@ -2377,6 +2423,41 @@ const Core = (() => {
     let tgt = u.target ? st.monsters.find((m) => m.id === u.target && !m.dead) : null;
     const night = phase(st) === "night" || !!st.wave;
     const defend = mode === "guard" || (mode === "free" && night) || (mode === "follow" && !hero);
+
+    // เฝ้าค่ายและมีกำแพงล้อมครบ: อยู่ด้านในกำแพงเท่านั้น ตีศัตรูจากด้านใน
+    const IN = mode === "guard" ? insideMap(st, u.team) : null;
+    if (IN) {
+      const N = st.map.n, ti = (e) => Math.floor(e.y / S) * N + Math.floor(e.x / S);
+      const reachOut = u.type === "archer" ? Math.floor(u.rng / S) : 1;   // ระยะที่ตีถึงจากหลังกำแพง (ช่อง)
+      const ok = (m) => { const o = IN.out[ti(m)]; return o >= 0 && o <= reachOut; };
+      const zone = raidersNear(st, u.team, 4).filter(ok);
+      if (tgt && !zone.includes(tgt)) tgt = null;
+      if (!tgt || st.tick % 20 === u.id % 20) {
+        let best = null, bd = Infinity;
+        for (const m of zone) { const dd = Math.hypot(m.x - u.x, m.y - u.y) * (m.boss ? 0.8 : 1); if (dd < bd) { bd = dd; best = m; } }
+        if (best) tgt = best;
+      }
+      u.target = tgt ? tgt.id : null;
+      const inNow = IN.ins[ti(u)];
+      if (tgt) {
+        const dist = Math.hypot(tgt.x - u.x, tgt.y - u.y);
+        u.face = Math.atan2(tgt.y - u.y, tgt.x - u.x);
+        if (u.type === "archer" && dist <= u.rng && inNow) { u.path = null; if (u.atkCd <= 0) { fireArrow(st, u, u.face, 1); u.atkCd = 1 / u.as; } return; }
+        if (u.type !== "archer" && dist <= u.r + tgt.r + d.reach + 6) { u.path = null; if (u.atkCd <= 0) { u.atkCd = 1 / u.as; u.lunge = 1; damage(st, tgt, u, u.atk, 1); } return; }
+        const ni = IN.near[ti(tgt)];   // ยืนช่องด้านในที่ใกล้เป้าที่สุด
+        if (ni >= 0) { moveTowards(st, u, (ni % N + 0.5) * S, (((ni / N) | 0) + 0.5) * S, dt, u.spd); return; }
+      }
+      if (!inNow) { const ni = IN.near[ti(u)]; if (ni >= 0) { moveTowards(st, u, (ni % N + 0.5) * S, (((ni / N) | 0) + 0.5) * S, dt, u.spd); return; } }
+      // ลาดตระเวนชิดแนวกำแพงด้านใน
+      if (IN.ring.length) {
+        if (u.patrolI == null) { u.patrolI = Math.floor(rand(st) * IN.ring.length); u.patrolDir = u.id % 2 ? 1 : -1; }
+        u.patrolI = ((u.patrolI % IN.ring.length) + IN.ring.length) % IN.ring.length;
+        const p = IN.ring[u.patrolI];
+        if (Math.hypot(p.x - u.x, p.y - u.y) < 20) u.patrolI += u.patrolDir * 2;
+        moveTowards(st, u, p.x, p.y, dt, u.spd * 0.75);
+      }
+      return;
+    }
 
     if (defend) {
       // ศัตรูในเขตค่าย: เลือกตัวที่ใกล้ตัวเองที่สุด (ทหารแต่ละคนกระจายกันไปคนละตัว)
@@ -2421,6 +2502,40 @@ const Core = (() => {
      free   อิสระ: ไปรักษาคนเจ็บทุกที่ในรัศมีรอบค่าย (รวมนอกเมือง)
      follow ตาม Hero: เดินตาม Hero รักษา Hero และคนรอบตัว
      guard  เฝ้าค่าย: รักษาเฉพาะคนในเขตค่าย ไม่ออกนอกเมือง */
+  /* ช่างซ่อม: เดินไปซ่อมสิ่งก่อสร้างที่เสียหาย (เลือดน้อยที่สุดก่อน) ใช้ไม้/หินตามสัดส่วนเหมือนปุ่มซ่อม */
+  function stepMechanic(st, u, dt) {
+    const d = DATA.units.mechanic, stock = st.stock[u.team];
+    u.atkCd -= dt;
+    let b = u.target ? st.buildings.find((e) => e.id === u.target && !e.dead) : null;
+    if (b && b.hp >= b.maxHp) b = null;
+    if (!b || st.tick % 30 === u.id % 30) {
+      let best = null, bd = Infinity;
+      for (const e of st.buildings) {
+        if (e.team !== u.team || e.dead || e.hp >= e.maxHp) continue;
+        if (st.units.some((o) => o !== u && o.type === "mechanic" && o.target === e.id) && e !== b) continue;   // ช่างคนอื่นซ่อมอยู่แล้ว
+        const sc = (e.hp / e.maxHp) * 600 + Math.hypot(e.x - u.x, e.y - u.y) * 0.5 - (e.type === "camp" ? 200 : 0);
+        if (sc < bd) { bd = sc; best = e; }
+      }
+      if (best) b = best;
+    }
+    u.target = b ? b.id : null; u.healing = false;
+    if (!b) { u.hp = Math.min(u.maxHp, u.hp + u.maxHp * 0.03 * dt); moveTowards(st, u, st.camp.x + Math.cos(u.id * 1.7) * 40, st.camp.y + 70, dt, u.spd * 0.8); return; }
+    if (distToBuilding(u, b) > d.rng) { moveTowards(st, u, b.x, b.y + (b.h || b.size) * DATA.tile / 2 + 8, dt, u.spd); return; }
+    u.path = null; u.face = Math.atan2(b.y - u.y, b.x - u.x); u.healing = true;
+    const D = DATA.buildings[b.type], base = D.repairCost || D.cost, share = D.repairCost ? 1 : DATA.repairShare;
+    const hp = Math.min(b.maxHp - b.hp, d.repair * (1 + (st.research[u.team].unitWeapon || 0) * 0.1) * dt);
+    u.debt = u.debt || {};
+    for (const r in base) u.debt[r] = (u.debt[r] || 0) + base[r] * share * hp / b.maxHp;
+    for (const r in u.debt) if (u.debt[r] >= 1) {
+      const n = Math.floor(u.debt[r]);
+      if ((stock[r] || 0) < n) { if (st.tick - (st.repWarn || -9999) > 400) { st.repWarn = st.tick; st.events.push({ type: "repairNoRes", team: u.team }); } return; }
+      stock[r] -= n; u.debt[r] -= n;
+    }
+    b.hp += hp; u.repT = (u.repT || 0) + hp;
+    if (u.atkCd <= 0) u.atkCd = 0.8;   // จังหวะเหวี่ยงประแจ (ใช้เล่นท่า)
+    if (u.repT >= 20) { st.events.push({ type: "repairTick", x: b.x, y: b.y - 20, n: Math.round(u.repT) }); u.repT = 0; }
+  }
+
   function stepMedic(st, u, dt) {
     const S = DATA.tile, d = DATA.units.medic, mode = st.unitMode[u.team].medic || "free";
     const home = st.buildings.find((b) => b.team === u.team && b.type === "infirmary") || campOf(st, u.team);
@@ -2501,6 +2616,7 @@ const Core = (() => {
       if (u.dead) continue;
       if (u.type === "archer" || u.type === "swordsman") { stepSoldier(st, u, dt); continue; }
       if (u.type === "medic") { stepMedic(st, u, dt); continue; }
+      if (u.type === "mechanic") { stepMechanic(st, u, dt); continue; }
       const stock = st.stock[u.team];
       // ใกล้ค่ำหรือกลางคืน: กลับไปหลบในกระโจม
       if (st.wave) {
@@ -2976,7 +3092,7 @@ const BPanel = (() => {
 
     const hireRow = (unit, def) => {
       const n = st.units.filter((u) => u.team === b.team && u.type === unit).length;
-      const desc = unit === "worker" ? "เก็บไม้และหินให้เอง" : unit === "archer" ? `ยิงไกล ดาเมจ ${Math.round(def.atk * (1 + st.research[b.team].unitWeapon * DATA.research.unitWeapon.per))}` : unit === "swordsman" ? "ถึก ยืนรับหน้า" : "ออกไปรักษาคนเจ็บทั้งในและนอกเมือง";
+      const desc = unit === "worker" ? "เก็บไม้และหินให้เอง" : unit === "archer" ? `ยิงไกล ดาเมจ ${Math.round(def.atk * (1 + st.research[b.team].unitWeapon * DATA.research.unitWeapon.per))}` : unit === "swordsman" ? "ถึก ยืนรับหน้า" : unit === "mechanic" ? "ซ่อมกำแพง ป้อม และอาคารที่เสียหายเอง (ใช้ไม้/หิน)" : "ออกไปรักษาคนเจ็บทั้งในและนอกเมือง";
       return `<div class="bp-row"><div><b>${def.name}</b> × ${n}<small>${desc}</small></div>${btn("hire:" + unit, "จ้าง", def.cost)}</div>`;
     };
     if (b.type === "camp") {
@@ -2984,11 +3100,11 @@ const BPanel = (() => {
     }
     if (D.hires) {
       html += `<div class="bp-sec">จ้างยูนิต · ทหารและหมอ ${Core.popUsed(st, b.team, "army")} / ${Core.popCap(st, b.team, "army")}</div>` + D.hires.map((u) => hireRow(u, DATA.units[u])).join("");
-      html += `<div class="bp-sec">คำสั่ง</div>` + D.hires.map((u) => {
+      if (b.type !== "workshop") html += `<div class="bp-sec">คำสั่ง</div>` + D.hires.map((u) => {
         const mode = st.unitMode[b.team][u];
         const opt = (m, label) => `<button type="button" class="btn${mode === m ? " on" : ""}" data-act="mode:${u}:${m}">${label}</button>`;
         return `<div class="bp-mode"><span>${DATA.units[u].name}</span><div class="seg seg3">${opt("free", "อิสระ")}${opt("follow", "ตาม Hero")}${opt("guard", "เฝ้าค่าย")}</div></div>`;
-      }).join("") + `<p class="bp-note">${b.type === "infirmary" ? "อิสระ: รักษาทุกที่รอบค่าย · ตาม Hero: เดินตามรักษา · เฝ้าค่าย: รักษาเฉพาะในค่าย" : "อิสระ: ล่า Monster รอบค่าย กลางคืนกลับมาช่วย · ตาม Hero: คุ้มกัน · เฝ้าค่าย: ลาดตระเวนรอบค่าย ไล่ตีตัวที่บุก"}</p>`;
+      }).join("") + `<p class="bp-note">${b.type === "infirmary" ? "อิสระ: รักษาทุกที่รอบค่าย · ตาม Hero: เดินตามรักษา · เฝ้าค่าย: รักษาเฉพาะในค่าย" : "อิสระ: ล่า Monster รอบค่าย กลางคืนกลับมาช่วย · ตาม Hero: คุ้มกัน · เฝ้าค่าย: อยู่ในกำแพง ตีศัตรูที่บุกจากด้านใน (ถ้ากำแพงล้อมครบ)"}</p>`;
     }
     if (b.type === "workshop") {
       html += `<div class="bp-sec">พัฒนาอาวุธและเกราะ</div>` + Object.entries(DATA.research).map(([k, R]) => {
@@ -3380,6 +3496,9 @@ const ART_OK = new Set();
 const ANIM_DIR = "assets/anim/";
 const ANIM = {"hero_archer_idle":{"n":4,"w":148,"h":134,"fps":6,"loop":true,"ref":128,"oy":0.9851},"hero_archer_walk":{"n":6,"w":138,"h":136,"fps":10,"loop":true,"ref":128,"oy":0.9853},"hero_archer_attack":{"n":6,"w":206,"h":138,"fps":12,"loop":false,"ref":128,"oy":0.9855},"hero_archer_hurt":{"n":4,"w":186,"h":132,"fps":12,"loop":false,"ref":128,"oy":0.9848},"hero_archer_death":{"n":4,"w":192,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"hero_archer_skill":{"n":6,"w":282,"h":169,"fps":14,"loop":false,"ref":128,"oy":0.9882},"worker_idle":{"n":4,"w":144,"h":135,"fps":6,"loop":true,"ref":128,"oy":0.9852},"worker_walk":{"n":6,"w":114,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"worker_walk_wood":{"n":6,"w":134,"h":136,"fps":10,"loop":true,"ref":128,"oy":0.9853},"worker_walk_stone":{"n":6,"w":130,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"worker_chop":{"n":6,"w":188,"h":168,"fps":12,"loop":true,"ref":128,"oy":0.9881},"worker_mine":{"n":6,"w":172,"h":155,"fps":12,"loop":true,"ref":128,"oy":0.9871},"worker_death":{"n":4,"w":168,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"u_archer_attack":{"n":6,"w":218,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"u_sword_attack":{"n":6,"w":162,"h":136,"fps":12,"loop":false,"ref":128,"oy":0.9853},"u_sword_death":{"n":4,"w":194,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"u_medic_idle":{"n":4,"w":186,"h":135,"fps":6,"loop":true,"ref":128,"oy":0.9852},"u_medic_heal":{"n":6,"w":222,"h":152,"fps":10,"loop":true,"ref":128,"oy":0.9868},"u_medic_death":{"n":4,"w":172,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"hero_warrior_idle":{"n":4,"w":190,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_warrior_walk":{"n":6,"w":120,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_warrior_attack":{"n":6,"w":168,"h":146,"fps":12,"loop":false,"ref":128,"oy":0.9863},"hero_warrior_hurt":{"n":4,"w":176,"h":134,"fps":12,"loop":false,"ref":128,"oy":0.9851},"hero_warrior_death":{"n":4,"w":194,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"hero_mage_idle":{"n":4,"w":142,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_mage_walk":{"n":6,"w":146,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_mage_attack":{"n":6,"w":200,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"hero_mage_hurt":{"n":4,"w":180,"h":137,"fps":12,"loop":false,"ref":128,"oy":0.9854},"hero_mage_death":{"n":4,"w":184,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"hero_engineer_idle":{"n":4,"w":144,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_engineer_walk":{"n":6,"w":110,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_engineer_attack":{"n":6,"w":164,"h":133,"fps":12,"loop":false,"ref":128,"oy":0.985},"hero_healer_idle":{"n":4,"w":154,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_healer_walk":{"n":6,"w":144,"h":138,"fps":10,"loop":true,"ref":128,"oy":0.9855},"hero_healer_attack":{"n":6,"w":262,"h":153,"fps":12,"loop":false,"ref":128,"oy":0.9869},"hero_healer_hurt":{"n":4,"w":186,"h":134,"fps":12,"loop":false,"ref":128,"oy":0.9851},"hero_healer_death":{"n":4,"w":182,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"zombie0_walk":{"n":6,"w":164,"h":135,"fps":8,"loop":true,"ref":128,"oy":0.9852},"zombie0_attack":{"n":6,"w":244,"h":160,"fps":12,"loop":false,"ref":128,"oy":0.9875},"zombie0_death":{"n":4,"w":178,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"wolf0_walk":{"n":6,"w":228,"h":146,"fps":14,"loop":true,"ref":128,"oy":0.9863},"wolf0_attack":{"n":6,"w":204,"h":155,"fps":14,"loop":false,"ref":128,"oy":0.9871},"wolf0_death":{"n":4,"w":160,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"slime0_walk":{"n":6,"w":224,"h":161,"fps":10,"loop":true,"ref":128,"oy":0.9876},"slime0_attack":{"n":6,"w":210,"h":193,"fps":14,"loop":false,"ref":128,"oy":0.9896},"slime0_death":{"n":4,"w":204,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"bat0_walk":{"n":6,"w":172,"h":147,"fps":12,"loop":true,"ref":128,"oy":0.9864},"bat0_attack":{"n":6,"w":182,"h":132,"fps":14,"loop":false,"ref":128,"oy":0.9848},"bat0_death":{"n":4,"w":192,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"skel0_walk":{"n":6,"w":166,"h":134,"fps":8,"loop":true,"ref":128,"oy":0.9851},"skel0_attack":{"n":6,"w":216,"h":133,"fps":12,"loop":false,"ref":128,"oy":0.985},"skel0_death":{"n":4,"w":192,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"ghoul0_walk":{"n":6,"w":172,"h":136,"fps":8,"loop":true,"ref":128,"oy":0.9853},"ghoul0_attack":{"n":6,"w":194,"h":166,"fps":12,"loop":false,"ref":128,"oy":0.988},"ghoul0_death":{"n":4,"w":194,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"spider0_walk":{"n":6,"w":222,"h":141,"fps":14,"loop":true,"ref":128,"oy":0.9858},"spider0_attack":{"n":6,"w":222,"h":151,"fps":14,"loop":false,"ref":128,"oy":0.9868},"spider0_death":{"n":4,"w":200,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"orc0_walk":{"n":6,"w":186,"h":138,"fps":7,"loop":true,"ref":128,"oy":0.9855},"orc0_attack":{"n":6,"w":222,"h":179,"fps":10,"loop":false,"ref":128,"oy":0.9888},"orc0_death":{"n":4,"w":202,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"wisp0_walk":{"n":6,"w":158,"h":138,"fps":12,"loop":true,"ref":128,"oy":0.9855},"wisp0_attack":{"n":6,"w":176,"h":134,"fps":14,"loop":false,"ref":128,"oy":0.9851},"wisp0_death":{"n":4,"w":176,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"bonemage0_walk":{"n":6,"w":162,"h":134,"fps":8,"loop":true,"ref":128,"oy":0.9851},"bonemage0_attack":{"n":6,"w":270,"h":151,"fps":12,"loop":false,"ref":128,"oy":0.9868},"bonemage0_death":{"n":4,"w":190,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"beetle0_walk":{"n":6,"w":188,"h":156,"fps":10,"loop":true,"ref":128,"oy":0.9872},"beetle0_attack":{"n":6,"w":186,"h":153,"fps":14,"loop":false,"ref":128,"oy":0.9869},"beetle0_death":{"n":4,"w":158,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"knight0_walk":{"n":6,"w":176,"h":137,"fps":8,"loop":true,"ref":128,"oy":0.9854},"knight0_death":{"n":4,"w":206,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"were0_walk":{"n":6,"w":222,"h":138,"fps":14,"loop":true,"ref":128,"oy":0.9855},"were0_attack":{"n":6,"w":220,"h":142,"fps":14,"loop":false,"ref":128,"oy":0.9859},"were0_death":{"n":4,"w":182,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"golem0_walk":{"n":6,"w":160,"h":137,"fps":7,"loop":true,"ref":128,"oy":0.9854},"golem0_attack":{"n":6,"w":194,"h":170,"fps":10,"loop":false,"ref":128,"oy":0.9882},"golem0_death":{"n":4,"w":202,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"demon0_walk":{"n":6,"w":158,"h":146,"fps":12,"loop":true,"ref":128,"oy":0.9863},"demon0_attack":{"n":6,"w":168,"h":136,"fps":14,"loop":false,"ref":128,"oy":0.9853},"demon0_death":{"n":4,"w":212,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"lich0_walk":{"n":6,"w":150,"h":137,"fps":8,"loop":true,"ref":128,"oy":0.9854},"lich0_attack":{"n":6,"w":240,"h":143,"fps":12,"loop":false,"ref":128,"oy":0.986},"lich0_death":{"n":4,"w":186,"h":136,"fps":10,"loop":false,"ref":128,"oy":0.9853},"boss0_walk":{"n":6,"w":248,"h":201,"fps":8,"loop":true,"ref":192,"oy":0.99},"boss0_attack":{"n":6,"w":358,"h":217,"fps":12,"loop":false,"ref":192,"oy":0.9908},"boss0_death":{"n":4,"w":268,"h":196,"fps":10,"loop":false,"ref":192,"oy":0.9898},"boss0_special":{"n":6,"w":238,"h":224,"fps":10,"loop":false,"ref":192,"oy":0.9911},"boss1_walk":{"n":6,"w":358,"h":218,"fps":14,"loop":true,"ref":192,"oy":0.9908},"boss1_attack":{"n":6,"w":336,"h":234,"fps":14,"loop":false,"ref":192,"oy":0.9915},"boss1_death":{"n":4,"w":282,"h":196,"fps":10,"loop":false,"ref":192,"oy":0.9898},"boss1_special":{"n":6,"w":284,"h":242,"fps":10,"loop":false,"ref":192,"oy":0.9917},"boss2_attack":{"n":6,"w":678,"h":199,"fps":12,"loop":false,"ref":192,"oy":0.9899},"boss2_special":{"n":6,"w":272,"h":196,"fps":12,"loop":false,"ref":192,"oy":0.9898},"boss3_attack":{"n":6,"w":326,"h":297,"fps":10,"loop":false,"ref":192,"oy":0.9933},"boss3_special":{"n":6,"w":348,"h":265,"fps":10,"loop":false,"ref":192,"oy":0.9925},"boss4_walk":{"n":6,"w":232,"h":208,"fps":12,"loop":true,"ref":192,"oy":0.9904},"boss4_attack":{"n":6,"w":304,"h":196,"fps":14,"loop":false,"ref":192,"oy":0.9898},"boss4_death":{"n":4,"w":294,"h":196,"fps":10,"loop":false,"ref":192,"oy":0.9898},"boss4_special":{"n":6,"w":328,"h":196,"fps":12,"loop":false,"ref":192,"oy":0.9898},"fx_blast":{"n":6,"w":168,"h":161,"fps":10,"loop":false,"ref":160,"oy":0.9876},"firepit":{"n":4,"w":178,"h":157,"fps":10,"loop":true,"ref":160,"oy":0.9873},"fx_levelup":{"n":6,"w":150,"h":164,"fps":10,"loop":false,"ref":160,"oy":0.9878},"fx_recall":{"n":4,"w":188,"h":113,"fps":10,"loop":true,"ref":160,"oy":0.9823},"fx_heal":{"n":4,"w":208,"h":224,"fps":10,"loop":true,"ref":128,"oy":0.9911},"flag":{"n":4,"w":180,"h":158,"fps":10,"loop":true,"ref":160,"oy":0.9873}};
 const ANIM_OK = new Set();
+/* ธงโบก (ภาพจาก GPT 4 เฟรม) วางทับธงในภาพบ้านหลัก/ประตู หรือปักเสาใหม่บนหลังคา
+   spots: ["f", x, y, กว้าง] = ธงเดิมในภาพ (มุมซ้ายบนของธง) · ["p", x, y, กว้าง] = ปักเสาที่จุดนั้น (สัดส่วนของภาพ) */
+const FLAG = {"w": 96, "h": 47, "spots": {"camp1": [["f", 0.507, 0.035, 0.326]], "camp5": [["f", 0.556, 0.044, 0.215]], "gate1": [["f", 0.195, 0.056, 0.195], ["f", 0.79, 0.056, 0.205]], "gate3": [["f", 0.225, 0.057, 0.175], ["f", 0.81, 0.051, 0.18]], "camp2": [["p", 0.448, 0.0, 0.26]], "camp3": [["p", 0.299, 0.0, 0.24]], "camp4": [["p", 0.601, 0.0, 0.22]], "gate2": [["p", 0.105, 0.006, 0.2], ["p", 0.755, 0.0, 0.2]]}};
 const ANIM_TINT = { 1: 0xc9c07a, 2: 0xa6e07a, 3: 0xffa070, 4: 0xb0dcff, 5: 0xa890d8, 6: 0xbdbdbd, 7: 0xff9a8c };   // ตัวต่างธาตุใช้ท่าของตัวปกติแล้วย้อมสี
 function animBase(key) {   // ชื่อชุดท่าของ Monster: zombie3 → zombie0
   if (ANIM_OK.has(key + "_walk")) return { base: key, tint: null };
@@ -3489,6 +3608,26 @@ class GameScene extends Phaser.Scene {
     if (fl > 0.05) b.setTint(0xff7a6a); else if (v.cur && v.animTint) b.setTint(v.animTint); else if (v.tint && !v.cur) b.setTint(v.tint); else b.clearTint();
   }
 
+  // ปักธงโบกบนอาคาร: rect = กรอบภาพในโลก {x, y, w, h} (มุมซ้ายบน)
+  placeFlags(owner, spots, rect, depth) {
+    if (owner.flags) for (const f of owner.flags) f.destroy();
+    owner.flags = [];
+    if (!spots || !this.anims.exists("a_flagwave")) return;
+    for (const [kind, fx, fy, fw] of spots) {
+      let x = rect.x + fx * rect.w, y = rect.y + fy * rect.h;
+      const w = Math.max(14, fw * rect.w * (kind === "f" ? 1.08 : 1));
+      if (kind === "p") {   // เสาธงใหม่
+        const ph = Math.max(12, w * 0.75), g = this.add.graphics().setDepth(depth);
+        g.fillStyle(0x5a3a1c, 1); g.fillRect(x - 1, y - ph, 2.2, ph + 2); g.fillStyle(0xe2b04a, 1); g.fillCircle(x + 0.1, y - ph - 1, 2);
+        owner.flags.push(g); y -= ph; x += 0.5;
+      }
+      const sp = this.add.sprite(x, y, "an_flagwave").setOrigin(0.03, 0.06).setDepth(depth + 0.1);
+      sp.setScale(w / FLAG.w); sp.play({ key: "a_flagwave", startFrame: Math.floor(Math.random() * 4) });
+      owner.flags.push(sp);
+    }
+  }
+  rectOf(img) { return { x: img.x - img.originX * img.displayWidth, y: img.y - img.originY * img.displayHeight, w: img.displayWidth, h: img.displayHeight }; }
+
   // เอฟเฟกต์แบบเฟรม เล่นครั้งเดียวแล้วหาย
   fxAnim(name, x, y, w, depth) {
     if (!ANIM_OK.has(name)) return false;
@@ -3512,6 +3651,7 @@ class GameScene extends Phaser.Scene {
   preload() {
     this.load.on("loaderror", () => {});   // ไม่มีไฟล์ภาพ: ใช้ภาพวาดด้วยโค้ด
     for (const n of ART_FILES) if (!this.textures.exists("art_" + n)) this.load.image("art_" + n, ART_DIR + n + ".webp");
+    if (!this.textures.exists("an_flagwave")) this.load.spritesheet("an_flagwave", ANIM_DIR + "flagwave.webp", { frameWidth: FLAG.w, frameHeight: FLAG.h });
     for (const [n, a] of Object.entries(ANIM)) if (!this.textures.exists("an_" + n)) this.load.spritesheet("an_" + n, ANIM_DIR + n + ".webp", { frameWidth: a.w, frameHeight: a.h });
   }
 
@@ -3541,6 +3681,8 @@ class GameScene extends Phaser.Scene {
       if (!this.anims.exists("a_" + n)) this.anims.create({ key: "a_" + n, frames: this.anims.generateFrameNumbers("an_" + n, { start: 0, end: a.n - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0 });
     }
     artUi();
+    if (this.textures.exists("an_flagwave") && !this.anims.exists("a_flagwave"))
+      this.anims.create({ key: "a_flagwave", frames: this.anims.generateFrameNumbers("an_flagwave", { start: 0, end: 3 }), frameRate: 7, repeat: -1, yoyo: true });
     this.makeTextures();
     const ground = this.add.tileSprite(0, 0, w, h, ART_OK.has("grass") ? "art_grass" : "ground").setOrigin(0, 0).setDepth(-3e6);
     if (ART_OK.has("grass")) ground.setTileScale(160 / this.textures.get("art_grass").getSourceImage().width);
@@ -4155,11 +4297,12 @@ class GameScene extends Phaser.Scene {
         const root = this.add.container(u.x, u.y);
         const shadow = this.add.image(0, 8, "shadow").setScale(0.6);
         const body = this.add.sprite(0, 0, { archer: "u_archer", swordsman: "u_sword", medic: "u_medic" }[u.type] || "worker");
+        if (u.type === "mechanic") body.setTint(0xffd7a0);
         const load = this.add.image(-6, -8, "pebbles").setScale(0.7).setVisible(false);
-        const art = this.skin(body, { archer: "u_archer", swordsman: "u_sword", medic: "u_medic" }[u.type] || "worker", { h: u.type === "worker" ? 36 : 40, oy: 0.95 });
+        const art = this.skin(body, { archer: "u_archer", swordsman: "u_sword", medic: "u_medic", mechanic: "hero_engineer" }[u.type] || "worker", { h: u.type === "worker" ? 36 : 40, oy: 0.95 });
         root.add([shadow, body, load]);
         v = { root, body, load, art, carry: -1 };
-        { const sn = { archer: "u_archer", swordsman: "u_sword", medic: "u_medic" }[u.type] || "worker";
+        { const sn = { archer: "u_archer", swordsman: "u_sword", medic: "u_medic", mechanic: "hero_engineer" }[u.type] || "worker";
           if (art) this.animBind(v, sn, null, sn, { h: u.type === "worker" ? 36 : 40, oy: 0.95 }); }
         this.unitViews.set(u.id, v);
       }
@@ -4290,7 +4433,10 @@ class GameScene extends Phaser.Scene {
       g.drawImage(side, 0, sTop, side.width, sBot - sTop, cx - SW / 2, top, SW, bot - top + 0.5);
       if (!dn) g.drawImage(side, 0, sBot, side.width, side.height - sBot, cx - SW / 2, bot, SW, lift - 2);
       if (!up) { const ch = sTop * SW / side.width; g.drawImage(side, 0, 0, side.width, sTop, cx - SW / 2, top - ch + 0.5, SW, ch); }
-      if (hor) { const pw = SW + 4, ph = Math.min(FH + 10, post.height * pw / post.width); g.drawImage(post, cx - pw / 2, fBot - ph + 2, pw, ph); }
+      if (hor) {
+        const pw = SW + 4, ph = Math.min(FH + 10, post.height * pw / post.width); g.drawImage(post, cx - pw / 2, fBot - ph + 2, pw, ph);
+        (this.texRect || (this.texRect = {}))[key] = { x: -pw / 2, y: fBot - ph + 2 - CH, w: pw, h: ph, post: true };
+      }
     }
     t.refresh();
     return key;
@@ -4307,8 +4453,10 @@ class GameScene extends Phaser.Scene {
       const gi = this.textures.get("art_gate" + lv).getSourceImage();
       const CW = 3 * S, CH = 3 * S, t = this.textures.createCanvas(key, CW * K, CH * K), g = t.getContext();
       g.scale(K, K);
-      const gw = 2 * S + 8, gh = gi.height * gw / gi.width, yb = CH - 6;
-      g.drawImage(gi, CW / 2 - gw / 2, yb - gh, gw, gh);
+      const gw = 2 * S + (mask & 8 ? 9 : 0) + (mask & 2 ? 9 : 0) + 6, gh = gi.height * gw / gi.width * 0.94, yb = CH - 6;   // ยืดเลยขอบไปทับกำแพงข้าง ๆ ไม่ให้เห็นช่อง
+      const gx = CW / 2 - gw / 2 + ((mask & 2 ? 9 : 0) - (mask & 8 ? 9 : 0)) / 2;
+      g.drawImage(gi, gx, yb - gh, gw, gh);
+      (this.texRect || (this.texRect = {}))[key] = { x: gx - CW / 2, y: yb - gh - CH, w: gw, h: gh };
       t.refresh(); return key;
     }
     if (!ART_OK.has("gate_side" + lv) || !ART_OK.has("wall_side" + lv)) return null;
@@ -4317,11 +4465,11 @@ class GameScene extends Phaser.Scene {
     g.scale(K, K);
     const cx = CW / 2, yb = CH, up = mask & 1, dn = mask & 4;
     const sTop = side.height * 0.3, sBot = side.height * 0.8;
-    const top = yb - 2 * S - lift, bot = yb - lift;
+    const top = yb - 2 * S - lift - (up ? 6 : 0), bot = yb - lift + (dn ? 6 : 0);   // ยื่นเลยขอบไปทับกำแพงบน/ล่าง
     g.drawImage(side, 0, sTop, side.width, sBot - sTop, cx - SW / 2, top, SW, bot - top + 0.5);
     if (!dn) g.drawImage(side, 0, sBot, side.width, side.height - sBot, cx - SW / 2, bot, SW, lift - 2);
     if (!up) { const ch = sTop * SW / side.width; g.drawImage(side, 0, 0, side.width, sTop, cx - SW / 2, top - ch + 0.5, SW, ch); }
-    const gw = SW + 12, gh = gs.height * gw / gs.width;   // ภาพประตูข้างวางกลาง 2 ช่อง
+    const gw = SW + 16, gh = Math.min(2 * S + lift, gs.height * gw / gs.width);   // ภาพประตูข้างวางกลาง 2 ช่อง
     g.drawImage(gs, cx - gw / 2, yb - S - lift / 2 - gh / 2 - 4, gw, gh);
     t.refresh(); return key;
   }
@@ -4431,12 +4579,24 @@ class GameScene extends Phaser.Scene {
     const [base0, mk] = tex.split("#"), [base, v] = base0.split(":"), name = ART_BUILD[base], lv = /\d$/.test(name || "") ? name.slice(-1) : "1";
     if (b.type === "wall" && mk != null) {
       const key = this.wallArtImg(lv, +mk) || this.wallArt(lv, +mk, b.tx, b.ty);
-      if (key) { img.setTexture(key).setOrigin(0.5, key.startsWith("wi") ? (4 * DATA.tile - 4) / (4 * DATA.tile) : (2 * DATA.tile - 4) / (3 * DATA.tile)).setScale(0.5).clearTint(); img.base = 0.5; img.art = true; img.y = (b.ty + 1) * DATA.tile; return; }
+      if (key) {
+        img.setTexture(key).setOrigin(0.5, key.startsWith("wi") ? (4 * DATA.tile - 4) / (4 * DATA.tile) : (2 * DATA.tile - 4) / (3 * DATA.tile)).setScale(0.5).clearTint(); img.base = 0.5; img.art = true; img.y = (b.ty + 1) * DATA.tile;
+        // ธงบนเสามุมกำแพง (ตำแหน่งในผ้าใบ → โลก: x - กึ่งกลาง, y - ฐาน)
+        const r = this.texRect && this.texRect[key];
+        if (r && r.post) this.placeFlags(img, [["p", 0.5, 0.04, 0.95]], { x: img.x + r.x, y: img.y + r.y + 4, w: r.w, h: r.h }, img.y + 0.5);
+        else this.placeFlags(img, null);
+        return; }
     }
     // ภาพจริงด้านข้าง / มุม (ชุด v2)
     if (b.type === "gate" && mk != null) {   // ประตู: ประกอบภาพให้ต่อกับกำแพงสนิท
       const key = this.gateArt(lv, v === "v", +mk);
-      if (key) { img.setTexture(key).setOrigin(0.5, 1).setScale(0.5).clearTint(); img.base = 0.5; img.art = true; img.y = (b.ty + (b.h || 1)) * DATA.tile; return; }
+      if (key) {
+        img.setTexture(key).setOrigin(0.5, 1).setScale(0.5).clearTint(); img.base = 0.5; img.art = true; img.y = (b.ty + (b.h || 1)) * DATA.tile;
+        const r = this.texRect && this.texRect[key];
+        if (r) this.placeFlags(img, FLAG.spots["gate" + lv], { x: img.x + r.x, y: img.y + r.y, w: r.w, h: r.h }, img.depth + 0.5);
+        else this.placeFlags(img, null);
+        return;
+      }
     }
     const sideName = v === "v" ? (b.type === "gate" ? "gate_side" : "wall_side") + lv : v === "c" ? "wall_corner" + lv : null;
     if (sideName && ART_OK.has(sideName)) {
@@ -4473,6 +4633,7 @@ class GameScene extends Phaser.Scene {
           if (!this.skin(this.campImg, "camp" + b.lv, { w: 118 + b.lv * 8, oy: 0.9 }))
             this.campImg.setTexture(b.lv >= 3 ? "hall" : "tent").setOrigin(0.5, b.lv >= 3 ? 96 / 104 : 88 / 96).setScale(b.lv >= 5 ? 1.12 : b.lv === 4 ? 1.05 : 1);
           this.campLabel.setText(`บ้านหลัก Lv ${b.lv}`);
+          if (this.campImg.texture.key === "art_camp" + b.lv) this.placeFlags(this.campImg, FLAG.spots["camp" + b.lv], this.rectOf(this.campImg), this.campImg.depth);
           this.drawZoneRing();
         }
         continue;
@@ -4483,14 +4644,14 @@ class GameScene extends Phaser.Scene {
       const have = this.buildViews.get(b.id);
       if (have) { if (have.tex !== tex) { have.tex = tex; this.skinBuilding(have, b, tex); } continue; }
       const S = DATA.tile, bx = (b.tx + (b.w || b.size) / 2) * S, by = (b.ty + (b.h || b.size)) * S;
-      const img = this.add.image(bx, by + (b.type === "tower" ? 4 : 2), tex.split(":")[0]).setOrigin(0.5, 1).setDepth(by);   // ประตูฐานตรงแนวกำแพง
+      const img = this.add.image(bx, by + (b.type === "tower" ? 4 : 2), tex.split(":")[0]).setOrigin(0.5, 1).setDepth(by + (b.type === "gate" ? 1 : 0));   // ประตูฐานตรงแนวกำแพง
       img.tex = tex; this.skinBuilding(img, b, tex);
       const full = img.base || 1;
       const fx = img.scaleX, fy = img.scaleY;
       img.setScale(fx * 0.6, fy * 0.6); this.tweens.add({ targets: img, scaleX: fx, scaleY: fy, duration: 220, ease: "Back.easeOut" });
       this.buildViews.set(b.id, img);
     }
-    for (const [id, img] of this.buildViews) if (!seen.has(id)) { img.destroy(); this.buildViews.delete(id); }
+    for (const [id, img] of this.buildViews) if (!seen.has(id)) { if (img.flags) for (const f of img.flags) f.destroy(); img.destroy(); this.buildViews.delete(id); }
   }
 
   visibleAt(x, y) {
@@ -4565,6 +4726,10 @@ class GameScene extends Phaser.Scene {
         Toast.show(`วิจัย ${DATA.research[e.key].name} Lv ${e.lv} แล้ว`);
       } else if (e.type === "trained" && e.unit && e.unit !== "worker") {
         Toast.show(`จ้าง${DATA.units[e.unit].name}แล้ว`);
+      } else if (e.type === "repairTick") {
+        if (this.visibleAt(e.x, e.y)) { this.popText(e.x, e.y, "+" + e.n, "#ffd166", 12); this.puff("fx_hit", e.x + (Math.random() - 0.5) * 16, e.y + 14, { w: 16, dur: 220, from: 0.5, to: 1 }); }
+      } else if (e.type === "repairNoRes" && e.team === this.team) {
+        Toast.show("ช่างซ่อม: ไม้/หินไม่พอสำหรับซ่อม");
       } else if (e.type === "heal") {
         if (this.visibleAt(e.x, e.y)) { this.popText(e.x, e.y, "+" + e.n, "#7fe08a", 13); this.fxAnim("fx_heal", e.x, e.y + 10, 40); }
       } else if (e.type === "repaired" && e.team === this.team) {
@@ -4632,7 +4797,7 @@ class GameScene extends Phaser.Scene {
         this.tileImgs.set(e.idx, img); this.statics.push(img);
         const full = img.base || 1; img.setScale(full * 0.3); this.tweens.add({ targets: img, scale: full, duration: 600, ease: "Back.easeOut" });
       } else if (e.type === "noResource" && e.team === this.team) {
-        Banner.show("ไม้และหินรอบค่ายหมดแล้ว · คนงานรอต้นไม้งอกใหม่ตอนเช้า หรือ Hero ออกไปเก็บเอง", "warn");
+        Banner.show("ไม้และหินในพื้นที่ที่สำรวจแล้วหมด · ให้ Hero ออกสำรวจแผนที่เพิ่ม คนงานจะไปเก็บได้ไกลขึ้น", "warn");
       } else if (e.type === "skillFail" && e.id === this.localHero) {
         Toast.show(e.why === "mp" ? "MP ไม่พอ" : e.why === "target" ? "ไม่มีเป้าในระยะ" : "สกิลยังไม่พร้อม");
       } else if (e.type === "rainWave") {
