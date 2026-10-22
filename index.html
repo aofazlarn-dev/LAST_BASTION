@@ -728,6 +728,8 @@ const DATA = {
     // Mage: ยิงลูกไฟไกล ระเบิดเป็นวงเล็ก สกิลวงกว้างหลายสกิล
     mage: { name: "Mage", hp: 105, mp: 170, atk: 17, def: 2, as: 0.85, spd: 160, rng: 230, crit: 0.1, vision: 7, splash: 52, skills: ["meteor", "nova", "chain"], start: "ไม้เท้าฝึกหัด" },
   },
+  // รางวัล: ฆ่า Monster ได้ไม้+หินตามระดับ · รอดแต่ละคืนได้โบนัส 200, 500, 800, ... (+300 ต่อคืน)
+  rewards: { kill: { low: 2, mid: 5, high: 10, boss: 150 }, nightBase: 200, nightStep: 300 },
   hero: { gatherMul: 5, mpRegen: 6, campRegenPct: 0.1, respawnSec: 10, recallSec: 3, arrowSpeed: 640, arrowLife: 0.5 },
   levels: { max: 50, hp: 12, atk: 2, def: 0.6, healOnLevel: 0.3, nightBonus: 40 },
   items: {
@@ -1362,6 +1364,8 @@ const Core = (() => {
         if (attacker.kind === "unit") giveUnitExp(st, attacker, Math.round((8 + target.lv * 4) * (DATA.monsters[target.type].exp || 1)));
         giveExp(st, attacker.team, Math.round((8 + target.lv * 4) * (DATA.monsters[target.type].exp || 1) * (target.arch === "runner" ? 0.8 : 1)));
         maybeDrop(st, target);
+        { const n = DATA.rewards.kill[DATA.monsters[target.type].tier] || 0, stk = st.stock[attacker.team === 0 ? 1 : attacker.team];
+          if (n && stk && !target.burned) { stk.wood = (stk.wood || 0) + n; stk.stone = (stk.stone || 0) + n; st.events.push({ type: "killReward", x: target.x, y: target.y - 26, n }); } }
       }
       if (target.kind === "unit") {
         releaseClaim(st, target);
@@ -1824,7 +1828,10 @@ const Core = (() => {
       for (const m of st.monsters) if ((m.wave || m.nightSpawn) && !m.dead) { m.dead = true; st.events.push({ type: "death", id: m.id, kind: "monster", x: m.x, y: m.y, burn: true }); }
       giveExp(st, st.camp.team, DATA.levels.nightBonus * st.day);
       st.day++; st.clock = 0; st.wave = null; st.nightPlan = null;
-      st.events.push({ type: "dawn", day: st.day });
+      // โบนัสรอดคืน: คืนที่ k ได้ไม้และหินอย่างละ 200 + 300×(k-1)
+      const night = st.day - 1, bonus = DATA.rewards.nightBase + DATA.rewards.nightStep * (night - 1);
+      for (const t in st.stock) { st.stock[t].wood = (st.stock[t].wood || 0) + bonus; st.stock[t].stone = (st.stock[t].stone || 0) + bonus; }
+      st.events.push({ type: "dawn", day: st.day, bonus, night });
       regrowResources(st);
       if (st.day > C.nights && !st.endless && !st.result) { st.result = "win"; st.events.push({ type: "result", result: "win" }); }
     }
@@ -4932,7 +4939,10 @@ class GameScene extends Phaser.Scene {
       } else if (e.type === "night") {
         Banner.show(`คืนที่ ${e.night} เริ่มแล้ว · ป้องกันค่ายไว้!`, "night");
       } else if (e.type === "dawn") {
-        Banner.show(e.day > DATA.cycle.nights && !this.state.endless ? "รอดครบทุกคืนแล้ว!" : `รุ่งเช้า วันที่ ${e.day} · Monster ที่เหลือโดนแดดเผา`, "day");
+        Banner.show(e.day > DATA.cycle.nights && !this.state.endless ? `รอดครบทุกคืนแล้ว! · โบนัส ไม้ +${e.bonus} หิน +${e.bonus}` : `รอดคืนที่ ${e.night}! โบนัส ไม้ +${e.bonus} หิน +${e.bonus} · วันที่ ${e.day}`, "day");
+        if (e.bonus) { const c = this.state.camp; this.popText(c.x, c.y - 70, `+${e.bonus} ไม้  +${e.bonus} หิน`, "#ffd166", 20); }
+      } else if (e.type === "killReward") {
+        if (e.n >= 10 && this.visibleAt(e.x, e.y)) this.popText(e.x, e.y - 12, `+${e.n} ไม้/หิน`, "#e2c48a", e.n >= 100 ? 18 : 12);
       } else if (e.type === "result") {
         Result.show(this.state, e.result);
       } else if (e.type === "gain") {
