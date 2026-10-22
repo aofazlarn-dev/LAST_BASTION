@@ -808,8 +808,9 @@ const DATA = {
       levels: [{ name: "ประตูไม้", hpMul: 1 }, { name: "ประตูหิน", hpMul: 2, def: 7, cost: { wood: 8, stone: 6 } }, { name: "ประตูเหล็ก", hpMul: 3.4, def: 11, cost: { wood: 14, stone: 12 } }],
     },
     tower: {
-      name: "ป้อมธนู", cost: { wood: 25, stone: 12 }, hp: 240, def: 4, atk: 12, as: 1.1, rng: 220, vision: 7, maxLv: 3,
-      levels: [{ hpMul: 1, atkMul: 1 }, { hpMul: 1.6, atkMul: 1.8, asMul: 1.15, rngAdd: 20, cost: { wood: 45, stone: 18 } }, { hpMul: 2.4, atkMul: 3, asMul: 1.3, rngAdd: 40, cost: { wood: 80, stone: 35 } }],
+      name: "ป้อมธนู", cost: { wood: 25, stone: 12 }, hp: 240, def: 4, atk: 14.4, as: 1.1, rng: 220, vision: 7, maxLv: 3,   // ดาเมจ +20% (เดิม 12)
+      // ยิงเร็วขึ้นเลเวลละ 10% · ยิงพร้อมกันได้ = เลเวล (Lv1 1 เป้า, Lv2 2 เป้า, Lv3 3 เป้า)
+      levels: [{ hpMul: 1, atkMul: 1, targets: 1 }, { hpMul: 1.6, atkMul: 1.8, asMul: 1.1, rngAdd: 20, targets: 2, cost: { wood: 45, stone: 18 } }, { hpMul: 2.4, atkMul: 3, asMul: 1.2, rngAdd: 40, targets: 3, cost: { wood: 80, stone: 35 } }],
     },
     barracks: { name: "ค่ายทหาร", cost: { wood: 70, stone: 20 }, hp: 450, def: 5, vision: 5, size: 2, needCamp: 2, hires: ["archer", "swordsman"] },
     infirmary: { name: "สถานพยาบาล", cost: { wood: 60, stone: 15 }, hp: 350, def: 4, vision: 5, size: 2, needCamp: 2, hires: ["medic"] },
@@ -2792,11 +2793,15 @@ const Core = (() => {
       if (b.dead || b.type !== "tower") continue;
       b.atkCd -= dt;
       if (b.atkCd > 0) continue;
-      const tgt = nearestEnemy(st, b, b.rng);
-      if (!tgt) continue;
-      const a = Math.atan2(tgt.y - (b.y - 18), tgt.x - b.x);
-      fireArrow(st, b, a, 1, -18);
-      b.aim = a; b.atkCd = 1 / b.as;
+      const L = DATA.buildings.tower.levels[(b.lv || 1) - 1], n = (L && L.targets) || 1;
+      const foes = enemiesOf(st, b.team).map((o) => [o, Math.hypot(o.x - b.x, o.y - b.y) - o.r]).filter((q) => q[1] < b.rng).sort((p, q) => p[1] - q[1]).slice(0, n);
+      if (!foes.length) continue;
+      for (const [tgt] of foes) {   // ยิงหลายเป้าพร้อมกันตามเลเวล
+        const a = Math.atan2(tgt.y - (b.y - 18), tgt.x - b.x);
+        fireArrow(st, b, a, 1, -18);
+        b.aim = a;
+      }
+      b.atkCd = 1 / b.as;
     }
   }
 
