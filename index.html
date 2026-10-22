@@ -205,7 +205,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 .inv-stats b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .inv-equip { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .inv-slot { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-dim); }
-.inv-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+.inv-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; max-height: min(290px, 42vh); min-height: 112px; flex: none; overflow-y: auto; padding-right: 2px; }
 .inv-cell {
   position: relative; aspect-ratio: 1; min-width: 0; max-width: 100%; display: grid; place-items: center;
   background: rgba(0, 0, 0, 0.35); border: 1.5px solid var(--r, var(--panel-line)); border-radius: 5px;
@@ -565,7 +565,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
 </div>
 
 <div class="inv" id="inv" hidden>
-  <div class="inv-head"><b>กระเป๋า</b><span id="inv-count">0 / 12</span><button type="button" class="btn" id="inv-close" aria-label="ปิดกระเป๋า">ปิด</button></div>
+  <div class="inv-head"><b>กระเป๋า</b><span id="inv-count">0 / 30</span><button type="button" class="btn" id="inv-close" aria-label="ปิดกระเป๋า">ปิด</button></div>
   <div class="inv-stats" id="inv-stats"></div>
   <div class="inv-equip" id="inv-equip"></div>
   <div class="inv-grid" id="inv-grid"></div>
@@ -746,7 +746,7 @@ const DATA = {
   hero: { gatherMul: 5, mpRegen: 6, campRegenPct: 0.1, respawnSec: 10, recallSec: 3, arrowSpeed: 640, arrowLife: 0.5 },
   levels: { max: 50, hp: 12, atk: 2, def: 0.6, healOnLevel: 0.3, nightBonus: 40 },
   items: {
-    bag: 12, pickupR: 30, lootSec: 120,
+    bag: 30, pickupR: 30, lootSec: 120,
     dropChance: { normal: 0.08, wave: 0.06 },
     rarity: [
       { key: "common", name: "ธรรมดา", weight: 70, affixes: 0, mul: 1 },
