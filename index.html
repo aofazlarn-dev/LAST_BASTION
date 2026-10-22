@@ -175,6 +175,18 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
   display: grid; place-content: center; background: var(--panel); color: var(--ink);
   border: 2px solid var(--panel-line); font: 700 12.5px var(--font-ui); cursor: pointer; touch-action: manipulation;
 }
+.fix-btn {
+  position: fixed; width: 64px; height: 64px; border-radius: 50%; z-index: 3;
+  right: calc(env(safe-area-inset-right, 0px) + 16px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 270px);
+  display: grid; place-content: center; text-align: center; background: var(--panel); color: var(--ink);
+  border: 2px solid #e2b04a; font: 700 12.5px var(--font-ui); cursor: pointer; touch-action: manipulation;
+  box-shadow: 0 0 0 3px rgba(226, 176, 74, 0.25);
+}
+.fix-btn span { font-size: 9px; color: var(--ink-dim); white-space: nowrap; }
+.fix-btn.poor { border-color: var(--panel-line); box-shadow: none; }
+.fix-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-height: 460px) { .fix-btn { bottom: calc(env(safe-area-inset-bottom, 0px) + 120px); right: calc(env(safe-area-inset-right, 0px) + 160px); } }
 .bag-btn span { font-family: var(--font-pixel); font-size: 9px; color: var(--ink-dim); }
 .bag-btn.new { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(226, 176, 74, 0.25); }
 .bag-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -541,6 +553,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
   <span id="hint-keys"><kbd>WASD</kbd> หรือ<kbd>คลิก</kbd>เพื่อเดิน · ยืนติดต้นไม้/หินเพื่อเก็บ · <kbd>B</kbd> สร้าง · <kbd>Q</kbd> สกิล · <kbd>I</kbd> กระเป๋า · <kbd>H</kbd> กลับฐาน · <kbd>Esc</kbd> เมนู</span>
 </div>
 
+<button type="button" class="fix-btn" id="fix-btn" hidden aria-label="ซ่อมสิ่งก่อสร้างทั้งหมดที่เสียหาย">ซ่อม<span id="fix-cost"></span></button>
 <button type="button" class="bag-btn" id="bag-btn" aria-expanded="false" aria-controls="inv">กระเป๋า<span>I</span></button>
 
 <div class="inv-detail loot-tip" id="loot-tip" hidden></div>
@@ -1112,6 +1125,16 @@ const Core = (() => {
   function popCap(st, team, kind) { const L = DATA.buildings.camp.levels[campLevel(st, team) - 1]; return kind === "army" ? L.army : L.pop; }
   function popUsed(st, team, kind) { return st.units.filter((u) => u.team === team && !u.dead && ((u.type === "worker") === (kind !== "army"))).length; }
   function buildRadius(st, team) { return DATA.buildings.camp.levels[campLevel(st, team) - 1].radius; }
+  // ค่าอัปเกรดรวมทุกอย่างให้เท่าเลเวลบ้านหลัก
+  function upgradeToCampCost(st, team) {
+    const target = campLevel(st, team), total = {}; let n = 0;
+    for (const b of st.buildings) {
+      if (b.team !== team || b.type === "camp" || !DATA.buildings[b.type].levels) continue;
+      const D = DATA.buildings[b.type], top = Math.min(target, D.maxLv || 1);
+      for (let lv = b.lv; lv < top; lv++) { const c = D.levels[lv].cost; if (!c) continue; n++; for (const k in c) total[k] = (total[k] || 0) + c[k]; }
+    }
+    return { total, n };
+  }
   function upgradeCost(b) {
     const D = DATA.buildings[b.type];
     if (!D.levels || b.lv >= (D.maxLv || 1)) return null;
@@ -2260,6 +2283,23 @@ const Core = (() => {
       st.events.push({ type: "upgraded", id: b.id, lv: b.lv, x: b.x, y: b.y, btype: b.type });
       return true;
     }
+    // อัปเกรดสิ่งก่อสร้างทุกอย่างขึ้นไปเท่าเลเวลบ้านหลัก (ค่าใช้จ่ายปกติ) ทำทีละขั้นจนครบหรือทรัพยากรหมด
+    if (cmd.type === "upgradeToCamp") {
+      const target = campLevel(st, h.team); let n = 0, stop = null;
+      for (let pass = 0; pass < 5 && !stop; pass++) {
+        const list = st.buildings.filter((b) => b.team === h.team && b.type !== "camp" && DATA.buildings[b.type].levels && b.lv < Math.min(target, DATA.buildings[b.type].maxLv || 1)).sort((a, b) => a.lv - b.lv);
+        if (!list.length) break;
+        for (const b of list) {
+          const cost = upgradeCost(b);
+          if (!cost) continue;
+          if (!afford(st.stock[h.team], cost)) { stop = "cost"; break; }
+          pay(st.stock[h.team], cost); b.lv++; applyLevel(b); n++;
+          st.events.push({ type: "upgraded", id: b.id, lv: b.lv, x: b.x, y: b.y, btype: b.type, quiet: true });
+        }
+      }
+      st.events.push({ type: "upgradedAll", team: h.team, n, stop });
+      return n ? true : stop || "nothing";
+    }
     if (cmd.type === "research") {
       const R = DATA.research[cmd.key], cur = st.research[h.team];
       if (!R) return "blocked";
@@ -2501,20 +2541,26 @@ const Core = (() => {
     st.insideKey = key; st.inside = null;
     const N = st.map.n, S = DATA.tile, c = N / 2, lim = buildRadius(st, team) + 3, t = st.map.t;
     const blocked = (i) => t[i] === T.BUILD || t[i] === T.GATE || t[i] === T.WATER || t[i] === T.TREE || t[i] === T.ROCK;   // ต้นไม้/หิน/น้ำ นับเป็นแนวป้องกันด้วย
-    const ins = new Uint8Array(N * N), q = new Int32Array(N * N);
+    // ด้านนอก = ช่องที่เดินถึงได้จากนอกเขตค่าย (ผ่านกำแพง/ประตูไม่ได้) · ด้านใน = ที่เหลือภายในกำแพงชั้นนอกสุด
+    // (กำแพงหลายชั้น: พื้นที่ระหว่างชั้นนับเป็นด้านในด้วย ทหารไปยืนชั้นนอกสุดได้ผ่านประตูของตัวเอง)
+    const outside = new Uint8Array(N * N), ins = new Uint8Array(N * N), q = new Int32Array(N * N);
     let head = 0, tail = 0;
     const s0 = Math.floor((st.camp.y + 70) / S) * N + Math.floor(st.camp.x / S);
-    if (blocked(s0)) return null;
-    ins[s0] = 1; q[tail++] = s0;
+    for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) {
+      const i = y * N + x;
+      if (Math.hypot(x + 0.5 - c, y + 0.5 - c) > lim && !blocked(i)) { outside[i] = 1; q[tail++] = i; }
+    }
     while (head < tail) {
       const i = q[head++], x = i % N, y = (i / N) | 0;
-      if (Math.hypot(x + 0.5 - c, y + 0.5 - c) > lim) return null;   // ยังไม่ปิดล้อม
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const ni = (y + dy) * N + x + dx;
-        if (ins[ni] || blocked(ni) || t[ni] === T.CAMP && false) continue;
-        ins[ni] = 1; q[tail++] = ni;
+        const nx = x + dx, ny = y + dy; if (nx < 1 || ny < 1 || nx >= N - 1 || ny >= N - 1) continue;
+        const ni = ny * N + nx;
+        if (outside[ni] || blocked(ni)) continue;
+        outside[ni] = 1; q[tail++] = ni;
       }
     }
+    if (outside[s0]) return null;   // ยังล้อมไม่ครบ
+    for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) { const i = y * N + x; if (!outside[i] && !blocked(i) && t[i] !== T.CAMP && Math.hypot(x + 0.5 - c, y + 0.5 - c) <= lim) ins[i] = 1; }
     // ระยะจากด้านนอกถึงด้านใน (BFS หลายจุดเริ่มจากช่องด้านใน)
     const out = new Int16Array(N * N).fill(-1), near = new Int32Array(N * N).fill(-1), edge = [];
     head = 0; tail = 0;
@@ -2525,7 +2571,10 @@ const Core = (() => {
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
         const ni = ny * N + nx;
-        if (ins[i] && !ins[ni] && blocked(ni) && edge[edge.length - 1] !== i) edge.push(i);
+        if (ins[i] && !ins[ni] && blocked(ni) && edge[edge.length - 1] !== i) {   // ชิดกำแพงที่อีกฝั่งเป็นด้านนอก = กำแพงชั้นนอกสุด
+          const fx = nx + dx, fy = ny + dy, fi = fy * N + fx;
+          if (fx >= 0 && fy >= 0 && fx < N && fy < N && (outside[fi] || (blocked(fi) && outside[(fy + dy) * N + fx + dx]))) edge.push(i);
+        }
         if (out[ni] >= 0) continue;
         out[ni] = out[i] + 1; near[ni] = near[i]; q[tail++] = ni;
       }
@@ -2943,7 +2992,7 @@ const Core = (() => {
     st.tick++;
   }
 
-  return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, footprint, gateRot, afford, phase, expToNext, repairCost, freeSpot,
+  return { T, rng, genMap, createState, applyCommand, step, zoneIndex, canBuild, upgradeToCampCost, footprint, gateRot, afford, phase, expToNext, repairCost, freeSpot,
     popCap, popUsed, upgradeCost, buildingName, buildRadius, researchCost, campLevel, startLevel, buildCost };
 })();
 
@@ -3225,6 +3274,10 @@ const BPanel = (() => {
       const same = st.buildings.filter((e) => e.type === b.type && e.lv === b.lv && e.team === b.team).length;
       if (same > 1) acts.push(btn("upgradeAll", `อัปเกรด${D.levels[b.lv - 1].name}ทั้งหมด (${same})`, null));
     }
+    if (b.type === "camp") {   // อัปทุกอย่างให้เท่าเลเวลบ้านหลัก
+      const all = Core.upgradeToCampCost(st, b.team);
+      if (all.n) acts.push(btn("upgradeToCamp", `อัปเกรดสิ่งก่อสร้างทั้งหมดเป็น Lv ${b.lv} (${all.n} ขั้น)`, all.total, " primary"));
+    }
     if (b.hp < b.maxHp) acts.push(btn("repair", "ซ่อมทุกอย่างที่เสียหาย", Core.repairCost(st, b.team).total));
     html += `<div class="bp-act">${acts.join("")}</div>`;
 
@@ -3265,7 +3318,8 @@ const BPanel = (() => {
       let n = 0;
       for (const e of st.buildings.filter((x) => x.type === b.type && x.lv === b.lv && x.team === b.team)) { const rr = send({ type: "upgrade", id: e.id }); if (rr !== true) { r = n ? true : rr; break; } n++; }
       if (n) Toast.show(`อัปเกรดแล้ว ${n} ชิ้น`);
-    } else if (act === "repair") r = send({ type: "repair" });
+    } else if (act === "upgradeToCamp") r = send({ type: "upgradeToCamp" });
+    else if (act === "repair") r = send({ type: "repair" });
     else if (act === "hire") r = send({ type: "hire", unit: arg });
     else if (act === "research") r = send({ type: "research", key: arg });
     else if (act === "mode") { r = send({ type: "unitMode", unit: arg, mode: arg2 }); if (r === true) Toast.show(`${DATA.units[arg].name}: ${{ free: "อิสระ", follow: "ตาม Hero", guard: "เฝ้าค่าย" }[arg2]}`); }
@@ -3680,7 +3734,7 @@ function artUi() {
   document.documentElement.classList.add("art-ui");
   const put = (id, n) => { const el = document.getElementById(id); if (el && ART_OK.has(n)) el.insertAdjacentHTML("afterbegin", `<i class="aico" style="background-image:url(${ART_DIR}${n}.webp)" aria-hidden="true"></i>`); };
 
-  put("build-toggle", "ui_build"); put("bag-btn", "ui_bag"); put("recall", "ui_home"); put("menu-btn", "ui_menu"); put("skip", "ui_night"); put("repair", "ui_repair"); put("train", "ui_worker");
+  put("fix-btn", "ui_repair"); put("build-toggle", "ui_build"); put("bag-btn", "ui_bag"); put("recall", "ui_home"); put("menu-btn", "ui_menu"); put("skip", "ui_night"); put("repair", "ui_repair"); put("train", "ui_worker");
 }
 
 class GameScene extends Phaser.Scene {
@@ -4879,10 +4933,13 @@ class GameScene extends Phaser.Scene {
         Banner.show(e.gate ? "คนงานเข้าค่ายไม่ได้ · ประตูถูกหิน ต้นไม้ หรือน้ำขวาง ลองย้ายประตู" : "คนงานออกจากค่ายไม่ได้ · สร้างประตูไม้ในแนวกำแพง", "warn");
       } else if (e.type === "gateBlocked" && e.team === this.team) {
         Banner.show("ประตูนี้ตัน · ด้านหนึ่งติดหิน ต้นไม้ หรือน้ำ คนงานเดินผ่านไม่ได้", "warn");
+      } else if (e.type === "upgradedAll" && e.team === this.team) {
+        Toast.show(e.n ? `อัปเกรดแล้ว ${e.n} ขั้น${e.stop === "cost" ? " · ทรัพยากรไม่พอสำหรับที่เหลือ" : ""}` : "ทรัพยากรไม่พอ");
       } else if (e.type === "upgraded") {
         const img = this.buildViews.get(e.id);
         if (img) { this.syncBuildings(); const fx = img.scaleX, fy = img.scaleY; this.tweens.add({ targets: img, scaleX: { from: 1.25 * fx, to: fx }, scaleY: { from: 1.25 * fy, to: fy }, duration: 320, ease: "Back.easeOut" }); }
         this.popText(e.x, e.y - 30, `Lv ${e.lv}!`, "#ffd166", 16);
+        if (e.btype === "camp" && Core.upgradeToCampCost(this.state, this.team).n) setTimeout(() => Toast.show("อัปเกรดสิ่งก่อสร้างทั้งหมดได้ที่แผงบ้านหลัก"), 2600);
         if (e.btype === "camp") Banner.show(`บ้านหลัก Lv ${e.lv} · คนงาน ${Core.popCap(this.state, this.team, "worker")} · ทหาร ${Core.popCap(this.state, this.team, "army")} · เขตสร้างกว้างขึ้น`, "day");
       } else if (e.type === "researched") {
         Toast.show(`วิจัย ${DATA.research[e.key].name} Lv ${e.lv} แล้ว`);
@@ -5372,6 +5429,11 @@ const HUD = (() => {
     $("mp-fill").style.width = (me.mp / me.maxMp) * 100 + "%";
     $("mp-text").textContent = `MP ${Math.floor(me.mp)} / ${me.maxMp}`;
 
+    { // ปุ่มซ่อมด่วน: โผล่เมื่อมีสิ่งก่อสร้างเสียหาย
+      const rc = Core.repairCost(st, team), fb = $("fix-btn");
+      fb.hidden = !rc.any;
+      if (rc.any) { const t = Object.entries(rc.total).map(([k, v]) => `${v} ${k === "wood" ? "ไม้" : "หิน"}`).join(" "); if ($("fix-cost").textContent !== t) $("fix-cost").textContent = t; fb.classList.toggle("poor", !Core.afford(st.stock[team], rc.total)); }
+    }
     (DATA.classes[me.cls].skills || []).forEach((key, i) => {
       const sk = DATA.skills[key], el = $(i ? "skill" + (i + 1) : "skill"); if (!el) return;
       const cd = (me.cds && me.cds[i]) || 0;
@@ -5524,6 +5586,12 @@ function recall() {
     setTimeout(() => { hint.hidden = true; }, 20000);
   });
   document.getElementById("seed-input").addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") document.getElementById("start-btn").click(); });
+  document.getElementById("fix-btn").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    const sc = game.scene.getScene("game"), r = Core.applyCommand(sc.state, { type: "repair", heroId: sc.localHero });
+    Toast.show(r === true ? "ซ่อมทุกอย่างแล้ว" : BUILD_ERR[r] || "ทรัพยากรไม่พอ");
+    try { document.getElementById("game").focus({ preventScroll: true }); } catch (_) {}
+  });
   document.getElementById("result-same").addEventListener("click", () => restart(game.scene.getScene("game").state.seed));
   document.getElementById("result-continue").addEventListener("click", () => {
     const sc = game.scene.getScene("game");
