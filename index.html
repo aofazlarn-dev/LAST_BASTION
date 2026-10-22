@@ -722,11 +722,11 @@ const DATA = {
   ],
   zoneLevels: [[1, 10], [10, 20], [20, 35], [35, 50]],
   classes: {
-    archer: { name: "Archer", hp: 120, mp: 100, atk: 14, def: 3, as: 1.4, spd: 170, rng: 220, crit: 0.15, skills: ["shower", "snipe", "haste"], start: "ธนูไม้ฝึกหัด" },
+    archer: { name: "Archer", hp: 120, mp: 100, atk: 14, def: 3, as: 1.4, spd: 170, rng: 290, crit: 0.15, vision: 9, skills: ["shower", "snipe", "haste"], start: "ธนูไม้ฝึกหัด" },
     // Warrior: ตีรอบตัวเป็นวง (โดนทุกตัวในรัศมี) ถึก เลือดเยอะ
-    warrior: { name: "Warrior", hp: 230, mp: 110, atk: 19, def: 7, as: 1.0, spd: 160, rng: 50, crit: 0.1, cleave: 72, skills: ["whirl", "slam", "warcry"], start: "ดาบไม้ฝึกหัด" },
+    warrior: { name: "Warrior", hp: 230, mp: 110, atk: 19, def: 7, as: 1.0, spd: 160, rng: 50, crit: 0.1, vision: 6, cleave: 72, skills: ["whirl", "slam", "warcry"], start: "ดาบไม้ฝึกหัด" },
     // Mage: ยิงลูกไฟไกล ระเบิดเป็นวงเล็ก สกิลวงกว้างหลายสกิล
-    mage: { name: "Mage", hp: 105, mp: 170, atk: 17, def: 2, as: 0.85, spd: 160, rng: 260, crit: 0.1, splash: 52, skills: ["meteor", "nova", "chain"], start: "ไม้เท้าฝึกหัด" },
+    mage: { name: "Mage", hp: 105, mp: 170, atk: 17, def: 2, as: 0.85, spd: 160, rng: 230, crit: 0.1, vision: 7, splash: 52, skills: ["meteor", "nova", "chain"], start: "ไม้เท้าฝึกหัด" },
   },
   hero: { mpRegen: 6, campRegenPct: 0.1, respawnSec: 10, recallSec: 3, arrowSpeed: 640, arrowLife: 0.5 },
   levels: { max: 50, hp: 12, atk: 2, def: 0.6, healOnLevel: 0.3, nightBonus: 40 },
@@ -2796,7 +2796,7 @@ const Core = (() => {
     const N = st.map.n, S = DATA.tile;
     const teams = new Set(st.heroes.map((h) => h.team)); teams.add(st.camp.team);
     for (const team of teams) {
-      const sources = st.heroes.filter((h) => h.team === team && !h.dead).map((h) => [Math.floor(h.x / S), Math.floor(h.y / S), DATA.vision.hero]);
+      const sources = st.heroes.filter((h) => h.team === team && !h.dead).map((h) => [Math.floor(h.x / S), Math.floor(h.y / S), DATA.classes[h.cls].vision || DATA.vision.hero]);
       for (const u of st.units) if (u.team === team && !u.hidden) sources.push([Math.floor(u.x / S), Math.floor(u.y / S), (DATA.units[u.type] || DATA.worker).vision]);
       for (const b of st.buildings) {
         const v = DATA.buildings[b.type].vision;
