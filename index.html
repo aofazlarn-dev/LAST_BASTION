@@ -800,7 +800,7 @@ const DATA = {
     archer: { name: "พลธนู", cost: { wood: 25, stone: 5 }, hp: 70, atk: 9, def: 1, as: 1, rng: 200, spd: 112, r: 10, vision: 6, leash: 10 },
     swordsman: { name: "นักดาบ", cost: { wood: 30, stone: 8 }, hp: 150, atk: 13, def: 4, as: 0.9, reach: 10, spd: 125, r: 11, vision: 5, leash: 10 },
     medic: { name: "หมอ", cost: { wood: 30, stone: 5 }, hp: 60, def: 1, heal: 14, rng: 70, spd: 122, r: 10, vision: 6, roam: 26 },
-    mechanic: { name: "ช่างซ่อม", cost: { wood: 30, stone: 10 }, hp: 80, def: 2, repair: 24, rng: 26, spd: 118, r: 10, vision: 5 },   // ซ่อมสิ่งก่อสร้างเอง ใช้ไม้/หินตามที่ซ่อม
+    mechanic: { name: "ช่างซ่อม", cost: { wood: 30, stone: 10 }, hp: 80, def: 2, repair: 24, rng: 26, spd: 118, r: 10, vision: 5 },   // ซ่อมสิ่งก่อสร้างเอง ฟรี
   },
   research: {
     heroWeapon: { name: "อาวุธ Hero", note: "พลังโจมตี Hero", max: 5, per: 0.15, cost: { wood: 45, stone: 15 } },
@@ -2502,7 +2502,7 @@ const Core = (() => {
      free   อิสระ: ไปรักษาคนเจ็บทุกที่ในรัศมีรอบค่าย (รวมนอกเมือง)
      follow ตาม Hero: เดินตาม Hero รักษา Hero และคนรอบตัว
      guard  เฝ้าค่าย: รักษาเฉพาะคนในเขตค่าย ไม่ออกนอกเมือง */
-  /* ช่างซ่อม: เดินไปซ่อมสิ่งก่อสร้างที่เสียหาย (เลือดน้อยที่สุดก่อน) ใช้ไม้/หินตามสัดส่วนเหมือนปุ่มซ่อม */
+  /* ช่างซ่อม: เดินไปซ่อมสิ่งก่อสร้างที่เสียหาย (เลือดน้อยที่สุดก่อน) ฟรี ไม่ใช้ทรัพยากร */
   function stepMechanic(st, u, dt) {
     const d = DATA.units.mechanic, stock = st.stock[u.team];
     u.atkCd -= dt;
@@ -2522,15 +2522,7 @@ const Core = (() => {
     if (!b) { u.hp = Math.min(u.maxHp, u.hp + u.maxHp * 0.03 * dt); moveTowards(st, u, st.camp.x + Math.cos(u.id * 1.7) * 40, st.camp.y + 70, dt, u.spd * 0.8); return; }
     if (distToBuilding(u, b) > d.rng) { moveTowards(st, u, b.x, b.y + (b.h || b.size) * DATA.tile / 2 + 8, dt, u.spd); return; }
     u.path = null; u.face = Math.atan2(b.y - u.y, b.x - u.x); u.healing = true;
-    const D = DATA.buildings[b.type], base = D.repairCost || D.cost, share = D.repairCost ? 1 : DATA.repairShare;
-    const hp = Math.min(b.maxHp - b.hp, d.repair * (1 + (st.research[u.team].unitWeapon || 0) * 0.1) * dt);
-    u.debt = u.debt || {};
-    for (const r in base) u.debt[r] = (u.debt[r] || 0) + base[r] * share * hp / b.maxHp;
-    for (const r in u.debt) if (u.debt[r] >= 1) {
-      const n = Math.floor(u.debt[r]);
-      if ((stock[r] || 0) < n) { if (st.tick - (st.repWarn || -9999) > 400) { st.repWarn = st.tick; st.events.push({ type: "repairNoRes", team: u.team }); } return; }
-      stock[r] -= n; u.debt[r] -= n;
-    }
+    const hp = Math.min(b.maxHp - b.hp, d.repair * (1 + (st.research[u.team].unitWeapon || 0) * 0.1) * dt);   // ช่างซ่อมไม่ใช้ทรัพยากร
     b.hp += hp; u.repT = (u.repT || 0) + hp;
     if (u.atkCd <= 0) u.atkCd = 0.8;   // จังหวะเหวี่ยงประแจ (ใช้เล่นท่า)
     if (u.repT >= 20) { st.events.push({ type: "repairTick", x: b.x, y: b.y - 20, n: Math.round(u.repT) }); u.repT = 0; }
@@ -3092,7 +3084,7 @@ const BPanel = (() => {
 
     const hireRow = (unit, def) => {
       const n = st.units.filter((u) => u.team === b.team && u.type === unit).length;
-      const desc = unit === "worker" ? "เก็บไม้และหินให้เอง" : unit === "archer" ? `ยิงไกล ดาเมจ ${Math.round(def.atk * (1 + st.research[b.team].unitWeapon * DATA.research.unitWeapon.per))}` : unit === "swordsman" ? "ถึก ยืนรับหน้า" : unit === "mechanic" ? "ซ่อมกำแพง ป้อม และอาคารที่เสียหายเอง (ใช้ไม้/หิน)" : "ออกไปรักษาคนเจ็บทั้งในและนอกเมือง";
+      const desc = unit === "worker" ? "เก็บไม้และหินให้เอง" : unit === "archer" ? `ยิงไกล ดาเมจ ${Math.round(def.atk * (1 + st.research[b.team].unitWeapon * DATA.research.unitWeapon.per))}` : unit === "swordsman" ? "ถึก ยืนรับหน้า" : unit === "mechanic" ? "ซ่อมกำแพง ป้อม และอาคารที่เสียหายเอง ฟรี ไม่ใช้ทรัพยากร" : "ออกไปรักษาคนเจ็บทั้งในและนอกเมือง";
       return `<div class="bp-row"><div><b>${def.name}</b> × ${n}<small>${desc}</small></div>${btn("hire:" + unit, "จ้าง", def.cost)}</div>`;
     };
     if (b.type === "camp") {
