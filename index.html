@@ -658,7 +658,7 @@ button.btn:focus-visible, #minimap:focus-visible { outline: 2px solid var(--acce
       <tbody>
         <tr><td>เดิน</td><td>WASD / ลูกศร / คลิกที่พื้น</td><td>ลากนิ้วฝั่งซ้าย</td></tr>
         <tr><td>ยิง</td><td colspan="2">อัตโนมัติเมื่อมีศัตรูในระยะ</td></tr>
-        <tr><td>สกิล Arrow Shower / Snipe / Rapid Fire</td><td>Q / E / R (หรือ 1 2 3)</td><td>ปุ่มวงกลม 3 ปุ่มขวาล่าง</td></tr>
+        <tr><td>สกิล 3 อย่าง (ต่างกันตามอาชีพ)</td><td>Q / E / R (หรือ 1 2 3)</td><td>ปุ่มวงกลม 3 ปุ่มขวาล่าง</td></tr>
         <tr><td>สร้าง / ฝึกคนงาน</td><td>B</td><td>ปุ่ม "สร้าง"</td></tr>
         <tr><td>กระเป๋า</td><td>I</td><td>ปุ่ม "กระเป๋า"</td></tr>
         <tr><td>กลับฐาน</td><td>H</td><td>ปุ่มใต้มินิแมพ</td></tr>
@@ -722,7 +722,11 @@ const DATA = {
   ],
   zoneLevels: [[1, 10], [10, 20], [20, 35], [35, 50]],
   classes: {
-    archer: { hp: 120, mp: 100, atk: 14, def: 3, as: 1.4, spd: 170, rng: 220, crit: 0.15, skills: ["shower", "snipe", "haste"] },
+    archer: { name: "Archer", hp: 120, mp: 100, atk: 14, def: 3, as: 1.4, spd: 170, rng: 220, crit: 0.15, skills: ["shower", "snipe", "haste"], start: "ธนูไม้ฝึกหัด" },
+    // Warrior: ตีรอบตัวเป็นวง (โดนทุกตัวในรัศมี) ถึก เลือดเยอะ
+    warrior: { name: "Warrior", hp: 230, mp: 110, atk: 19, def: 7, as: 1.0, spd: 160, rng: 50, crit: 0.1, cleave: 72, skills: ["whirl", "slam", "warcry"], start: "ดาบไม้ฝึกหัด" },
+    // Mage: ยิงลูกไฟไกล ระเบิดเป็นวงเล็ก สกิลวงกว้างหลายสกิล
+    mage: { name: "Mage", hp: 105, mp: 170, atk: 17, def: 2, as: 0.85, spd: 160, rng: 260, crit: 0.1, splash: 52, skills: ["meteor", "nova", "chain"], start: "ไม้เท้าฝึกหัด" },
   },
   hero: { mpRegen: 6, campRegenPct: 0.1, respawnSec: 10, recallSec: 3, arrowSpeed: 640, arrowLife: 0.5 },
   levels: { max: 50, hp: 12, atk: 2, def: 0.6, healOnLevel: 0.3, nightBonus: 40 },
@@ -736,6 +740,8 @@ const DATA = {
     ],
     names: {
       weapon: [["ธนูไม้", "ธนูสั้น", "ธนูพราน"], ["ธนูยาวพราน", "ธนูกระดูกหมาป่า", "ธนูไม้มะเกลือ"], ["ธนูเงาจันทร์", "ธนูเพลิงอรุณ", "ธนูพายุคลั่ง"]],
+      weapon_warrior: [["ดาบเหล็กเก่า", "ขวานป่า", "ดาบทหาร"], ["ดาบกว้างอัศวิน", "ขวานกระดูกหมาป่า", "ดาบเหล็กกล้า"], ["ดาบมังกรเพลิง", "ขวานพายุคลั่ง", "ดาบราชันย์"]],
+      weapon_mage: [["ไม้เท้าเก่า", "คทาไม้โอ๊ก", "ไม้เท้าฝึกเวท"], ["คทาคริสตัล", "ไม้เท้าน้ำแข็ง", "คทาเพลิง"], ["คทาดวงดาว", "ไม้เท้าอสนี", "คทามหาจอมเวท"]],
       armor: [["เสื้อหนังเก่า", "เสื้อผ้าป่าน", "เสื้อนวม"], ["เกราะหนังหมาป่า", "เสื้อคลุมพราน", "เกราะไม้ไผ่สาน"], ["เกราะเหล็กกล้า", "เสื้อคลุมรัตติกาล", "เกราะเกล็ดงู"]],
     },
     // ค่าเสริมสุ่ม: ค่าตั้งต้น + ต่อเลเวลไอเทม
@@ -757,6 +763,20 @@ const DATA = {
              note: "เล็งยิงเป้าเดียว ดาเมจ x5 คริติคอลแน่นอน เลือกตัวที่ถึกที่สุดก่อน" },
     haste: { name: "Rapid Fire", th: "ยิงรัว", key: "R", mp: 30, cd: 16, dur: 6, asMul: 1.8, spdMul: 1.35, icon: "fx_levelup",
              note: "6 วินาที ยิงเร็วขึ้น x1.8 วิ่งเร็วขึ้น x1.35" },
+    // Warrior
+    whirl: { name: "Whirlwind", th: "พายุดาบ", key: "Q", mp: 30, cd: 8, dur: 3, every: 0.3, radius: 86, dmgMul: 0.8, spdMul: 1.15, icon: "fx_volley",
+             note: "3 วินาที หมุนดาบตีทุกตัวรอบตัวต่อเนื่อง เดินได้ระหว่างหมุน" },
+    slam: { name: "Ground Slam", th: "ทุบพื้น", key: "E", mp: 30, cd: 7, radius: 118, dmgMul: 2.2, stun: 1.5, icon: "fx_blast",
+            note: "ทุบพื้นรอบตัว ดาเมจ x2.2 Monster มึน 1.5 วินาที" },
+    warcry: { name: "War Cry", th: "เสียงคำราม", key: "R", mp: 35, cd: 18, dur: 8, dmgTaken: 0.55, heal: 0.25, taunt: 180, icon: "ui_mode_guard",
+              note: "ฟื้น HP 25% · 8 วินาที รับดาเมจลดลง 45% · ดึง Monster รอบตัวให้มาตีตัวเอง" },
+    // Mage
+    meteor: { name: "Meteor", th: "อุกกาบาต", key: "Q", mp: 40, cd: 7, range: 1.2, radius: 104, delay: 0.8, dmgMul: 4, aim: "point", icon: "fx_fireball",
+              note: "อุกกาบาตตกตรงจุดเล็ง ระเบิดวงกว้าง ดาเมจ x4" },
+    nova: { name: "Frost Nova", th: "ระเบิดน้ำแข็ง", key: "E", mp: 35, cd: 8, radius: 150, dmgMul: 1.4, slow: 0.5, slowDur: 3, icon: "fx_frostbolt",
+            note: "ระเบิดน้ำแข็งรอบตัววงใหญ่ Monster ช้าลงครึ่งหนึ่ง 3 วินาที" },
+    chain: { name: "Chain Lightning", th: "สายฟ้าลูกโซ่", key: "R", mp: 30, cd: 5, range: 1.1, jumps: 6, jump: 130, dmgMul: 2.2, falloff: 0.85, icon: "fx_bolt",
+             note: "สายฟ้ากระโดดต่อกันได้ 6 ตัว ดาเมจลดลงทีละนิด" },
   },
   monsters: {},   // สร้างอัตโนมัติ 100 ชนิดด้านล่าง (buildRoster)
   stockStart: { wood: 60, stone: 30 },
@@ -991,7 +1011,8 @@ const Core = (() => {
     return { n: N, t };
   }
 
-  function createState(seed) {
+  function createState(seed, cls) {
+    cls = DATA.classes[cls] ? cls : "archer";
     const map = genMap(seed);
     const size = DATA.tile * map.n;
     const camp = { x: size / 2, y: size / 2, team: 1 };
@@ -1009,8 +1030,8 @@ const Core = (() => {
     };
     const c = map.n / 2;
     st.buildings.push(makeBuilding(st, "camp", 1, c - 1, c - 1, 2));
-    const hero = makeHero(st, "p1", 1, "archer", camp.x, camp.y + 90);
-    hero.equip.weapon = { id: st.nextId++, slot: "weapon", rarity: "common", rarityIdx: 0, ilv: 1, name: "ธนูไม้ฝึกหัด", stats: { atk: 2 } };
+    const hero = makeHero(st, "p1", 1, cls, camp.x, camp.y + 90);
+    hero.equip.weapon = { id: st.nextId++, slot: "weapon", rarity: "common", rarityIdx: 0, ilv: 1, name: DATA.classes[cls].start, cls, stats: { atk: 2 } };
     recalcStats(hero); hero.hp = hero.maxHp;
     st.heroes.push(hero);
     for (let i = 0; i < 3000 && st.monsters.length < DATA.spawn.population; i++) spawnPack(st);
@@ -1175,7 +1196,9 @@ const Core = (() => {
   }
 
   function makeItem(st, slot, rarityIdx, ilv) {
-    const R = DATA.items.rarity[rarityIdx], names = DATA.items.names[slot][rarityIdx];
+    const cls = st.heroes[0] ? st.heroes[0].cls : "archer", wk = slot === "weapon" && DATA.items.names["weapon_" + cls] ? "weapon_" + cls : slot;
+    const R = DATA.items.rarity[rarityIdx], names = DATA.items.names[wk][rarityIdx];
+    const tagCls = slot === "weapon" ? cls : null;
     const stats = {};
     if (slot === "weapon") stats.atk = Math.round((3 + ilv * 1.1) * R.mul * (0.9 + rand(st) * 0.2));
     else { stats.hp = Math.round((12 + ilv * 3.5) * R.mul * (0.9 + rand(st) * 0.2)); stats.def = Math.round((1 + ilv * 0.35) * R.mul * 10) / 10; }
@@ -1184,7 +1207,7 @@ const Core = (() => {
       const k = pool[Math.floor(rand(st) * pool.length)];
       stats[k] = Math.round(((stats[k] || 0) + rollAffix(st, k, ilv, R.mul)) * 100) / 100;
     }
-    return { id: st.nextId++, slot, rarity: R.key, rarityIdx, ilv, name: names[Math.floor(rand(st) * names.length)], stats };
+    return { id: st.nextId++, slot, rarity: R.key, rarityIdx, ilv, name: names[Math.floor(rand(st) * names.length)], stats, cls: tagCls };
   }
 
   function rollRarity(st, lv) {
@@ -1301,7 +1324,8 @@ const Core = (() => {
     if (target.dead) return;
     const crit = rand(st) < (attacker.crit || 0);
     const roll = 0.9 + rand(st) * 0.2;
-    const amount = Math.max(1, Math.round((base * mul * (crit ? 2 : 1) - target.def * 0.5) * roll));
+    const guard = target.kind === "hero" && st.tick < (target.guardUntil || 0) ? DATA.skills.warcry.dmgTaken : 1;
+    const amount = Math.max(1, Math.round((base * mul * (crit ? 2 : 1) - target.def * 0.5) * roll * guard));
     target.hp -= amount;
     if (attacker.kind === "monster" && target.team && (target.kind === "building" || Math.hypot(target.x - st.camp.x, target.y - st.camp.y) < (buildRadius(st, target.team) + 1) * DATA.tile)) attacker.raidT = st.tick;
     if (target.kind === "hero") { target.lastHurt = st.tick; if (target.recall) { target.recall = null; st.events.push({ type: "recallBroken", id: target.id }); } }
@@ -1357,11 +1381,29 @@ const Core = (() => {
     h.inCamp = Math.hypot(h.x - st.camp.x, h.y - (st.camp.y + 10)) < DATA.campRadius;
     if (h.inCamp) h.hp = Math.min(h.maxHp, h.hp + h.maxHp * DATA.hero.campRegenPct * dt);
     // โจมตีอัตโนมัติ: ยิงเป้าที่ใกล้ที่สุดในระยะ
-    if (h.atkCd <= 0) {
+    const C = DATA.classes[h.cls];
+    // Warrior: พายุดาบ ตีรอบตัวต่อเนื่อง
+    if (st.tick < (h.whirlUntil || 0) && st.tick >= (h.whirlNext || 0)) {
+      const sk = DATA.skills.whirl; h.whirlNext = st.tick + Math.round(sk.every * 1000 / DATA.tickMs);
+      for (const o of enemiesOf(st, h.team)) if (Math.hypot(o.x - h.x, o.y - h.y) < sk.radius + o.r) damage(st, o, h, h.atk, sk.dmgMul);
+      st.events.push({ type: "cleave", id: h.id, x: h.x, y: h.y, r: sk.radius, spin: true });
+    }
+    if (h.atkCd <= 0 && C.cleave && !(st.tick < (h.whirlUntil || 0))) {
+      // Warrior ตีปกติ: ฟันวงรอบตัว โดนทุกตัวในรัศมี
+      const tgt = nearestEnemy(st, h, h.rng);
+      if (tgt) {
+        let n = 0;
+        for (const o of enemiesOf(st, h.team)) if (Math.hypot(o.x - h.x, o.y - h.y) < C.cleave + o.r) { damage(st, o, h, h.atk, n ? 0.85 : 1); n++; }
+        h.aim = Math.atan2(tgt.y - h.y, tgt.x - h.x); h.aimUntil = st.tick + 6;
+        h.atkCd = 1 / h.as;
+        st.events.push({ type: "cleave", id: h.id, x: h.x, y: h.y, r: C.cleave });
+      }
+    } else if (h.atkCd <= 0 && !C.cleave) {
       const tgt = nearestEnemy(st, h, h.rng);
       if (tgt) {
         const a = Math.atan2(tgt.y - h.y, tgt.x - h.x);
         fireArrow(st, h, a, 1);
+        if (C.splash) { const ar = st.arrows[st.arrows.length - 1]; ar.orb = true; ar.splash = C.splash; ar.vx *= 0.7; ar.vy *= 0.7; ar.life *= 1.45; }
         h.aim = a; h.aimUntil = st.tick + 6;
         h.atkCd = 1 / (h.as * (haste ? haste.asMul : 1));
       }
@@ -1404,6 +1446,48 @@ const Core = (() => {
         h.hasteUntil = st.tick + Math.round(sk.dur * 1000 / DATA.tickMs);
         st.events.push({ type: "skill", id: h.id, skill: key });
         ok = true;
+      } else if (key === "whirl") {
+        h.whirlUntil = st.tick + Math.round(sk.dur * 1000 / DATA.tickMs); h.whirlNext = st.tick;
+        st.events.push({ type: "skill", id: h.id, skill: key }); ok = true;
+      } else if (key === "slam") {
+        const until = st.tick + Math.round(sk.stun * 1000 / DATA.tickMs);
+        for (const o of enemiesOf(st, h.team)) if (Math.hypot(o.x - h.x, o.y - h.y) < sk.radius + o.r) { damage(st, o, h, h.atk, sk.dmgMul); if (o.kind === "monster" && !o.boss) o.stunUntil = until; }
+        st.events.push({ type: "skill", id: h.id, skill: key, x: h.x, y: h.y, r: sk.radius }); ok = true;
+      } else if (key === "warcry") {
+        h.guardUntil = st.tick + Math.round(sk.dur * 1000 / DATA.tickMs);
+        h.hp = Math.min(h.maxHp, h.hp + h.maxHp * sk.heal);
+        for (const m of st.monsters) if (!m.dead && Math.hypot(m.x - h.x, m.y - h.y) < sk.taunt) { m.target = h.id; m.mode = "chase"; m.tauntUntil = h.guardUntil; }
+        st.events.push({ type: "skill", id: h.id, skill: key, x: h.x, y: h.y, r: sk.taunt }); ok = true;
+      } else if (key === "meteor") {
+        const R = h.rng * sk.range;
+        let tx, ty;
+        if (want.x != null) { const d = Math.hypot(want.x - h.x, want.y - h.y), k = d > R ? R / d : 1; tx = h.x + (want.x - h.x) * k; ty = h.y + (want.y - h.y) * k; }
+        else {
+          const foes = enemiesOf(st, h.team).filter((o) => o.kind === "monster" && Math.hypot(o.x - h.x, o.y - h.y) < R);
+          let best = null, bn = 0;
+          for (const o of foes) { const n = foes.filter((q) => Math.hypot(q.x - o.x, q.y - o.y) < sk.radius).length; if (n > bn) { bn = n; best = o; } }
+          if (best) { tx = best.x; ty = best.y; } else { tx = h.x + Math.cos(h.face) * h.rng * 0.8; ty = h.y + Math.sin(h.face) * h.rng * 0.8; }
+        }
+        (st.rains || (st.rains = [])).push({ team: h.team, owner: h.id, x: tx, y: ty, r: sk.radius, t: sk.delay, left: 1, mul: sk.dmgMul, meteor: true });
+        h.aim = Math.atan2(ty - h.y, tx - h.x); h.aimUntil = st.tick + 10;
+        st.events.push({ type: "skill", id: h.id, skill: key, x: tx, y: ty, r: sk.radius, delay: sk.delay }); ok = true;
+      } else if (key === "nova") {
+        const until = st.tick + Math.round(sk.slowDur * 1000 / DATA.tickMs);
+        for (const o of enemiesOf(st, h.team)) if (Math.hypot(o.x - h.x, o.y - h.y) < sk.radius + o.r) { damage(st, o, h, h.atk, sk.dmgMul); if (o.kind === "monster") o.slowUntil = until; }
+        st.events.push({ type: "skill", id: h.id, skill: key, x: h.x, y: h.y, r: sk.radius }); ok = true;
+      } else if (key === "chain") {
+        let cur = nearestEnemy(st, h, h.rng * sk.range);
+        if (!cur) { st.events.push({ type: "skillFail", id: h.id, why: "target", slot }); return; }
+        const hit = new Set(), pts = [{ x: h.x, y: h.y - 14 }];
+        let mul = sk.dmgMul;
+        for (let j = 0; j < sk.jumps && cur; j++) {
+          hit.add(cur.id); pts.push({ x: cur.x, y: cur.y }); damage(st, cur, h, h.atk, mul); mul *= sk.falloff;
+          let nx = null, nd = sk.jump;
+          for (const o of enemiesOf(st, h.team)) { if (hit.has(o.id) || o.dead) continue; const d = Math.hypot(o.x - cur.x, o.y - cur.y); if (d < nd) { nd = d; nx = o; } }
+          cur = nx;
+        }
+        h.aim = Math.atan2(pts[1].y - h.y, pts[1].x - h.x); h.aimUntil = st.tick + 10;
+        st.events.push({ type: "skill", id: h.id, skill: key, pts }); ok = true;
       }
       if (ok) { h.mp -= sk.mp; h.cds[slot] = sk.cd; }
     }
@@ -1418,7 +1502,7 @@ const Core = (() => {
       if (r.t <= 0) {
         const shooter = findEntity(st, r.owner);
         if (shooter && !shooter.dead) for (const o of enemiesOf(st, r.team)) if (Math.hypot(o.x - r.x, o.y - r.y) < r.r + o.r * 0.5) damage(st, o, shooter, shooter.atk, r.mul);
-        st.events.push({ type: "rainWave", x: r.x, y: r.y, r: r.r });
+        st.events.push({ type: r.meteor ? "meteorHit" : "rainWave", x: r.x, y: r.y, r: r.r });
         r.left--; r.t = DATA.skills.shower.every;
       }
       if (r.left > 0) keep.push(r);
@@ -1446,6 +1530,10 @@ const Core = (() => {
         let shooter = findEntity(st, a.owner) || { atk: a.atk || 10, crit: 0, team: a.team, kind: "building" };
         if (a.crit) shooter = Object.assign(Object.create(Object.getPrototypeOf(shooter)), shooter, { crit: 1 });
         damage(st, hit, shooter, a.atk || shooter.atk, a.mul);
+        if (a.splash) {   // ลูกไฟ Mage: ระเบิดโดนตัวรอบ ๆ
+          for (const o of enemiesOf(st, a.team)) if (o !== hit && Math.hypot(o.x - hit.x, o.y - hit.y) < a.splash + o.r) damage(st, o, shooter, a.atk || shooter.atk, a.mul * 0.6);
+          st.events.push({ type: "orbHit", x: hit.x, y: hit.y, r: a.splash });
+        }
         continue;
       }
       if (a.life > 0) keep.push(a);
@@ -1793,9 +1881,11 @@ const Core = (() => {
       if (!m.wave && !st.heroes.some((h) => Math.hypot(h.x - m.x, h.y - m.y) < sleep) && !st.units.some((u) => Math.hypot(u.x - m.x, u.y - m.y) < sleep)) continue;   // ไกลผู้เล่น: พักไว้ ประหยัดเครื่อง
       awake.push(m);
       const b = night ? NIGHT_DEF[m.type] : DATA.monsters[m.type];
-      m.spd = m.baseSpd * (night ? DATA.night.spd : 1);
+      m.spd = m.baseSpd * (night ? DATA.night.spd : 1) * (st.tick < (m.slowUntil || 0) ? DATA.skills.nova.slow : 1);
       m.atkMul = night ? DATA.night.atk : 1;
       m.atkCd -= dt;
+      if (st.tick < (m.stunUntil || 0)) continue;   // มึน: ยืนนิ่ง
+      if (st.tick < (m.tauntUntil || 0)) { const tt = findEntity(st, m.target); if (tt && !tt.dead) { if (!attackAct(st, m, b, tt)) m.moving = mmove(st, m, tt.x - m.x, tt.y - m.y, m.spd * dt) > 0; continue; } }
       if (m.wave) { stepSiege(st, m, b, dt); continue; }
       let tgt = m.target ? findEntity(st, m.target) : null;
       if (tgt && tgt.dead) { tgt = null; m.target = null; m.mode = "idle"; m.homeX = m.x; m.homeY = m.y; }
@@ -2757,7 +2847,7 @@ const Core = (() => {
           continue;
         }
       }
-      const hs = st.tick < (h.hasteUntil || 0) ? DATA.skills.haste.spdMul : 1;
+      const hs = st.tick < (h.hasteUntil || 0) ? DATA.skills.haste.spdMul : st.tick < (h.whirlUntil || 0) ? DATA.skills.whirl.spdMul : 1;
       if (Math.hypot(h.ix, h.iy) > 0.05) {
         const stepLen = h.spd * hs * dt;
         h.face = Math.atan2(h.iy, h.ix); h.moving = true;
@@ -2977,6 +3067,8 @@ function fmtStat(k, v) {
 }
 const ICON = {
   weapon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3a12 12 0 0 1 0 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M7 3v18M10 12h11M18 9l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  weapon_warrior: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3l-9 9M19 3h-3M19 3v3M8 14l-3 3M6 12l6 6M4 20l2-2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  weapon_mage: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 21L16 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="17.5" cy="6" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
   armor: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l5 4-3 3v11H6V10L3 7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 3c0 2 4 2 4 0" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
 };
 // ไอคอนไอเทมตามชื่อ (ชื่อยาวก่อน เช่น "ธนูไม้มะเกลือ" ก่อน "ธนูไม้") ไม่มีภาพใช้ไอคอนตามระดับ
@@ -2986,6 +3078,7 @@ const ITEM_ART = (() => {
   return out.sort((a, b) => b[0].length - a[0].length);
 })();
 function itemArt(it) {
+  if (it.slot === "weapon" && it.cls && it.cls !== "archer") return null;   // ดาบ/ไม้เท้า: ยังไม่มีภาพ ใช้ไอคอนเส้น
   const hit = ITEM_ART.find(([nm]) => it.name.includes(nm));
   if (hit && ART_OK.has(hit[1])) return hit[1];
   const n = (it.slot === "weapon" ? "bow_" : "armor_") + it.rarity;
@@ -2993,7 +3086,7 @@ function itemArt(it) {
 }
 function itemIcon(it) {
   const n = itemArt(it);
-  return n ? `<img src="${ART_DIR}${n}.webp" alt="">` : ICON[it.slot];
+  return n ? `<img src="${ART_DIR}${n}.webp" alt="">` : (it.slot === "weapon" && it.cls && ICON["weapon_" + it.cls]) || ICON[it.slot];
 }
 const BUILD_ERR = {
   far: "สร้างได้เฉพาะในเขตค่าย (วงสีฟ้า)", blocked: "ตรงนี้สร้างไม่ได้", occupied: "มีคนหรือ Monster ยืนขวางอยู่",
@@ -3298,11 +3391,17 @@ const Quest = (() => {
 const Title = (() => {
   const el = document.getElementById("title"), howto = document.getElementById("howto");
   const CLASSES = [
-    ["archer", "Archer", "ยิงไกล", true], ["warrior", "Warrior", "แทงก์", false], ["mage", "Mage", "ดาเมจหมู่", false],
+    ["archer", "Archer", "ยิงไกล", true], ["warrior", "Warrior", "ตีรอบตัว ถึก", true], ["mage", "Mage", "เวทวงกว้าง", true],
     ["engineer", "Engineer", "สร้างป้อม", false], ["healer", "Healer", "ฮีล", false],
   ];
   document.getElementById("class-pick").innerHTML = CLASSES.map(([k, n, role, open]) =>
     `<button type="button" class="class-card${k === "archer" ? " on" : ""}" ${open ? "" : "disabled"} aria-pressed="${k === "archer"}"><b>${n}</b><span>${open ? role : "เร็ว ๆ นี้"}</span></button>`).join("");
+  let cls = "archer";
+  try { const saved = localStorage.getItem("lb_cls"); if (saved && DATA.classes[saved]) cls = saved; } catch (_) {}
+  const cards = [...document.querySelectorAll("#class-pick .class-card")];
+  const mark = () => cards.forEach((b, i) => { const on = CLASSES[i][0] === cls; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
+  cards.forEach((b, i) => b.addEventListener("click", () => { if (b.disabled) return; cls = CLASSES[i][0]; try { localStorage.setItem("lb_cls", cls); } catch (_) {} mark(); }));
+  mark();
   const openHow = () => { howto.hidden = false; document.getElementById("howto-close").focus(); };
   const closeHow = () => { howto.hidden = true; };
   document.getElementById("howto-open").addEventListener("click", openHow);
@@ -3316,7 +3415,7 @@ const Title = (() => {
       const v = document.getElementById("seed-input").value.replace(/\D/g, "");
       return v ? Math.max(1, Math.min(999999999, Number(v))) : 0;
     },
-    openHow, closeHow, howOpen: () => !howto.hidden,
+    openHow, closeHow, howOpen: () => !howto.hidden, cls: () => cls,
   };
 })();
 
@@ -3509,15 +3608,25 @@ const ART_BUILD = { wall: "wall1", wall2: "wall2", wall3: "wall3", gate: "gate1"
 const WALL_SIDE_W = 15;   // ความกว้างกำแพงแนวตั้งบนจอ
 const ART_BSIZE = { wall: { w: 46, oy: 0.94 }, gate: { h: 60, oy: 0.96 }, tower: { h: 88, oy: 0.96 }, barracks: { w: 80, oy: 0.94 }, infirmary: { w: 80, oy: 0.94 }, workshop: { w: 80, oy: 0.94 } };
 
+// ปุ่มสกิล 3 ปุ่มตามอาชีพ (ชื่อ ปุ่มลัด MP ไอคอน)
+function setupSkillButtons(cls) {
+  const keys = DATA.classes[cls].skills;
+  ["skill", "skill2", "skill3"].forEach((id, i) => {
+    const el = document.getElementById(id), sk = DATA.skills[keys[i]]; if (!el || !sk) return;
+    el.querySelector(".skill-name").textContent = sk.name;
+    el.querySelector(".skill-key").textContent = i ? `${sk.key} · ${sk.mp}` : `${sk.key} · ${sk.mp} MP`;
+    el.setAttribute("aria-label", `${sk.name} ${sk.th} (ปุ่ม ${sk.key}) · ${sk.note}`); el.title = `${sk.name} · ${sk.note}`;
+    const ico = el.querySelector(".skill-ico"); if (ico) ico.style.backgroundImage = ART_OK.has(sk.icon) ? `url(${ART_DIR}${sk.icon}.webp)` : "";
+  });
+  const hn = document.querySelector(".hero-name"); if (hn) hn.innerHTML = `<span class="team-dot"></span>${DATA.classes[cls].name}`;
+}
+
 // ใส่ไอคอนภาพจริงหน้าปุ่ม HUD (ครั้งเดียว)
 function artUi() {
   if (!ART_OK.has("ui_build") || document.documentElement.classList.contains("art-ui")) return;
   document.documentElement.classList.add("art-ui");
   const put = (id, n) => { const el = document.getElementById(id); if (el && ART_OK.has(n)) el.insertAdjacentHTML("afterbegin", `<i class="aico" style="background-image:url(${ART_DIR}${n}.webp)" aria-hidden="true"></i>`); };
-  for (const [id, key] of [["skill", "shower"], ["skill2", "snipe"], ["skill3", "haste"]]) {
-    const n = DATA.skills[key].icon, el = document.querySelector("#" + id + " .skill-ico");
-    if (el && ART_OK.has(n)) el.style.backgroundImage = `url(${ART_DIR}${n}.webp)`;
-  }
+
   put("build-toggle", "ui_build"); put("bag-btn", "ui_bag"); put("recall", "ui_home"); put("menu-btn", "ui_menu"); put("skip", "ui_night"); put("repair", "ui_repair"); put("train", "ui_worker");
 }
 
@@ -3659,7 +3768,8 @@ class GameScene extends Phaser.Scene {
   }
 
   create(data) {
-    this.state = Core.createState(data && data.seed ? data.seed : 20261020);
+    this.state = Core.createState(data && data.seed ? data.seed : 20261020, (data && data.cls) || Title.cls());
+    setupSkillButtons(this.state.heroes[0].cls);
     this.acc = 0;
     this.localHero = "p1";
     this.team = 1;
@@ -3672,7 +3782,7 @@ class GameScene extends Phaser.Scene {
       ANIM_OK.add(n);
       if (!this.anims.exists("a_" + n)) this.anims.create({ key: "a_" + n, frames: this.anims.generateFrameNumbers("an_" + n, { start: 0, end: a.n - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0 });
     }
-    artUi();
+    artUi(); setupSkillButtons(this.state.heroes[0].cls);
     if (this.textures.exists("an_flagwave") && !this.anims.exists("a_flagwave"))
       this.anims.create({ key: "a_flagwave", frames: this.anims.generateFrameNumbers("an_flagwave", { start: 0, end: 3 }), frameRate: 7, repeat: -1, yoyo: true });
     this.makeTextures();
@@ -4790,6 +4900,19 @@ class GameScene extends Phaser.Scene {
         const full = img.base || 1; img.setScale(full * 0.3); this.tweens.add({ targets: img, scale: full, duration: 600, ease: "Back.easeOut" });
       } else if (e.type === "noResource" && e.team === this.team) {
         Banner.show("ไม้และหินในพื้นที่ที่สำรวจแล้วหมด · ให้ Hero ออกสำรวจแผนที่เพิ่ม คนงานจะไปเก็บได้ไกลขึ้น", "warn");
+      } else if (e.type === "cleave") {
+        if (this.visibleAt(e.x, e.y)) {
+          const g = this.add.graphics().setPosition(e.x, e.y + 4).setDepth(e.y + 6);
+          const h = this.state.heroes[0], a0 = e.spin ? Math.random() * 6.28 : (h.aim || 0) - 1.6;
+          g.lineStyle(e.spin ? 5 : 4, e.spin ? 0x9fd3ff : 0xffffff, 0.85); g.beginPath(); g.arc(0, 0, e.r * 0.8, a0, a0 + (e.spin ? 4.2 : 3.2)); g.strokePath();
+          g.lineStyle(2, 0xffd166, 0.6); g.beginPath(); g.arc(0, 0, e.r * 0.55, a0 + 0.4, a0 + (e.spin ? 3.8 : 2.8)); g.strokePath();
+          g.setScale(0.7, 0.55); this.tweens.add({ targets: g, alpha: 0, scaleX: 1.05, scaleY: 0.8, rotation: e.spin ? 1.2 : 0.5, duration: 240, onComplete: () => g.destroy() });
+        }
+      } else if (e.type === "orbHit") {
+        if (!this.fxAnim("fx_blast", e.x, e.y, e.r * 1.6)) this.puff("fx_blast", e.x, e.y, { w: e.r * 1.6, dur: 300, from: 0.4, to: 1 });
+      } else if (e.type === "meteorHit") {
+        if (!this.fxAnim("fx_blast", e.x, e.y, e.r * 2.4)) this.puff("fx_blast", e.x, e.y, { w: e.r * 2.2, dur: 500, from: 0.3, to: 1.1 });
+        if (this.visibleAt(e.x, e.y)) this.cameras.main.shake(220, 0.007);
       } else if (e.type === "skillFail" && e.id === this.localHero) {
         Toast.show(e.why === "mp" ? "MP ไม่พอ" : e.why === "target" ? "ไม่มีเป้าในระยะ" : "สกิลยังไม่พร้อม");
       } else if (e.type === "rainWave") {
@@ -4803,7 +4926,7 @@ class GameScene extends Phaser.Scene {
         if (this.visibleAt(e.x, e.y)) this.cameras.main.shake(60, 0.002);
       } else if (e.type === "skill") {
         const h = this.state.heroes[0];
-        { const hv = this.heroViews.get(h.id); if (hv && e.skill !== "haste") this.animOnce(hv, e.skill === "shower" && ANIM_OK.has(hv.anim + "_skill") ? "skill" : "attack", this.time.now); }
+        { const hv = this.heroViews.get(h.id); if (hv && !["haste", "whirl"].includes(e.skill)) this.animOnce(hv, e.skill === "shower" && ANIM_OK.has(hv.anim + "_skill") ? "skill" : "attack", this.time.now); }
         if (e.skill === "shower") {
           this.puff("fx_volley", h.x, h.y - 20, { w: 60, dur: 380, from: 0.6, to: 1.1, rot: -Math.PI / 2, depth: h.y + 30, dy: -40 });
           const ring = this.add.graphics().setPosition(e.x, e.y).setDepth(e.y - 2);
@@ -4814,6 +4937,33 @@ class GameScene extends Phaser.Scene {
           const m = this.state.monsters.find((q) => q.id === e.tid);
           if (m) { const g = this.add.graphics().setDepth(8.3e6); g.lineStyle(2, 0xff5a4a, 0.9); g.strokeCircle(m.x, m.y, 18); g.lineBetween(m.x - 24, m.y, m.x + 24, m.y); g.lineBetween(m.x, m.y - 24, m.x, m.y + 24);
             this.tweens.add({ targets: g, alpha: 0, duration: 500, onComplete: () => g.destroy() }); }
+        } else if (e.skill === "slam" || e.skill === "nova" || e.skill === "warcry") {
+          const col = { slam: 0xc8a060, nova: 0x9fe0ff, warcry: 0xffd166 }[e.skill];
+          const g = this.add.graphics().setPosition(e.x, e.y + 6).setDepth(e.y - 2);
+          g.fillStyle(col, e.skill === "warcry" ? 0.12 : 0.3); g.fillEllipse(0, 0, e.r * 2, e.r * 1.4); g.lineStyle(4, col, 0.9); g.strokeEllipse(0, 0, e.r * 2, e.r * 1.4);
+          g.setScale(0.2); this.tweens.add({ targets: g, scale: 1, alpha: 0, duration: e.skill === "warcry" ? 700 : 450, ease: "Cubic.easeOut", onComplete: () => g.destroy() });
+          if (e.skill === "slam") { this.cameras.main.shake(160, 0.006); this.puff("fx_rubble", e.x, e.y + 8, { w: 70, dur: 600, from: 0.6, to: 1.1 }); }
+          if (e.skill === "nova") for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; this.puff("fx_frost", e.x + Math.cos(a) * e.r * 0.75, e.y + Math.sin(a) * e.r * 0.5, { w: 28, dur: 600, from: 0.4, to: 1.1 }); }
+          if (e.skill === "warcry") { Toast.show("War Cry! รับดาเมจลดลง 8 วินาที"); this.popText(e.x, e.y - 40, "WAR CRY!", "#ffd166", 18); }
+        } else if (e.skill === "meteor") {
+          const ring = this.add.graphics().setPosition(e.x, e.y).setDepth(e.y - 2);
+          ring.lineStyle(3, 0xff6a3c, 0.9); ring.strokeCircle(0, 0, e.r); ring.fillStyle(0xff6a3c, 0.15); ring.fillCircle(0, 0, e.r);
+          this.tweens.add({ targets: ring, alpha: 0.3, duration: e.delay * 1000, onComplete: () => ring.destroy() });
+          const m = this.add.image(e.x + 120, e.y - 360, "arrow").setDepth(e.y + 60);
+          if (!this.skin(m, "fx_fireball", { w: 80, oy: 0.5 })) m.setTint(0xff6a3c).setScale(4);
+          m.setRotation(Math.atan2(360, -120) + Math.PI);
+          this.tweens.add({ targets: m, x: e.x, y: e.y, duration: e.delay * 1000, ease: "Quad.easeIn", onComplete: () => m.destroy() });
+        } else if (e.skill === "chain") {
+          const g = this.add.graphics().setDepth(8.35e6);
+          for (let k = 0; k < 2; k++) {
+            g.lineStyle(k ? 1.5 : 4, k ? 0xffffff : 0x8fd0ff, k ? 1 : 0.7); g.beginPath(); g.moveTo(e.pts[0].x, e.pts[0].y);
+            for (let i = 1; i < e.pts.length; i++) { const p0 = e.pts[i - 1], p1 = e.pts[i]; for (let j = 1; j <= 4; j++) { const t = j / 4; g.lineTo(p0.x + (p1.x - p0.x) * t + (j < 4 ? (Math.random() - 0.5) * 18 : 0), p0.y + (p1.y - p0.y) * t + (j < 4 ? (Math.random() - 0.5) * 18 : 0)); } }
+            g.strokePath();
+          }
+          this.tweens.add({ targets: g, alpha: 0, duration: 380, onComplete: () => g.destroy() });
+          for (const p of e.pts.slice(1)) this.puff("fx_hit", p.x, p.y, { w: 26, dur: 260, from: 0.5, to: 1.2 });
+        } else if (e.skill === "whirl") {
+          Toast.show("Whirlwind!");
         } else if (e.skill === "haste") {
           this.puff("fx_levelup", h.x, h.y, { w: 70, dur: 600, from: 0.4, to: 1.2, depth: h.y + 30, dy: -10 });
           Toast.show("Rapid Fire! ยิงเร็ว วิ่งเร็ว 6 วินาที");
@@ -4937,7 +5087,9 @@ class GameScene extends Phaser.Scene {
       seen.add(ar.id);
       let s = this.arrowViews.get(ar.id);
       if (!s) {
-        s = this.add.image(ar.x, ar.y, "arrow").setRotation(ar.angle); this.skin(s, "fx_arrow", { w: ar.big ? 46 : 28, oy: 0.5 });
+        s = this.add.image(ar.x, ar.y, "arrow").setRotation(ar.angle);
+        if (ar.orb) { if (!this.skin(s, "fx_fireball", { w: 30, oy: 0.5 })) s.setTint(0xff8a3c).setScale(1.4); s.setRotation(ar.angle + Math.PI); }
+        else this.skin(s, "fx_arrow", { w: ar.big ? 46 : 28, oy: 0.5 });
         if (ar.big) { s.setTint(0xffe08a); if (!s.art) s.setScale(1.7); }
         this.arrowViews.set(ar.id, s);
       }
@@ -5024,6 +5176,7 @@ class GameScene extends Phaser.Scene {
           if (hero.moving) this.animState(view, time, "walk"); else this.animIdle(view, time);
         }
         if (!hero.dead) this.pose(view, { time, dt: delta, moving: hero.moving, gather: hero.gathering >= 0, cd: hero.atkCd });
+        if (this.state.tick < (hero.whirlUntil || 0)) view.body.flipX = Math.floor(time / 90) % 2 === 0;   // หมุนตัว
       }
       else { view.body.y = bob; view.bow.y = bob; }
       if (!view.art) view.body.x = hero.gathering >= 0 ? Math.sin(time / 80) * 2 : 0;
@@ -5154,7 +5307,7 @@ const HUD = (() => {
       const cd = (me.cds && me.cds[i]) || 0;
       el.querySelector(".skill-cd").style.setProperty("--cd", Math.max(0, cd) / sk.cd);
       el.classList.toggle("locked", me.dead || cd > 0 || me.mp < sk.mp);
-      el.classList.toggle("active", key === "haste" && st.tick < (me.hasteUntil || 0));
+      el.classList.toggle("active", (key === "haste" && st.tick < (me.hasteUntil || 0)) || (key === "warcry" && st.tick < (me.guardUntil || 0)) || (key === "whirl" && st.tick < (me.whirlUntil || 0)));
     });
 
     $("recall").classList.toggle("recalling", !!me.recall);
@@ -5270,7 +5423,7 @@ function recall() {
   window.__game = game;   // ให้แผงสร้างและการทดสอบเข้าถึงฉากเกมได้
   const restart = (seed) => {
     Build.close(); Result.hide(); Banner.hide(); Menu.close(); Inventory.close(); BPanel.close();
-    game.scene.getScene("game").scene.restart({ seed: seed || 1 + Math.floor(Math.random() * 999999) });
+    game.scene.getScene("game").scene.restart({ seed: seed || 1 + Math.floor(Math.random() * 999999), cls: Title.cls() });
     try { document.getElementById("game").focus({ preventScroll: true }); } catch (_) {}
   };
   document.getElementById("menu-btn").addEventListener("click", (e) => { e.currentTarget.blur(); Menu.open(); });
