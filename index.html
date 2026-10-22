@@ -724,7 +724,7 @@ const DATA = {
   classes: {
     archer: { name: "Archer", hp: 120, mp: 100, atk: 14, def: 3, as: 1.4, spd: 170, rng: 290, crit: 0.15, vision: 9, skills: ["shower", "snipe", "haste"], start: "ธนูไม้ฝึกหัด" },
     // Warrior: ตีรอบตัวเป็นวง (โดนทุกตัวในรัศมี) ถึก เลือดเยอะ
-    warrior: { name: "Warrior", hp: 230, mp: 110, atk: 19, def: 7, as: 1.0, spd: 160, rng: 50, crit: 0.1, vision: 6, cleave: 72, skills: ["whirl", "slam", "warcry"], start: "ดาบไม้ฝึกหัด" },
+    warrior: { name: "Warrior", hp: 230, mp: 110, atk: 24, atkLv: 3.5, def: 7, as: 1.0, spd: 160, rng: 50, crit: 0.1, vision: 6, cleave: 72, skills: ["whirl", "slam", "warcry"], start: "ดาบไม้ฝึกหัด" },
     // Mage: ยิงลูกไฟไกล ระเบิดเป็นวงเล็ก สกิลวงกว้างหลายสกิล
     mage: { name: "Mage", hp: 105, mp: 170, atk: 17, def: 2, as: 0.85, spd: 160, rng: 230, crit: 0.1, vision: 7, splash: 52, skills: ["meteor", "nova", "chain"], start: "ไม้เท้าฝึกหัด" },
   },
@@ -1165,7 +1165,7 @@ const Core = (() => {
 
   function recalcStats(h) {
     const c = DATA.classes[h.cls], G = DATA.levels, L = h.lv - 1;
-    const st = { atk: c.atk + G.atk * L, def: c.def + G.def * L, hp: c.hp + G.hp * L, as: c.as, crit: c.crit, spd: c.spd };
+    const st = { atk: c.atk + (c.atkLv || G.atk) * L, def: c.def + G.def * L, hp: c.hp + G.hp * L, as: c.as, crit: c.crit, spd: c.spd };
     let asBonus = 0;
     for (const it of [h.equip.weapon, h.equip.armor]) {
       if (!it) continue;
