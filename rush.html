@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Last Bastion · Lord Rush</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap">
+<style>
+/* Lord Rush: Hero นำกองทัพ · ยืนบนช่องเพื่อจ่ายเหรียญสร้าง · ศัตรูฝูงใหญ่เดินตามเลน */
+:root {
+  --panel: rgba(18, 22, 16, 0.82);
+  --line: rgba(214, 196, 140, 0.3);
+  --ink: #efe8d2;
+  --dim: #b3ab92;
+  --gold: #f2c14e;
+  --red: #e2604a;
+  --blue: #6fb6e8;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+[hidden] { display: none !important; }
+body { background: #2a1f14; color: var(--ink); font-family: "Sarabun", system-ui, sans-serif; overflow: hidden; overscroll-behavior: none; }
+#game { position: fixed; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; outline: none; }
+#game canvas { display: block; }
+
+.hud { position: fixed; z-index: 5; display: flex; gap: 6px; align-items: center; pointer-events: none; }
+.top { top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); justify-content: space-between; flex-wrap: wrap; }
+.chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-weight: 700; font-size: 15px; display: flex; gap: 6px; align-items: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.coin { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff3b0, var(--gold) 55%, #a8741a); box-shadow: 0 0 0 1px #6b4a10; flex: none; }
+.chip.gold b { color: var(--gold); font-size: 17px; }
+.hpbar { width: 120px; height: 10px; border-radius: 6px; background: #3a2a22; overflow: hidden; }
+.hpbar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #6fd06f, #a6e86f); transition: width .2s; }
+.hpbar.low i { background: linear-gradient(90deg, #e2604a, #f09060); }
+.btn { pointer-events: auto; font: inherit; font-weight: 700; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; cursor: pointer; min-height: 40px; }
+.btn.primary { background: linear-gradient(#f2c14e, #c98f22); color: #2a1a05; border-color: #ffe08a; }
+.btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.bottom { bottom: max(12px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); }
+.banner { position: fixed; z-index: 6; top: 22%; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; font-weight: 700; font-size: clamp(22px, 5vw, 34px); text-shadow: 0 3px 10px #000, 0 0 2px #000; opacity: 0; transition: opacity .3s; }
+.banner.on { opacity: 1; }
+.banner small { display: block; font-size: 15px; color: var(--dim); font-weight: 600; }
+.toast { position: fixed; z-index: 6; bottom: 70px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); padding: 6px 14px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+.toast.on { opacity: 1; }
+.joy { position: fixed; z-index: 4; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); }
+.joy-base { width: 110px; height: 110px; border: 2px solid rgba(239, 232, 210, .35); background: rgba(18, 22, 16, .3); }
+.joy-knob { width: 48px; height: 48px; background: rgba(242, 193, 78, .85); }
+.overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(8, 6, 4, .72); padding: 16px; }
+.card { width: min(440px, 100%); background: #1d1812; border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 12px; text-align: center; }
+.card h1 { margin: 0; font-size: 28px; color: var(--gold); }
+.card h2 { margin: 0; font-size: 24px; }
+.card p { margin: 0; line-height: 1.6; color: var(--ink); }
+.card ul { margin: 0; padding-left: 20px; text-align: left; line-height: 1.7; color: var(--ink); font-size: 15px; }
+.card .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.win { color: var(--gold); } .lose { color: var(--red); }
+</style>
+</head>
+<body>
+<div id="game" tabindex="0"></div>
+
+<div class="hud top">
+  <div class="hud" style="position:static; gap:6px; flex-wrap:wrap;">
+    <span class="chip gold"><i class="coin"></i><b id="coins">0</b></span>
+    <span class="chip" id="wave">เตรียมตัว</span>
+    <span class="chip">ทหาร <b id="army">0/10</b></span>
+  </div>
+  <div class="hud" style="position:static; gap:6px;">
+    <span class="chip">ป้อม <span class="hpbar" id="hpbar"><i id="hp"></i></span></span>
+    <button class="btn" id="menu-btn" type="button">เมนู</button>
+  </div>
+</div>
+<div class="hud bottom"><button class="btn primary" id="next-btn" type="button">เรียกศัตรูเลย (+โบนัส)</button></div>
+<div class="banner" id="banner"></div>
+<div class="toast" id="toast"></div>
+<div class="joy joy-base" id="joy-base" hidden></div>
+<div class="joy joy-knob" id="joy-knob" hidden></div>
+
+<div class="overlay" id="intro">
+  <div class="card">
+    <h1>LORD RUSH</h1>
+    <p>ฝูงมอนสเตอร์กำลังเดินเข้ามาตามหุบเขา ปกป้องป้อมให้รอดครบ 10 เวฟ</p>
+    <ul>
+      <li><b>เดิน:</b> ลากนิ้วตรงไหนก็ได้ / W A S D</li>
+      <li><b>รับทหาร:</b> เดินผ่านค่ายทหาร ทหารจะมาต่อแถวตามคุณ</li>
+      <li><b>สร้าง:</b> ยืนบนช่องที่มีตัวเลข เหรียญจะไหลเข้าจนครบ</li>
+      <li><b>กับดักหินกลิ้ง:</b> จ่ายแล้วหินกลิ้งทับศัตรูทั้งแถว</li>
+      <li>ฆ่าศัตรูได้เหรียญ · Hero และทหารตีอัตโนมัติ</li>
+    </ul>
+    <div class="row"><button class="btn primary" id="play-btn" type="button" disabled>กำลังโหลด…</button><a class="btn" href="index.html" style="text-decoration:none; display:inline-grid; place-items:center;">กลับหน้าแรก</a></div>
+  </div>
+</div>
+<div class="overlay" id="menu" hidden>
+  <div class="card">
+    <h2>หยุดเกมชั่วคราว</h2>
+    <div class="row">
+      <button class="btn primary" id="resume-btn" type="button">เล่นต่อ</button>
+      <button class="btn" id="restart-btn" type="button">เริ่มใหม่</button>
+      <a class="btn" href="index.html" style="text-decoration:none; display:inline-grid; place-items:center;">หน้าแรก</a>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="result" hidden>
+  <div class="card">
+    <h2 id="result-title"></h2>
+    <p id="result-text"></p>
+    <div class="row"><button class="btn primary" id="again-btn" type="button">เล่นอีกครั้ง</button><a class="btn" href="index.html" style="text-decoration:none; display:inline-grid; place-items:center;">หน้าแรก</a></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/4.0.0/phaser.min.js"></script>
+<script>
+"use strict";
+/* ===== ข้อมูลภาพ (ใช้ชุดเดียวกับโหมดหลัก) ===== */
+const ART_DIR = "assets/art/", ANIM_DIR = "assets/anim/";
+const ART = "hero_warrior hero_archer hero_mage u_sword u_archer zombie0 skel0 wolf0 orc0 ghoul0 knight0 boss0 tower1 tower2 tower3 barracks camp5 rock wall1 wall2 tree1 tree2 stump pebbles tuft fx_arrow fx_fireball".split(" ");
+const ANIM = {"hero_archer_idle":{"n":4,"w":148,"h":134,"fps":6,"loop":true,"ref":128,"oy":0.9851},"hero_archer_walk":{"n":6,"w":138,"h":136,"fps":10,"loop":true,"ref":128,"oy":0.9853},"hero_archer_attack":{"n":6,"w":206,"h":138,"fps":12,"loop":false,"ref":128,"oy":0.9855},"u_archer_attack":{"n":6,"w":218,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"u_sword_attack":{"n":6,"w":162,"h":136,"fps":12,"loop":false,"ref":128,"oy":0.9853},"hero_warrior_idle":{"n":4,"w":190,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_warrior_walk":{"n":6,"w":120,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_warrior_attack":{"n":6,"w":168,"h":146,"fps":12,"loop":false,"ref":128,"oy":0.9863},"hero_mage_idle":{"n":4,"w":142,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_mage_walk":{"n":6,"w":146,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_mage_attack":{"n":6,"w":200,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"zombie0_walk":{"n":6,"w":164,"h":135,"fps":8,"loop":true,"ref":128,"oy":0.9852},"wolf0_walk":{"n":6,"w":228,"h":146,"fps":14,"loop":true,"ref":128,"oy":0.9863},"skel0_walk":{"n":6,"w":166,"h":134,"fps":8,"loop":true,"ref":128,"oy":0.9851},"ghoul0_walk":{"n":6,"w":172,"h":136,"fps":8,"loop":true,"ref":128,"oy":0.9853},"orc0_walk":{"n":6,"w":186,"h":138,"fps":7,"loop":true,"ref":128,"oy":0.9855},"knight0_walk":{"n":6,"w":176,"h":137,"fps":8,"loop":true,"ref":128,"oy":0.9854},"boss0_walk":{"n":6,"w":248,"h":201,"fps":8,"loop":true,"ref":192,"oy":0.99}};
+
+/* ===== สมดุลเกม ===== */
+const WORLD = { w: 1400, h: 2250 };
+const PATH = [[160, 2250], [200, 1800], [620, 1650], [1180, 1520], [1220, 1150], [700, 1020], [340, 860], [420, 560], [700, 430]];
+const CASTLE = { x: 700, y: 330 };
+const WAVES = 10;
+const ENEMY = {
+  //        ภาพ      สูง  hp   atk  speed เหรียญ
+  zombie: { art: "zombie0", h: 34, hp: 30, atk: 5, spd: 34, gold: 1 },
+  skel:   { art: "skel0",   h: 34, hp: 24, atk: 6, spd: 42, gold: 1 },
+  wolf:   { art: "wolf0",   h: 30, hp: 22, atk: 5, spd: 78, gold: 1 },
+  ghoul:  { art: "ghoul0",  h: 36, hp: 45, atk: 8, spd: 40, gold: 2 },
+  orc:    { art: "orc0",    h: 44, hp: 120, atk: 16, spd: 28, gold: 4, siege: 3 },
+  knight: { art: "knight0", h: 42, hp: 180, atk: 14, spd: 32, gold: 5 },
+  boss:   { art: "boss0",   h: 96, hp: 2400, atk: 45, spd: 22, gold: 80, siege: 3, boss: true },
+};
+const HERO = {
+  warrior: { hp: 420, atk: 26, range: 62, cd: 0.5, multi: 5, spd: 235 },
+  archer:  { hp: 300, atk: 30, range: 210, cd: 0.42, multi: 1, spd: 245, shot: "fx_arrow" },
+  mage:    { hp: 280, atk: 34, range: 190, cd: 0.8, multi: 1, aoe: 60, spd: 235, shot: "fx_fireball" },
+};
+const UNIT = {
+  sword:  { art: "u_sword", hp: 70, atk: 10, range: 24, cd: 0.75 },
+  archer: { art: "u_archer", hp: 45, atk: 9, range: 150, cd: 0.9 },
+};
+// ช่องสร้าง: kind, ตำแหน่ง, ราคา
+const PADS = [
+  { id: "t1", kind: "tower", x: 580, y: 610, cost: 15 },
+  { id: "t2", kind: "tower", x: 860, y: 560, cost: 25 },
+  { id: "bar1", kind: "barricade", x: 520, y: 720, cost: 25, at: 6.45 },
+  { id: "brk", kind: "barracksUp", x: 250, y: 420, cost: 30 },
+  { id: "arch", kind: "archery", x: 1060, y: 380, cost: 45 },
+  { id: "t3", kind: "tower", x: 520, y: 1110, cost: 35 },
+  { id: "rock1", kind: "boulder", x: 1335, y: 1200, cost: 20, from: 4.05, to: 3.0 },
+  { id: "bar2", kind: "barricade", x: 930, y: 1200, cost: 35, at: 4.5 },
+  { id: "t4", kind: "tower", x: 1060, y: 1330, cost: 45 },
+  { id: "castle", kind: "castleUp", x: 860, y: 360, cost: 50 },
+  { id: "t5", kind: "tower", x: 820, y: 1770, cost: 60 },
+  { id: "rock2", kind: "boulder", x: 90, y: 1730, cost: 20, from: 1.0, to: 0.0 },
+  { id: "t6", kind: "tower", x: 250, y: 680, cost: 70 },
+];
+const TOWER_LV = [null, { dmg: 16, cd: 0.85, range: 230, shots: 1 }, { dmg: 26, cd: 0.7, range: 250, shots: 2 }, { dmg: 40, cd: 0.6, range: 270, shots: 3 }];
+
+/* ===== เส้นทาง ===== */
+const Path = (() => {
+  const seg = [];
+  let total = 0;
+  for (let i = 0; i < PATH.length - 1; i++) {
+    const [ax, ay] = PATH[i], [bx, by] = PATH[i + 1], len = Math.hypot(bx - ax, by - ay);
+    seg.push({ ax, ay, bx, by, len, start: total, nx: -(by - ay) / len, ny: (bx - ax) / len });
+    total += len;
+  }
+  const at = (d) => {
+    d = Math.max(0, Math.min(total - 0.001, d));
+    let s = seg[0];
+    for (const q of seg) if (d >= q.start) s = q;
+    const t = (d - s.start) / s.len;
+    return { x: s.ax + (s.bx - s.ax) * t, y: s.ay + (s.by - s.ay) * t, nx: s.nx, ny: s.ny };
+  };
+  // ระยะบนเลนของจุดยอดที่ i (+เศษส่วนไปยังจุดถัดไป)
+  const vert = (f) => { const i = Math.floor(f), s = seg[Math.min(i, seg.length - 1)]; return s.start + s.len * (f - i); };
+  return { seg, total, at, vert };
+})();
+
+/* ===== UI ===== */
+const $ = (id) => document.getElementById(id);
+const UI = {
+  toastT: 0, bannerT: 0,
+  toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(this.toastT); this.toastT = setTimeout(() => t.classList.remove("on"), 1800); },
+  banner(msg, sub) { const b = $("banner"); b.innerHTML = msg + (sub ? `<small>${sub}</small>` : ""); b.classList.add("on"); clearTimeout(this.bannerT); this.bannerT = setTimeout(() => b.classList.remove("on"), 2200); },
+};
+
+/* ===== จอยสติ๊ก: แตะตรงไหนก็ได้ ===== */
+const Input = (() => {
+  const joy = { id: null, ox: 0, oy: 0, x: 0, y: 0 }, R = 50;
+  const base = $("joy-base"), knob = $("joy-knob"), keys = new Set();
+  const place = (el, x, y) => { el.style.left = x + "px"; el.style.top = y + "px"; };
+  const g = $("game");
+  g.addEventListener("pointerdown", (e) => {
+    if (joy.id !== null) return;
+    joy.id = e.pointerId; joy.ox = e.clientX; joy.oy = e.clientY; joy.x = joy.y = 0;
+    base.hidden = knob.hidden = false; place(base, joy.ox, joy.oy); place(knob, joy.ox, joy.oy);
+    try { g.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  g.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== joy.id) return;
+    let dx = e.clientX - joy.ox, dy = e.clientY - joy.oy;
+    const l = Math.hypot(dx, dy); if (l > R) { dx *= R / l; dy *= R / l; }
+    joy.x = dx / R; joy.y = dy / R; place(knob, joy.ox + dx, joy.oy + dy);
+  });
+  const up = (e) => { if (e.pointerId !== joy.id) return; joy.id = null; joy.x = joy.y = 0; base.hidden = knob.hidden = true; };
+  g.addEventListener("pointerup", up); g.addEventListener("pointercancel", up);
+  addEventListener("keydown", (e) => { keys.add(e.key.toLowerCase()); if (e.key === "Escape") Game.toggleMenu(); });
+  addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
+  addEventListener("blur", () => keys.clear());
+  return {
+    dir() {
+      let x = 0, y = 0;
+      if (keys.has("a") || keys.has("arrowleft")) x--; if (keys.has("d") || keys.has("arrowright")) x++;
+      if (keys.has("w") || keys.has("arrowup")) y--; if (keys.has("s") || keys.has("arrowdown")) y++;
+      x += joy.x; y += joy.y;
+      const l = Math.hypot(x, y);
+      return l < 0.12 ? { x: 0, y: 0 } : l > 1 ? { x: x / l, y: y / l } : { x, y };
+    },
+  };
+})();
+
+/* ===== ตารางค้นหาศัตรูใกล้ ๆ ===== */
+const CELL = 64;
+class Grid {
+  constructor() { this.m = new Map(); }
+  clear() { this.m.clear(); }
+  add(e) { const k = ((e.x / CELL) | 0) * 4096 + ((e.y / CELL) | 0); let a = this.m.get(k); if (!a) this.m.set(k, (a = [])); a.push(e); }
+  near(x, y, r, fn) {
+    const x0 = ((x - r) / CELL) | 0, x1 = ((x + r) / CELL) | 0, y0 = ((y - r) / CELL) | 0, y1 = ((y + r) / CELL) | 0, r2 = r * r;
+    for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) {
+      const a = this.m.get(cx * 4096 + cy); if (!a) continue;
+      for (const e of a) if (!e.dead) { const dx = e.x - x, dy = e.y - y, d2 = dx * dx + dy * dy; if (d2 <= r2) fn(e, d2); }
+    }
+  }
+  nearest(x, y, r) { let best = null, bd = Infinity; this.near(x, y, r, (e, d2) => { if (d2 < bd) { bd = d2; best = e; } }); return best; }
+}
+
+/* ===== ฉากเกม ===== */
+class RushScene extends Phaser.Scene {
+  constructor() { super("rush"); }
+
+  preload() {
+    this.load.on("loaderror", () => {});
+    for (const n of ART) this.load.image("art_" + n, ART_DIR + n + ".webp");
+    for (const [n, a] of Object.entries(ANIM)) this.load.spritesheet("an_" + n, ANIM_DIR + n + ".webp", { frameWidth: a.w, frameHeight: a.h });
+  }
+
+  has(n) { return this.textures.exists("art_" + n); }
+  anim(n) { return this.animOK.has(n); }
+
+  // ภาพนิ่งสูง h px · ถ้าไม่มีไฟล์ใช้วงกลมสีแทน
+  img(name, x, y, h, color) {
+    if (this.has(name)) { const i = this.add.image(x, y, "art_" + name).setOrigin(0.5, 0.92); i.setScale(h / i.height); return i; }
+    const i = this.add.image(x, y, "dot").setOrigin(0.5, 0.9).setTint(color || 0xffffff); i.setScale(h / 32); return i;
+  }
+  // ตัวที่มีท่าเดิน: ใช้ spritesheet ถ้ามี ไม่งั้นภาพนิ่ง
+  mob(art, x, y, h, color) {
+    const k = art + "_walk";
+    if (this.anim(k)) {
+      const a = ANIM[k], s = this.add.sprite(x, y, "an_" + k).setOrigin(0.5, a.oy).setScale(h / a.ref);
+      s.play({ key: "a_" + k, startFrame: (Math.random() * a.n) | 0 }); return s;
+    }
+    return this.img(art, x, y, h, color);
+  }
+
+  create() {
+    this.animOK = new Set();
+    for (const [n, a] of Object.entries(ANIM)) if (this.textures.exists("an_" + n) && this.textures.get("an_" + n).frameTotal - 1 >= a.n) {
+      this.anims.create({ key: "a_" + n, frames: this.anims.generateFrameNumbers("an_" + n, { start: 0, end: a.n - 1 }), frameRate: a.fps, repeat: a.loop ? -1 : 0 });
+      this.animOK.add(n);
+    }
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(0xffffff).fillCircle(16, 16, 16).generateTexture("dot", 32, 32);
+    g.clear().fillStyle(0xf2c14e).fillCircle(7, 7, 7).lineStyle(2, 0x8a5a10).strokeCircle(7, 7, 6).generateTexture("coin", 14, 14);
+    g.destroy();
+
+    this.drawMap();
+    this.reset();
+    this.cameras.main.setBounds(0, 0, WORLD.w, WORLD.h);
+    this.cameras.main.startFollow(this.hero.sp, true, 0.12, 0.12);
+    this.fitZoom(); this.scale.on("resize", () => this.fitZoom());
+    this.paused = true;
+    window.Game.scene = this;
+    $("play-btn").disabled = false; $("play-btn").textContent = "เริ่มเลย";
+  }
+
+  fitZoom() { const { width, height } = this.scale; this.cameras.main.setZoom(Math.max(0.55, Math.min(1.3, Math.min(width, height) / 720))); }
+
+  drawMap() {
+    // พื้นทะเลทราย + หน้าผา
+    const bg = this.add.graphics().setDepth(-10);
+    bg.fillStyle(0x8a5a32).fillRect(0, 0, WORLD.w, WORLD.h);
+    const rnd = new Phaser.Math.RandomDataGenerator(["lordrush"]);
+    for (let i = 0; i < 260; i++) { bg.fillStyle(rnd.pick([0x7d5230, 0x94643a, 0x83552f]), 0.6).fillCircle(rnd.between(0, WORLD.w), rnd.between(0, WORLD.h), rnd.between(30, 90)); }
+    // หุบเขา (ทางเดินศัตรู) ทรายสว่าง
+    const lane = this.add.graphics().setDepth(-9);
+    const stroke = (w, c, a) => { lane.lineStyle(w, c, a); lane.beginPath(); lane.moveTo(PATH[0][0], PATH[0][1]); for (const [x, y] of PATH.slice(1)) lane.lineTo(x, y); lane.strokePath(); for (const [x, y] of PATH) lane.fillStyle(c, a).fillCircle(x, y, w / 2); };
+    stroke(150, 0x5c3a20, 0.9); stroke(120, 0xc89058, 1); stroke(70, 0xd8a468, 0.6);
+    // ลานค่าย
+    lane.fillStyle(0xd2a066, 1).fillEllipse(CASTLE.x, CASTLE.y + 60, 900, 330);
+    // ของประดับ
+    const deco = ["tree1", "tree2", "rock", "stump", "pebbles", "tuft"];
+    for (let i = 0; i < 110; i++) {
+      const x = rnd.between(20, WORLD.w - 20), y = rnd.between(560, WORLD.h - 20);
+      if (this.nearLane(x, y) < 110 || PADS.some((p) => Math.hypot(p.x - x, p.y - y) < 80)) continue;
+      const n = rnd.pick(deco), h = n.startsWith("tree") ? rnd.between(60, 90) : rnd.between(20, 40);
+      const im = this.img(n, x, y, h, 0x6b4a2a); im.setDepth(y);
+    }
+  }
+  nearLane(x, y) {
+    let best = Infinity;
+    for (const s of Path.seg) {
+      const t = Math.max(0, Math.min(1, ((x - s.ax) * (s.bx - s.ax) + (y - s.ay) * (s.by - s.ay)) / (s.len * s.len)));
+      best = Math.min(best, Math.hypot(x - (s.ax + (s.bx - s.ax) * t), y - (s.ay + (s.by - s.ay) * t)));
+    }
+    return best;
+  }
+
+  reset() {
+    let cls = "warrior";
+    try { const c = localStorage.getItem("lb_cls"); if (HERO[c]) cls = c; } catch (_) {}
+    this.objs && this.objs.forEach((o) => o.destroy());
+    (this.shots || []).forEach((s) => s.sp.destroy());
+    this.walls = [];
+    this.objs = [];
+    const keep = (o) => { this.objs.push(o); return o; };
+    this.keep = keep;
+    this.s = { coins: 25, wave: 0, phase: "build", timer: 25, spawnLeft: 0, spawnT: 0, queue: [], income: 0, castleLv: 1, over: false };
+    this.castle = { x: CASTLE.x, y: CASTLE.y, hp: 1500, max: 1500 };
+    this.castle.sp = keep(this.img("camp5", CASTLE.x, CASTLE.y + 40, 230, 0x4a6fb0)).setDepth(CASTLE.y + 40);
+    this.enemies = []; this.units = []; this.towers = []; this.shots = []; this.boulders = [];
+    this.grid = new Grid();
+    // Hero
+    const H = HERO[cls];
+    const sp = keep(this.anim(`hero_${cls}_idle`) ? this.add.sprite(CASTLE.x, CASTLE.y + 180, "an_hero_" + cls + "_idle").setOrigin(0.5, 0.985).setScale(56 / 128) : this.img("hero_" + cls, CASTLE.x, CASTLE.y + 180, 56, 0x6fb6e8));
+    this.hero = { cls, ...H, x: CASTLE.x, y: CASTLE.y + 180, hp: H.hp, max: H.hp, t: 0, dead: 0, sp, trail: [], cur: "", face: 1 };
+    this.heroAnim("idle");
+    this.ring = keep(this.add.graphics());
+    // ค่ายทหาร
+    this.barracks = [];
+    this.addBarracks("sword", 420, 330);
+    // ช่องสร้าง
+    this.pads = [];
+    for (const p of PADS) this.addPad({ ...p });
+    this.updateHud();
+  }
+
+  addBarracks(type, x, y) {
+    const sp = this.keep(this.img(type === "sword" ? "barracks" : "barracks", x, y + 40, 120, 0x4a6fb0)).setDepth(y + 40);
+    if (type === "archer") sp.setTint(0xb8d8ff);
+    const b = { type, x, y: y + 60, lv: 1, stock: [], t: 0, sp };
+    this.barracks.push(b);
+    return b;
+  }
+  armyCap() { return 8 + this.barracks.reduce((a, b) => a + 6 * b.lv, 0); }
+
+  addPad(p) {
+    p.paid = 0; p.t = 0;
+    const c = this.keep(this.add.container(p.x, p.y)).setDepth(p.y - 30);
+    const g = this.add.graphics();
+    const dash = (x0, y0, x1, y1) => { const n = 5; for (let i = 0; i < n; i++) { const a = i / n, b = (i + 0.55) / n; g.lineBetween(x0 + (x1 - x0) * a, y0 + (y1 - y0) * a, x0 + (x1 - x0) * b, y0 + (y1 - y0) * b); } };
+    g.fillStyle(0x3a2412, 0.55).fillRoundedRect(-34, -34, 68, 68, 8);
+    g.lineStyle(4, 0xffffff, 0.95); dash(-34, -34, 34, -34); dash(34, -34, 34, 34); dash(34, 34, -34, 34); dash(-34, 34, -34, -34);
+    const fill = this.add.graphics();
+    const txt = this.add.text(0, -6, "", { fontFamily: "Sarabun", fontSize: "26px", fontStyle: "bold", color: "#ffffff", stroke: "#3a2412", strokeThickness: 4 }).setOrigin(0.5);
+    const coin = this.add.image(0, 20, "coin");
+    const label = this.add.text(0, 48, p.label || PAD_LABEL[p.kind] || "", { fontFamily: "Sarabun", fontSize: "14px", fontStyle: "bold", color: "#fff3c8", stroke: "#2a1a0a", strokeThickness: 4 }).setOrigin(0.5);
+    c.add([g, fill, txt, coin, label]);
+    p.c = c; p.fill = fill; p.txt = txt; p.label = label;
+    this.pads.push(p); this.padText(p);
+    return p;
+  }
+  padText(p) {
+    p.txt.setText(String(p.cost - p.paid));
+    p.fill.clear(); if (p.paid > 0) p.fill.fillStyle(0xf2c14e, 0.45).fillRect(-30, 30 - 60 * p.paid / p.cost, 60, 60 * p.paid / p.cost);
+  }
+  removePad(p) { p.c.destroy(); this.pads = this.pads.filter((q) => q !== p); }
+
+  build(p) {
+    this.removePad(p);
+    this.cameras.main.shake(120, 0.004);
+    const pop = (o) => { const s = o.scale; o.setScale(s * 0.3); this.tweens.add({ targets: o, scale: s, duration: 320, ease: "Back.Out" }); };
+    if (p.kind === "tower") {
+      const lv = (p.lv || 0) + 1;
+      let t = this.towers.find((q) => q.id === p.id);
+      if (!t) { t = { id: p.id, x: p.x, y: p.y, lv, cd: 0 }; this.towers.push(t); }
+      t.lv = lv; t.sp && t.sp.destroy();
+      t.sp = this.keep(this.img("tower" + lv, p.x, p.y + 30, 80 + lv * 10, 0x9a7a5a)).setDepth(p.y + 30); pop(t.sp);
+      UI.toast(`ป้อมหน้าไม้ เลเวล ${lv}`);
+      if (lv < 3) this.time.delayedCall(400, () => this.addPad({ id: p.id, kind: "tower", x: p.x, y: p.y + 74, cost: p.cost * 2, lv, label: `อัปหน้าไม้ Lv${lv + 1}`, base: p.base || { x: p.x, y: p.y } }));
+      if (p.base) { t.x = p.base.x; t.y = p.base.y; t.sp.setPosition(t.x, t.y + 30).setDepth(t.y + 30); }
+    } else if (p.kind === "barricade") {
+      const d = Path.vert(p.at), q = Path.at(d), lv = (p.lv || 0) + 1;
+      const w = { d, x: q.x, y: q.y, hp: 500 * lv, max: 500 * lv, lv, pad: p };
+      w.sp = this.keep(this.img(lv > 1 ? "wall2" : "wall1", q.x, q.y + 20, 70, 0x9a7a5a)).setDepth(q.y + 20);
+      w.sp.setScale(w.sp.scale * 1.5); pop(w.sp);
+      w.bar = this.keep(this.add.graphics()).setDepth(1e6);
+      this.walls = (this.walls || []).filter((x) => x.pad.id !== p.id); this.walls.push(w);
+      UI.toast("สร้างเครื่องกีดขวางแล้ว");
+    } else if (p.kind === "boulder") {
+      this.rollBoulder(p);
+    } else if (p.kind === "archery") {
+      const b = this.addBarracks("archer", p.x, p.y - 40); pop(b.sp);
+      UI.toast("ค่ายพลธนูพร้อม! เดินผ่านเพื่อรับพลธนู");
+    } else if (p.kind === "barracksUp") {
+      const b = this.barracks[0]; b.lv++;
+      UI.toast(`ค่ายทหาร Lv${b.lv} · ทหารสูงสุด ${this.armyCap()}`);
+      if (b.lv < 4) this.time.delayedCall(400, () => this.addPad({ ...p, cost: p.cost * 2, label: `อัปค่ายทหาร Lv${b.lv + 1}` }));
+    } else if (p.kind === "castleUp") {
+      this.s.castleLv++; this.castle.max += 800; this.castle.hp = this.castle.max;
+      UI.toast(`ป้อม Lv${this.s.castleLv} · ซ่อมเต็ม · รายได้เพิ่ม`);
+      if (this.s.castleLv < 4) this.time.delayedCall(400, () => this.addPad({ ...p, cost: p.cost * 2, label: `อัปป้อม Lv${this.s.castleLv + 1}` }));
+    }
+    this.updateHud();
+  }
+
+  rollBoulder(p) {
+    const d0 = Path.vert(p.from), d1 = Path.vert(p.to), q = Path.at(d0);
+    const sp = this.keep(this.img("rock", q.x, q.y, 84, 0x888888)).setOrigin(0.5, 0.5);
+    this.boulders.push({ d: d0, end: d1, sp, hit: new Set(), pad: p });
+    UI.toast("หินกลิ้ง!");
+  }
+
+  heroAnim(act) {
+    const h = this.hero, k = `hero_${h.cls}_${act}`;
+    if (!this.anim(k)) return;
+    if (act !== "attack" && (h.cur === k || (h.cur.endsWith("attack") && h.sp.anims.isPlaying))) return;
+    h.cur = k; const a = ANIM[k]; h.sp.play("a_" + k); h.sp.setOrigin(0.5, a.oy).setScale(56 / a.ref);
+  }
+
+  /* ----- เวฟ ----- */
+  startWave() {
+    const s = this.s; s.wave++; s.phase = "fight";
+    const n = s.wave, mul = 1 + 0.32 * (n - 1), q = [];
+    const count = 36 + 26 * (n - 1);
+    for (let i = 0; i < count; i++) {
+      const r = Math.random();
+      let t = "zombie";
+      if (n >= 2 && r < 0.35) t = "skel";
+      if (n >= 3 && r < 0.15) t = "wolf";
+      if (n >= 4 && r > 0.85) t = "ghoul";
+      if (n >= 5 && r > 0.94) t = "orc";
+      if (n >= 7 && r > 0.975) t = "knight";
+      q.push(t);
+    }
+    if (n % 5 === 0) q.splice(q.length >> 1, 0, "boss");
+    s.queue = q; s.mul = mul; s.spawnT = 0;
+    UI.banner(`เวฟ ${n} / ${WAVES}`, n % 5 === 0 ? "บอสกำลังมา!" : `${q.length} ตัว`);
+    this.updateHud();
+  }
+  spawn(type) {
+    const E = ENEMY[type], m = this.s.mul;
+    const e = { type, ...E, hp: E.hp * m, max: E.hp * m, atk: E.atk * (1 + 0.1 * (this.s.wave - 1)), d: Math.random() * 30, off: (Math.random() - 0.5) * (E.boss ? 20 : 90), cd: Math.random(), x: 0, y: 0, dead: false };
+    const p = Path.at(e.d); e.x = p.x + p.nx * e.off; e.y = p.y + p.ny * e.off;
+    e.sp = this.keep(this.mob(E.art, e.x, e.y, E.h, 0xc0392b));
+    if (E.boss) { e.bar = this.keep(this.add.graphics()).setDepth(1e6); }
+    this.enemies.push(e);
+  }
+
+  kill(e) {
+    if (e.dead) return;
+    e.dead = true; this.s.coins += e.gold;
+    const sp = e.sp;
+    this.tweens.add({ targets: sp, alpha: 0, scaleY: sp.scaleY * 0.3, duration: 220, onComplete: () => sp.destroy() });
+    e.bar && e.bar.destroy();
+    if (Math.random() < 0.35 || e.boss) {
+      const c = this.add.image(e.x, e.y - 20, "coin").setDepth(1e6);
+      this.tweens.add({ targets: c, y: e.y - 60, alpha: 0, duration: 600, onComplete: () => c.destroy() });
+    }
+    if (e.boss) { UI.banner("ล้มบอสได้!", `+${e.gold} เหรียญ`); this.cameras.main.shake(300, 0.01); }
+  }
+  hit(e, dmg) { if (e.dead) return; e.hp -= dmg; if (e.hp <= 0) this.kill(e); else if (!e.flash) { e.flash = 0.08; e.sp.setAlpha(0.55); } }
+
+  shoot(fromX, fromY, e, dmg, art, aoe) {
+    const sp = this.has(art) ? this.add.image(fromX, fromY, "art_" + art).setScale(art === "fx_arrow" ? 0.45 : 0.5) : this.add.image(fromX, fromY, "dot").setScale(0.25).setTint(0xffe08a);
+    sp.setDepth(1e6 - 1);
+    this.shots.push({ x: fromX, y: fromY, e, dmg, sp, aoe, spd: 620 });
+  }
+
+  /* ----- อัปเดต ----- */
+  update(_, ms) {
+    if (this.paused || this.s.over) return;
+    const dt = Math.min(0.05, ms / 1000), s = this.s;
+    // grid
+    this.grid.clear();
+    for (const e of this.enemies) if (!e.dead) this.grid.add(e);
+
+    // รายได้ป้อม
+    s.income += dt * (0.3 + 0.3 * s.castleLv);
+    if (s.income >= 1) { s.coins += Math.floor(s.income); s.income %= 1; }
+
+    // phase
+    if (s.phase === "build") { s.timer -= dt; if (s.timer <= 0) this.startWave(); }
+    else if (s.phase === "fight") {
+      if (s.queue.length) {
+        s.spawnT -= dt;
+        while (s.spawnT <= 0 && s.queue.length) { this.spawn(s.queue.shift()); s.spawnT += 0.11 + Math.random() * 0.08; }
+      } else if (!this.enemies.some((e) => !e.dead)) {
+        const bonus = 15 + 5 * s.wave; s.coins += bonus;
+        if (s.wave >= WAVES) return this.finish(true);
+        s.phase = "build"; s.timer = 18;
+        UI.banner(`ผ่านเวฟ ${s.wave}!`, `+${bonus} เหรียญ · เวฟถัดไปใน 18 วิ`);
+      }
+    }
+
+    this.updateHero(dt);
+    this.updateBarracks(dt);
+    this.updateUnits(dt);
+    this.updateEnemies(dt);
+    this.updateTowers(dt);
+    this.updateShots(dt);
+    this.updateBoulders(dt);
+    this.updatePads(dt);
+    this.hudT = (this.hudT || 0) - dt; if (this.hudT <= 0) { this.hudT = 0.15; this.updateHud(); }
+  }
+
+  updateHero(dt) {
+    const h = this.hero;
+    if (h.dead > 0) {
+      h.dead -= dt;
+      if (h.dead <= 0) { h.hp = h.max; h.x = CASTLE.x; h.y = CASTLE.y + 180; h.sp.setAlpha(1); h.trail = []; UI.toast("Hero กลับมาแล้ว"); }
+      return;
+    }
+    const d = Input.dir();
+    const moving = d.x || d.y;
+    h.x = Phaser.Math.Clamp(h.x + d.x * h.spd * dt, 20, WORLD.w - 20);
+    h.y = Phaser.Math.Clamp(h.y + d.y * h.spd * dt, 140, WORLD.h - 20);
+    if (d.x) h.face = d.x < 0 ? -1 : 1;
+    // แถวทหารเดินตามรอย
+    const last = h.trail[0];
+    if (!last || Math.hypot(last.x - h.x, last.y - h.y) > 6) { h.trail.unshift({ x: h.x, y: h.y }); if (h.trail.length > 600) h.trail.pop(); }
+    // ฟื้น HP ในค่าย
+    if (Math.hypot(h.x - CASTLE.x, h.y - CASTLE.y) < 300) h.hp = Math.min(h.max, h.hp + 25 * dt);
+    // โจมตี
+    h.t -= dt;
+    if (h.t <= 0) {
+      const tgts = [];
+      this.grid.near(h.x, h.y - 10, h.range, (e, d2) => tgts.push([d2, e]));
+      if (tgts.length) {
+        tgts.sort((a, b) => a[0] - b[0]);
+        h.t = h.cd; this.heroAnim("attack");
+        if (h.shot) this.shoot(h.x, h.y - 30, tgts[0][1], h.atk, h.shot, h.aoe);
+        else for (const [, e] of tgts.slice(0, h.multi)) this.hit(e, h.atk);
+        h.face = tgts[0][1].x < h.x ? -1 : 1;
+      }
+    }
+    if (!h.cur.endsWith("attack") || !h.sp.anims || !h.sp.anims.isPlaying) this.heroAnim(moving ? "walk" : "idle");
+    h.sp.setPosition(h.x, h.y).setDepth(h.y).setFlipX(h.face < 0);
+    this.ring.clear().lineStyle(2, 0x6fb6e8, 0.8).strokeEllipse(h.x, h.y, 46, 18).setDepth(h.y - 1);
+  }
+
+  updateBarracks(dt) {
+    const h = this.hero;
+    for (const b of this.barracks) {
+      b.t -= dt;
+      const max = 4 + 2 * b.lv;
+      if (b.t <= 0 && b.stock.length < max) {
+        b.t = Math.max(1.2, 3.2 - 0.5 * b.lv);
+        const i = b.stock.length, x = b.x - 45 + (i % 4) * 30, y = b.y + 20 + Math.floor(i / 4) * 26;
+        const u = this.makeUnit(b.type, x, y); u.home = { x, y }; b.stock.push(u);
+      }
+      // Hero เดินผ่าน: ทหารมาต่อแถว
+      if (h.dead <= 0 && Math.hypot(h.x - b.x, h.y - b.y) < 110 && b.stock.length && this.units.length < this.armyCap()) {
+        b.pull = (b.pull || 0) - dt;
+        if (b.pull <= 0) { b.pull = 0.12; const u = b.stock.shift(); u.home = null; this.units.push(u); }
+      }
+      for (const u of b.stock) { u.sp.setPosition(u.x, u.y + Math.sin(this.time.now / 300 + u.x) * 1).setDepth(u.y); }
+    }
+  }
+  makeUnit(type, x, y) {
+    const U = UNIT[type];
+    const sp = this.keep(this.img(U.art, x, y, 36, 0x6fb6e8));
+    return { type, ...U, x, y, hp: U.hp * (1 + 0.15 * (this.barracks[0].lv - 1)), max: U.hp, t: Math.random() * U.cd, sp, base: sp.scale };
+  }
+
+  updateUnits(dt) {
+    const h = this.hero, alive = h.dead <= 0;
+    for (let i = 0; i < this.units.length; i++) {
+      const u = this.units[i];
+      const slot = alive ? h.trail[Math.min(h.trail.length - 1, 4 + i * 4)] || h : u.hold || (u.hold = { x: u.x, y: u.y });
+      if (alive) u.hold = null;
+      u.t -= dt;
+      const look = u.type === "archer" ? u.range : 110;
+      const e = this.grid.nearest(u.x, u.y, look);
+      const leash = alive ? Math.hypot(u.x - h.x, u.y - h.y) < 240 : true;
+      let tx = slot.x, ty = slot.y;
+      if (e && leash) {
+        const dd = Math.hypot(e.x - u.x, e.y - u.y);
+        if (dd <= u.range) {
+          tx = u.x; ty = u.y;
+          if (u.t <= 0) {
+            u.t = u.cd;
+            if (u.type === "archer") this.shoot(u.x, u.y - 22, e, u.atk, "fx_arrow"); else { this.hit(e, u.atk); u.lunge = 0.12; }
+          }
+        } else { tx = e.x; ty = e.y; }
+      }
+      const dx = tx - u.x, dy = ty - u.y, l = Math.hypot(dx, dy), sp = l > 60 ? 300 : 230;
+      if (l > 3) { const m = Math.min(l, sp * dt); u.x += dx / l * m; u.y += dy / l * m; u.face = dx < 0 ? -1 : 1; }
+      if (u.lunge) u.lunge = Math.max(0, u.lunge - dt);
+      const bob = l > 3 ? Math.abs(Math.sin(this.time.now / 90 + i)) * 3 : 0;
+      u.sp.setPosition(u.x + (u.lunge ? 4 * (u.face || 1) : 0), u.y - bob).setDepth(u.y).setFlipX(u.face < 0);
+    }
+  }
+  killUnit(u) {
+    u.dead = true; this.units = this.units.filter((q) => q !== u);
+    const sp = u.sp; this.tweens.add({ targets: sp, alpha: 0, angle: 80, duration: 300, onComplete: () => sp.destroy() });
+  }
+
+  updateEnemies(dt) {
+    const h = this.hero, walls = (this.walls || []).filter((w) => w.hp > 0);
+    // ใครขวางหน้าศัตรู: Hero / ทหาร
+    const defenders = this.units.slice(); if (h.dead <= 0) defenders.push(h);
+    for (const e of this.enemies) e.block = null;
+    for (const dfd of defenders) this.grid.near(dfd.x, dfd.y, 26, (e) => { if (!e.block) e.block = dfd; });
+    for (const e of this.enemies) {
+      if (e.dead) continue;
+      if (e.flash) { e.flash -= dt; if (e.flash <= 0) { e.flash = 0; e.sp.setAlpha(1); } }
+      e.cd -= dt;
+      const wall = walls.find((w) => e.d < w.d && e.d > w.d - 34 - (e.off * 0.1));
+      if (e.block && !e.block.dead) {
+        if (e.cd <= 0) { e.cd = 1; this.damageDefender(e.block, e.atk); }
+      } else if (wall) {
+        if (e.cd <= 0) { e.cd = 1; wall.hp -= e.atk * (e.siege || 1); if (wall.hp <= 0) this.breakWall(wall); }
+      } else if (e.d >= Path.total - 10) {
+        if (e.cd <= 0) { e.cd = 1; this.castle.hp -= e.atk * (e.siege || 1); if (this.castle.hp <= 0) return this.finish(false); }
+      } else {
+        e.d += e.spd * dt;
+      }
+      const p = Path.at(e.d);
+      e.x = p.x + p.nx * e.off; e.y = p.y + p.ny * e.off;
+      e.sp.setPosition(e.x, e.y).setDepth(e.y).setFlipX(p.nx > 0 ? false : true);
+      if (e.bar) e.bar.clear().fillStyle(0x000000, 0.6).fillRect(e.x - 40, e.y - e.h - 14, 80, 7).fillStyle(0xe2604a).fillRect(e.x - 39, e.y - e.h - 13, 78 * Math.max(0, e.hp / e.max), 5);
+    }
+    if (this.enemies.length > 60 && this.enemies.filter((e) => e.dead).length > 40) this.enemies = this.enemies.filter((e) => !e.dead);
+    for (const w of walls) w.bar.clear().fillStyle(0x000000, 0.6).fillRect(w.x - 30, w.y - 60, 60, 6).fillStyle(0xd8c070).fillRect(w.x - 29, w.y - 59, 58 * Math.max(0, w.hp / w.max), 4);
+  }
+  damageDefender(dfd, dmg) {
+    dfd.hp -= dmg;
+    if (dfd === this.hero) {
+      if (dfd.hp <= 0) { dfd.dead = 6; dfd.sp.setAlpha(0.25); UI.banner("Hero ล้ม!", "ฟื้นที่ป้อมใน 6 วินาที"); }
+    } else if (dfd.hp <= 0) this.killUnit(dfd);
+  }
+  breakWall(w) {
+    w.hp = 0; w.sp.destroy(); w.bar.destroy();
+    this.walls = this.walls.filter((x) => x !== w);
+    UI.toast("เครื่องกีดขวางพัง! สร้างใหม่ได้");
+    const p = w.pad; this.addPad({ id: p.id, kind: "barricade", x: p.x, y: p.y, cost: p.cost, at: p.at, lv: w.lv - 1, label: "สร้างใหม่" });
+  }
+
+  updateTowers(dt) {
+    for (const t of this.towers) {
+      const L = TOWER_LV[t.lv]; t.cd -= dt;
+      if (t.cd > 0) continue;
+      const list = [];
+      this.grid.near(t.x, t.y, L.range, (e, d2) => list.push([e.d, e]));
+      if (!list.length) continue;
+      list.sort((a, b) => b[0] - a[0]);   // ยิงตัวที่ใกล้ป้อมที่สุดก่อน
+      t.cd = L.cd;
+      for (const [, e] of list.slice(0, L.shots)) this.shoot(t.x, t.y - 60, e, L.dmg, "fx_arrow");
+    }
+  }
+  updateShots(dt) {
+    for (const s of this.shots) {
+      const tx = s.e.x, ty = s.e.y - 14, dx = tx - s.x, dy = ty - s.y, l = Math.hypot(dx, dy), m = s.spd * dt;
+      if (l <= m || s.e.dead) {
+        if (!s.e.dead) {
+          if (s.aoe) this.grid.near(tx, ty, s.aoe, (e) => this.hit(e, s.dmg)); else this.hit(s.e, s.dmg);
+        }
+        s.done = true; s.sp.destroy(); continue;
+      }
+      s.x += dx / l * m; s.y += dy / l * m;
+      s.sp.setPosition(s.x, s.y).setRotation(Math.atan2(dy, dx));
+    }
+    this.shots = this.shots.filter((s) => !s.done);
+  }
+  updateBoulders(dt) {
+    for (const b of this.boulders) {
+      b.d -= 320 * dt;
+      const p = Path.at(b.d);
+      b.sp.setPosition(p.x, p.y - 30).setDepth(p.y + 5).setRotation(b.sp.rotation - 6 * dt);
+      this.grid.near(p.x, p.y, 70, (e) => { if (!b.hit.has(e)) { b.hit.add(e); this.hit(e, e.boss ? 500 : 9999); } });
+      if (b.d <= b.end) {
+        b.done = true;
+        const sp = b.sp; this.tweens.add({ targets: sp, alpha: 0, duration: 300, onComplete: () => sp.destroy() });
+        const pad = b.pad;
+        this.time.delayedCall(6000, () => this.addPad({ id: pad.id, kind: "boulder", x: pad.x, y: pad.y, cost: pad.cost, from: pad.from, to: pad.to }));
+      }
+    }
+    this.boulders = this.boulders.filter((b) => !b.done);
+  }
+  updatePads(dt) {
+    const h = this.hero; if (h.dead > 0) return;
+    for (const p of this.pads) {
+      const on = Math.abs(h.x - p.x) < 38 && Math.abs(h.y - p.y) < 40;
+      if (!on) { p.t = 0; continue; }
+      p.t += dt;
+      if (p.t < 0.25 || this.s.coins <= 0) continue;
+      p.acc = (p.acc || 0) + dt * Math.max(12, p.cost / 1.4);
+      const n = Math.min(Math.floor(p.acc), this.s.coins, p.cost - p.paid);
+      if (n <= 0) continue;
+      p.acc -= n; p.paid += n; this.s.coins -= n;
+      const c = this.add.image(h.x, h.y - 40, "coin").setDepth(1e6);
+      this.tweens.add({ targets: c, x: p.x, y: p.y, duration: 180, onComplete: () => c.destroy() });
+      this.padText(p);
+      if (p.paid >= p.cost) { this.build(p); break; }
+    }
+  }
+
+  updateHud() {
+    const s = this.s;
+    $("coins").textContent = Math.floor(s.coins);
+    $("army").textContent = `${this.units.length}/${this.armyCap()}`;
+    $("wave").textContent = s.phase === "build" ? (s.wave ? `เวฟ ${s.wave + 1} ใน ${Math.ceil(s.timer)} วิ` : `เริ่มใน ${Math.ceil(s.timer)} วิ`) : `เวฟ ${s.wave}/${WAVES} · เหลือ ${s.queue.length + this.enemies.filter((e) => !e.dead).length}`;
+    const r = Math.max(0, this.castle.hp / this.castle.max);
+    $("hp").style.width = (r * 100) + "%"; $("hpbar").classList.toggle("low", r < 0.35);
+    $("next-btn").hidden = s.phase !== "build";
+  }
+
+  finish(win) {
+    this.s.over = true;
+    $("result-title").textContent = win ? "ป้อมรอดแล้ว!" : "ป้อมถูกทำลาย";
+    $("result-title").className = win ? "win" : "lose";
+    $("result-text").textContent = win ? `ต้านฝูงมอนสเตอร์ได้ครบ ${WAVES} เวฟ` : `ต้านได้ถึงเวฟ ${this.s.wave} · ลองสร้างป้อมและกับดักเพิ่ม`;
+    $("result").hidden = false;
+  }
+}
+const PAD_LABEL = { tower: "ป้อมหน้าไม้", barricade: "เครื่องกีดขวาง", boulder: "หินกลิ้ง", archery: "ค่ายพลธนู", barracksUp: "อัปค่ายทหาร", castleUp: "อัปป้อม" };
+
+/* ===== ตัวควบคุมเกม ===== */
+window.Game = {
+  scene: null,
+  toggleMenu() { const m = $("menu"); if (!this.scene || !$("intro").hidden || !$("result").hidden) return; m.hidden = !m.hidden; this.scene.paused = !m.hidden; },
+};
+(() => {
+  if (!window.Phaser) { document.body.insertAdjacentHTML("beforeend", '<div class="overlay"><div class="card"><p>โหลดตัวเกมไม่สำเร็จ ลองรีเฟรชหน้านี้อีกครั้ง</p></div></div>'); return; }
+  new Phaser.Game({ type: Phaser.AUTO, parent: "game", backgroundColor: "#2a1f14", scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" }, input: { activePointers: 2 }, scene: [RushScene] });
+  const start = () => { const sc = Game.scene; if (!sc) return; $("intro").hidden = true; $("result").hidden = true; $("menu").hidden = true; sc.paused = false; $("game").focus({ preventScroll: true }); };
+  const restart = () => { const sc = Game.scene; if (!sc) return; sc.tweens.killAll(); sc.time.removeAllEvents(); sc.reset(); start(); };
+  $("play-btn").addEventListener("click", start);
+  $("again-btn").addEventListener("click", restart);
+  $("restart-btn").addEventListener("click", restart);
+  $("resume-btn").addEventListener("click", () => Game.toggleMenu());
+  $("menu-btn").addEventListener("click", (e) => { e.currentTarget.blur(); Game.toggleMenu(); });
+  $("next-btn").addEventListener("click", (e) => {
+    e.currentTarget.blur(); const sc = Game.scene; if (!sc || sc.s.phase !== "build") return;
+    const bonus = Math.ceil(sc.s.timer / 2); sc.s.coins += bonus; sc.s.timer = 0; UI.toast(`เรียกเร็ว +${bonus} เหรียญ`);
+  });
+})();
+</script>
+</body>
+</html>
