@@ -112,8 +112,8 @@ body { background: #2a1f14; color: var(--ink); font-family: "Sarabun", system-ui
 "use strict";
 /* ===== ข้อมูลภาพ (ใช้ชุดเดียวกับโหมดหลัก) ===== */
 const ART_DIR = "assets/art/", ANIM_DIR = "assets/anim/";
-const ART = "hero_warrior hero_archer hero_mage u_sword u_archer zombie0 skel0 wolf0 orc0 ghoul0 knight0 boss0 tower1 tower2 tower3 barracks camp5 rock wall1 wall2 tree1 tree2 stump pebbles tuft fx_arrow fx_fireball".split(" ");
-const ANIM = {"hero_archer_idle":{"n":4,"w":148,"h":134,"fps":6,"loop":true,"ref":128,"oy":0.9851},"hero_archer_walk":{"n":6,"w":138,"h":136,"fps":10,"loop":true,"ref":128,"oy":0.9853},"hero_archer_attack":{"n":6,"w":206,"h":138,"fps":12,"loop":false,"ref":128,"oy":0.9855},"u_archer_attack":{"n":6,"w":218,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"u_sword_attack":{"n":6,"w":162,"h":136,"fps":12,"loop":false,"ref":128,"oy":0.9853},"hero_warrior_idle":{"n":4,"w":190,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_warrior_walk":{"n":6,"w":120,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_warrior_attack":{"n":6,"w":168,"h":146,"fps":12,"loop":false,"ref":128,"oy":0.9863},"hero_mage_idle":{"n":4,"w":142,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_mage_walk":{"n":6,"w":146,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_mage_attack":{"n":6,"w":200,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"zombie0_walk":{"n":6,"w":164,"h":135,"fps":8,"loop":true,"ref":128,"oy":0.9852},"wolf0_walk":{"n":6,"w":228,"h":146,"fps":14,"loop":true,"ref":128,"oy":0.9863},"skel0_walk":{"n":6,"w":166,"h":134,"fps":8,"loop":true,"ref":128,"oy":0.9851},"ghoul0_walk":{"n":6,"w":172,"h":136,"fps":8,"loop":true,"ref":128,"oy":0.9853},"orc0_walk":{"n":6,"w":186,"h":138,"fps":7,"loop":true,"ref":128,"oy":0.9855},"knight0_walk":{"n":6,"w":176,"h":137,"fps":8,"loop":true,"ref":128,"oy":0.9854},"boss0_walk":{"n":6,"w":248,"h":201,"fps":8,"loop":true,"ref":192,"oy":0.99}};
+const ART = "mount_warrior mount_archer mount_mage ballista1 ballista2 ballista3 cactus1 cactus2 cliff1 cliff2 dry_bush barricade boulder hero_warrior hero_archer hero_mage u_sword u_archer zombie0 skel0 wolf0 orc0 ghoul0 knight0 boss0 tower1 tower2 tower3 barracks camp5 rock wall1 wall2 tree1 tree2 stump pebbles tuft fx_arrow fx_fireball".split(" ");
+const ANIM = {"mount_warrior_idle":{"n":4,"w":140,"h":132,"fps":6,"loop":true,"ref":128,"oy":0.9848},"mount_warrior_walk":{"n":6,"w":148,"h":137,"fps":12,"loop":true,"ref":128,"oy":0.9854},"mount_warrior_attack":{"n":6,"w":146,"h":143,"fps":12,"loop":false,"ref":128,"oy":0.986},"hero_archer_idle":{"n":4,"w":148,"h":134,"fps":6,"loop":true,"ref":128,"oy":0.9851},"hero_archer_walk":{"n":6,"w":138,"h":136,"fps":10,"loop":true,"ref":128,"oy":0.9853},"hero_archer_attack":{"n":6,"w":206,"h":138,"fps":12,"loop":false,"ref":128,"oy":0.9855},"u_archer_attack":{"n":6,"w":218,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"u_sword_attack":{"n":6,"w":162,"h":136,"fps":12,"loop":false,"ref":128,"oy":0.9853},"hero_warrior_idle":{"n":4,"w":190,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_warrior_walk":{"n":6,"w":120,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_warrior_attack":{"n":6,"w":168,"h":146,"fps":12,"loop":false,"ref":128,"oy":0.9863},"hero_mage_idle":{"n":4,"w":142,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_mage_walk":{"n":6,"w":146,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_mage_attack":{"n":6,"w":200,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"zombie0_walk":{"n":6,"w":164,"h":135,"fps":8,"loop":true,"ref":128,"oy":0.9852},"wolf0_walk":{"n":6,"w":228,"h":146,"fps":14,"loop":true,"ref":128,"oy":0.9863},"skel0_walk":{"n":6,"w":166,"h":134,"fps":8,"loop":true,"ref":128,"oy":0.9851},"ghoul0_walk":{"n":6,"w":172,"h":136,"fps":8,"loop":true,"ref":128,"oy":0.9853},"orc0_walk":{"n":6,"w":186,"h":138,"fps":7,"loop":true,"ref":128,"oy":0.9855},"knight0_walk":{"n":6,"w":176,"h":137,"fps":8,"loop":true,"ref":128,"oy":0.9854},"boss0_walk":{"n":6,"w":248,"h":201,"fps":8,"loop":true,"ref":192,"oy":0.99}};
 
 /* ===== สมดุลเกม ===== */
 const WORLD = { w: 1400, h: 2250 };
@@ -131,9 +131,9 @@ const ENEMY = {
   boss:   { art: "boss0",   h: 96, hp: 2400, atk: 45, spd: 22, gold: 80, siege: 3, boss: true },
 };
 const HERO = {
-  warrior: { hp: 420, atk: 26, range: 62, cd: 0.5, multi: 5, spd: 235 },
-  archer:  { hp: 300, atk: 30, range: 210, cd: 0.42, multi: 1, spd: 245, shot: "fx_arrow" },
-  mage:    { hp: 280, atk: 34, range: 190, cd: 0.8, multi: 1, aoe: 60, spd: 235, shot: "fx_fireball" },
+  warrior: { hp: 420, atk: 26, range: 62, cd: 0.5, multi: 5, spd: 260 },
+  archer:  { hp: 300, atk: 30, range: 210, cd: 0.42, multi: 1, spd: 270, shot: "fx_arrow" },
+  mage:    { hp: 280, atk: 34, range: 190, cd: 0.8, multi: 1, aoe: 60, spd: 260, shot: "fx_fireball" },
 };
 const UNIT = {
   sword:  { art: "u_sword", hp: 70, atk: 10, range: 24, cd: 0.75 },
@@ -301,11 +301,13 @@ class RushScene extends Phaser.Scene {
     // ลานค่าย
     lane.fillStyle(0xd2a066, 1).fillEllipse(CASTLE.x, CASTLE.y + 60, 900, 330);
     // ของประดับ
-    const deco = ["tree1", "tree2", "rock", "stump", "pebbles", "tuft"];
+    const desert = this.has("cactus1");
+    const deco = desert ? ["cactus1", "cactus2", "cliff1", "cliff2", "cliff1", "dry_bush", "dry_bush", "pebbles"] : ["tree1", "tree2", "rock", "stump", "pebbles", "tuft"];
+    const SIZE = { cactus1: [55, 80], cactus2: [30, 45], cliff1: [80, 130], cliff2: [70, 110], dry_bush: [26, 40], tree1: [60, 90], tree2: [60, 90] };
     for (let i = 0; i < 110; i++) {
       const x = rnd.between(20, WORLD.w - 20), y = rnd.between(560, WORLD.h - 20);
       if (this.nearLane(x, y) < 110 || PADS.some((p) => Math.hypot(p.x - x, p.y - y) < 80)) continue;
-      const n = rnd.pick(deco), h = n.startsWith("tree") ? rnd.between(60, 90) : rnd.between(20, 40);
+      const n = rnd.pick(deco), z = SIZE[n] || [20, 40], h = rnd.between(z[0], z[1]);
       const im = this.img(n, x, y, h, 0x6b4a2a); im.setDepth(y);
     }
   }
@@ -334,8 +336,14 @@ class RushScene extends Phaser.Scene {
     this.grid = new Grid();
     // Hero
     const H = HERO[cls];
-    const sp = keep(this.anim(`hero_${cls}_idle`) ? this.add.sprite(CASTLE.x, CASTLE.y + 180, "an_hero_" + cls + "_idle").setOrigin(0.5, 0.985).setScale(56 / 128) : this.img("hero_" + cls, CASTLE.x, CASTLE.y + 180, 56, 0x6fb6e8));
-    this.hero = { cls, ...H, x: CASTLE.x, y: CASTLE.y + 180, hp: H.hp, max: H.hp, t: 0, dead: 0, sp, trail: [], cur: "", face: 1 };
+    // ขี่ม้า: มีท่าทางใช้ท่าทาง · มีแค่ภาพนิ่งใช้ภาพนิ่ง + เด้งด้วยโค้ด · ไม่มีเลยใช้ Hero เดินเท้า
+    let base = `hero_${cls}`, size = 56, mode = "anim";
+    if (this.anim(`mount_${cls}_walk`)) { base = `mount_${cls}`; size = 92; }
+    else if (this.has(`mount_${cls}`)) { base = `mount_${cls}`; size = 92; mode = "static"; }
+    else if (!this.anim(`hero_${cls}_walk`)) mode = "static";
+    const first = [`${base}_idle`, `${base}_walk`].find((k) => this.anim(k));
+    const sp = keep(mode === "anim" && first ? this.add.sprite(CASTLE.x, CASTLE.y + 180, "an_" + first) : this.img(base, CASTLE.x, CASTLE.y + 180, size, 0x6fb6e8));
+    this.hero = { cls, ...H, x: CASTLE.x, y: CASTLE.y + 180, hp: H.hp, max: H.hp, t: 0, dead: 0, sp, trail: [], cur: "", face: 1, base, size, mode, sc: sp.scale };
     this.heroAnim("idle");
     this.ring = keep(this.add.graphics());
     // ค่ายทหาร
@@ -387,14 +395,14 @@ class RushScene extends Phaser.Scene {
       let t = this.towers.find((q) => q.id === p.id);
       if (!t) { t = { id: p.id, x: p.x, y: p.y, lv, cd: 0 }; this.towers.push(t); }
       t.lv = lv; t.sp && t.sp.destroy();
-      t.sp = this.keep(this.img("tower" + lv, p.x, p.y + 30, 80 + lv * 10, 0x9a7a5a)).setDepth(p.y + 30); pop(t.sp);
+      t.sp = this.keep(this.img(this.has("ballista1") ? "ballista" + lv : "tower" + lv, p.x, p.y + 30, 80 + lv * 12, 0x9a7a5a)).setDepth(p.y + 30); pop(t.sp);
       UI.toast(`ป้อมหน้าไม้ เลเวล ${lv}`);
       if (lv < 3) this.time.delayedCall(400, () => this.addPad({ id: p.id, kind: "tower", x: p.x, y: p.y + 74, cost: p.cost * 2, lv, label: `อัปหน้าไม้ Lv${lv + 1}`, base: p.base || { x: p.x, y: p.y } }));
       if (p.base) { t.x = p.base.x; t.y = p.base.y; t.sp.setPosition(t.x, t.y + 30).setDepth(t.y + 30); }
     } else if (p.kind === "barricade") {
       const d = Path.vert(p.at), q = Path.at(d), lv = (p.lv || 0) + 1;
       const w = { d, x: q.x, y: q.y, hp: 500 * lv, max: 500 * lv, lv, pad: p };
-      w.sp = this.keep(this.img(lv > 1 ? "wall2" : "wall1", q.x, q.y + 20, 70, 0x9a7a5a)).setDepth(q.y + 20);
+      w.sp = this.keep(this.img(this.has("barricade") ? "barricade" : lv > 1 ? "wall2" : "wall1", q.x, q.y + 20, this.has("barricade") ? 60 : 70, 0x9a7a5a)).setDepth(q.y + 20);
       w.sp.setScale(w.sp.scale * 1.5); pop(w.sp);
       w.bar = this.keep(this.add.graphics()).setDepth(1e6);
       this.walls = (this.walls || []).filter((x) => x.pad.id !== p.id); this.walls.push(w);
@@ -418,16 +426,19 @@ class RushScene extends Phaser.Scene {
 
   rollBoulder(p) {
     const d0 = Path.vert(p.from), d1 = Path.vert(p.to), q = Path.at(d0);
-    const sp = this.keep(this.img("rock", q.x, q.y, 84, 0x888888)).setOrigin(0.5, 0.5);
+    const sp = this.keep(this.img(this.has("boulder") ? "boulder" : "rock", q.x, q.y, 84, 0x888888)).setOrigin(0.5, 0.5);
     this.boulders.push({ d: d0, end: d1, sp, hit: new Set(), pad: p });
     UI.toast("หินกลิ้ง!");
   }
 
   heroAnim(act) {
-    const h = this.hero, k = `hero_${h.cls}_${act}`;
+    const h = this.hero;
+    if (h.mode === "static") { if (act === "attack") h.punch = 0.15; return; }
+    let k = `${h.base}_${act}`;
+    if (!this.anim(k) && act === "idle") k = `${h.base}_walk`;
     if (!this.anim(k)) return;
     if (act !== "attack" && (h.cur === k || (h.cur.endsWith("attack") && h.sp.anims.isPlaying))) return;
-    h.cur = k; const a = ANIM[k]; h.sp.play("a_" + k); h.sp.setOrigin(0.5, a.oy).setScale(56 / a.ref);
+    h.cur = k; const a = ANIM[k]; h.sp.play("a_" + k); h.sp.setOrigin(0.5, a.oy).setScale(h.size / a.ref);
   }
 
   /* ----- เวฟ ----- */
@@ -548,7 +559,14 @@ class RushScene extends Phaser.Scene {
     }
     if (!h.cur.endsWith("attack") || !h.sp.anims || !h.sp.anims.isPlaying) this.heroAnim(moving ? "walk" : "idle");
     h.sp.setPosition(h.x, h.y).setDepth(h.y).setFlipX(h.face < 0);
-    this.ring.clear().lineStyle(2, 0x6fb6e8, 0.8).strokeEllipse(h.x, h.y, 46, 18).setDepth(h.y - 1);
+    if (h.mode === "static") {
+      const now = this.time.now / 1000;
+      h.punch = Math.max(0, (h.punch || 0) - dt);
+      h.sp.y -= moving ? Math.abs(Math.sin(now * 13)) * 5 : Math.sin(now * 3) * 1;
+      h.sp.setRotation(moving ? Math.sin(now * 13) * 0.05 : 0);
+      h.sp.setScale(h.sc * (1 + h.punch * 0.8));
+    }
+    this.ring.clear().lineStyle(2, 0x6fb6e8, 0.8).strokeEllipse(h.x, h.y, h.size > 60 ? 70 : 46, h.size > 60 ? 24 : 18).setDepth(h.y - 1);
   }
 
   updateBarracks(dt) {
