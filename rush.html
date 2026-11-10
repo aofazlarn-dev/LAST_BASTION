@@ -112,9 +112,9 @@ body { background: #2a1f14; color: var(--ink); font-family: "Sarabun", system-ui
 "use strict";
 /* ===== ข้อมูลภาพ (ใช้ชุดเดียวกับโหมดหลัก) ===== */
 const ART_DIR = "assets/art/", ANIM_DIR = "assets/anim/";
-const VER = "?v=20261110f";   // เปลี่ยนเมื่อมีภาพใหม่ กันเบราว์เซอร์ใช้ภาพเก่าที่จำไว้
+const VER = "?v=20261110g";   // เปลี่ยนเมื่อมีภาพใหม่ กันเบราว์เซอร์ใช้ภาพเก่าที่จำไว้
 const ART = "mount_warrior mount_archer mount_mage ballista1 ballista2 ballista3 cactus1 cactus2 cliff1 cliff2 dry_bush barricade boulder hero_warrior hero_archer hero_mage u_sword u_archer zombie0 skel0 wolf0 orc0 ghoul0 knight0 boss0 tower1 tower2 tower3 barracks camp5 rock wall1 wall2 tree1 tree2 stump pebbles tuft fx_arrow fx_fireball".split(" ");
-const ANIM = {"mount_warrior_idle":{"n":4,"w":140,"h":132,"fps":6,"loop":true,"ref":128,"oy":0.9848},"mount_warrior_walk":{"n":6,"w":148,"h":137,"fps":12,"loop":true,"ref":128,"oy":0.9854},"mount_warrior_attack":{"n":6,"w":146,"h":143,"fps":12,"loop":false,"ref":128,"oy":0.986},"hero_archer_idle":{"n":4,"w":148,"h":134,"fps":6,"loop":true,"ref":128,"oy":0.9851},"hero_archer_walk":{"n":6,"w":138,"h":136,"fps":10,"loop":true,"ref":128,"oy":0.9853},"hero_archer_attack":{"n":6,"w":206,"h":138,"fps":12,"loop":false,"ref":128,"oy":0.9855},"u_archer_attack":{"n":6,"w":218,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"u_sword_attack":{"n":6,"w":162,"h":136,"fps":12,"loop":false,"ref":128,"oy":0.9853},"hero_warrior_idle":{"n":4,"w":190,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_warrior_walk":{"n":6,"w":120,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_warrior_attack":{"n":6,"w":168,"h":146,"fps":12,"loop":false,"ref":128,"oy":0.9863},"hero_mage_idle":{"n":4,"w":142,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_mage_walk":{"n":6,"w":146,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_mage_attack":{"n":6,"w":200,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"zombie0_walk":{"n":6,"w":164,"h":135,"fps":8,"loop":true,"ref":128,"oy":0.9852},"wolf0_walk":{"n":6,"w":228,"h":146,"fps":14,"loop":true,"ref":128,"oy":0.9863},"skel0_walk":{"n":6,"w":166,"h":134,"fps":8,"loop":true,"ref":128,"oy":0.9851},"ghoul0_walk":{"n":6,"w":172,"h":136,"fps":8,"loop":true,"ref":128,"oy":0.9853},"orc0_walk":{"n":6,"w":186,"h":138,"fps":7,"loop":true,"ref":128,"oy":0.9855},"knight0_walk":{"n":6,"w":176,"h":137,"fps":8,"loop":true,"ref":128,"oy":0.9854},"boss0_walk":{"n":6,"w":248,"h":201,"fps":8,"loop":true,"ref":192,"oy":0.99}};
+const ANIM = {"mount_warrior_idle":{"n":4,"w":140,"h":132,"fps":6,"loop":true,"ref":128,"oy":0.9848},"mount_warrior_walk":{"n":6,"w":148,"h":137,"fps":12,"loop":true,"ref":128,"oy":0.9854},"mount_warrior_attack":{"n":6,"w":146,"h":143,"fps":12,"loop":false,"ref":128,"oy":0.986},"mount_warrior_death":{"n":4,"w":204,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"mount_archer_idle":{"n":4,"w":158,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"mount_archer_walk":{"n":6,"w":160,"h":136,"fps":12,"loop":true,"ref":128,"oy":0.9853},"mount_archer_attack":{"n":6,"w":138,"h":134,"fps":12,"loop":false,"ref":128,"oy":0.9851},"mount_archer_death":{"n":4,"w":188,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"mount_mage_idle":{"n":4,"w":146,"h":134,"fps":6,"loop":true,"ref":128,"oy":0.9851},"mount_mage_walk":{"n":6,"w":158,"h":133,"fps":12,"loop":true,"ref":128,"oy":0.985},"mount_mage_attack":{"n":6,"w":144,"h":138,"fps":12,"loop":false,"ref":128,"oy":0.9855},"mount_mage_death":{"n":4,"w":202,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"hero_archer_idle":{"n":4,"w":148,"h":134,"fps":6,"loop":true,"ref":128,"oy":0.9851},"hero_archer_walk":{"n":6,"w":138,"h":136,"fps":10,"loop":true,"ref":128,"oy":0.9853},"hero_archer_attack":{"n":6,"w":206,"h":138,"fps":12,"loop":false,"ref":128,"oy":0.9855},"u_archer_attack":{"n":6,"w":218,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"u_sword_attack":{"n":6,"w":162,"h":136,"fps":12,"loop":false,"ref":128,"oy":0.9853},"hero_warrior_idle":{"n":4,"w":190,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_warrior_walk":{"n":6,"w":120,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_warrior_attack":{"n":6,"w":168,"h":146,"fps":12,"loop":false,"ref":128,"oy":0.9863},"hero_mage_idle":{"n":4,"w":142,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_mage_walk":{"n":6,"w":146,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_mage_attack":{"n":6,"w":200,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"zombie0_walk":{"n":6,"w":164,"h":135,"fps":8,"loop":true,"ref":128,"oy":0.9852},"wolf0_walk":{"n":6,"w":228,"h":146,"fps":14,"loop":true,"ref":128,"oy":0.9863},"skel0_walk":{"n":6,"w":166,"h":134,"fps":8,"loop":true,"ref":128,"oy":0.9851},"ghoul0_walk":{"n":6,"w":172,"h":136,"fps":8,"loop":true,"ref":128,"oy":0.9853},"orc0_walk":{"n":6,"w":186,"h":138,"fps":7,"loop":true,"ref":128,"oy":0.9855},"knight0_walk":{"n":6,"w":176,"h":137,"fps":8,"loop":true,"ref":128,"oy":0.9854},"boss0_walk":{"n":6,"w":248,"h":201,"fps":8,"loop":true,"ref":192,"oy":0.99}};
 
 /* ===== สมดุลเกม ===== */
 const WORLD = { w: 900, h: 1130 };
@@ -533,7 +533,7 @@ class RushScene extends Phaser.Scene {
     const h = this.hero;
     if (h.dead > 0) {
       h.dead -= dt;
-      if (h.dead <= 0) { h.hp = h.max; h.x = CASTLE.x; h.y = CASTLE.y + 180; h.sp.setAlpha(1); h.trail = []; UI.toast("Hero กลับมาแล้ว"); }
+      if (h.dead <= 0) { h.hp = h.max; h.x = CASTLE.x; h.y = CASTLE.y + 180; h.sp.setAlpha(1); h.trail = []; h.cur = ""; UI.toast("Hero กลับมาแล้ว"); }
       return;
     }
     const d = Input.dir();
@@ -667,7 +667,12 @@ class RushScene extends Phaser.Scene {
   damageDefender(dfd, dmg) {
     dfd.hp -= dmg;
     if (dfd === this.hero) {
-      if (dfd.hp <= 0) { dfd.dead = 6; dfd.sp.setAlpha(0.25); UI.banner("Hero ล้ม!", "ฟื้นที่ป้อมใน 6 วินาที"); }
+      if (dfd.hp <= 0 && !(dfd.dead > 0)) {
+        dfd.dead = 6; UI.banner("Hero ล้ม!", "ฟื้นที่ป้อมใน 6 วินาที");
+        const k = `${dfd.base}_death`;
+        if (dfd.mode === "anim" && this.anim(k)) { dfd.cur = k; dfd.sp.play("a_" + k); dfd.sp.setOrigin(0.5, ANIM[k].oy).setScale(dfd.size / ANIM[k].ref); this.tweens.add({ targets: dfd.sp, alpha: 0.35, delay: 900, duration: 600 }); }
+        else dfd.sp.setAlpha(0.25);
+      }
     } else if (dfd.hp <= 0) this.killUnit(dfd);
   }
   breakWall(w) {
