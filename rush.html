@@ -52,6 +52,9 @@ body { background: #2a1f14; color: var(--ink); font-family: "Sarabun", system-ui
 .card p { margin: 0; line-height: 1.6; color: var(--ink); }
 .card ul { margin: 0; padding-left: 20px; text-align: left; line-height: 1.7; color: var(--ink); font-size: 15px; }
 .card .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.elem-btn { display: grid; gap: 2px; text-align: left; border-color: var(--c); border-width: 2px; }
+.elem-btn b { color: var(--c); font-size: 17px; }
+.elem-btn span { font-weight: 400; font-size: 14px; color: var(--dim); }
 .win { color: var(--gold); } .lose { color: var(--red); }
 </style>
 </head>
@@ -78,15 +81,25 @@ body { background: #2a1f14; color: var(--ink); font-family: "Sarabun", system-ui
 <div class="overlay" id="intro">
   <div class="card">
     <h1>LORD RUSH</h1>
-    <p>ฝูงมอนสเตอร์กำลังเดินเข้ามาตามหุบเขา ปกป้องป้อมให้รอดครบ 10 เวฟ</p>
+    <p>ฝูงมอนสเตอร์กำลังเดินเข้ามาตามหุบเขา ปกป้องป้อมให้รอดครบ 100 เวฟ</p>
     <ul>
       <li><b>เดิน:</b> ลากนิ้วตรงไหนก็ได้ / W A S D</li>
       <li><b>ทหาร:</b> ออกจากค่ายเองแล้วไปเฝ้าจุดตามเส้นทาง</li>
       <li><b>สร้าง:</b> ยืนบนช่องที่มีตัวเลข เหรียญจะไหลเข้าจนครบ</li>
       <li><b>กับดักหินกลิ้ง:</b> จ่ายแล้วหินกลิ้งทับศัตรูทั้งแถว</li>
+      <li><b>ป้อม Lv4:</b> เลือกธาตุ ไฟ / น้ำแข็ง / สายฟ้า อัปได้ถึง Lv15</li>
+      <li><b>ค่ายทหาร:</b> อัปทหาร (แรงขึ้น) · เร่งผลิต · ขยายค่าย</li>
       <li>ฆ่าศัตรูได้เหรียญ · Hero และทหารตีอัตโนมัติ</li>
     </ul>
     <div class="row"><button class="btn primary" id="play-btn" type="button" disabled>กำลังโหลด…</button><a class="btn" href="index.html" style="text-decoration:none; display:inline-grid; place-items:center;">กลับหน้าแรก</a></div>
+  </div>
+</div>
+<div class="overlay" id="elem" hidden>
+  <div class="card">
+    <h2>เลือกธาตุป้อม</h2>
+    <p>ป้อมจะเปลี่ยนเป็นธาตุที่เลือกไปตลอด อัปต่อได้ถึง Lv15</p>
+    <div id="elem-list" style="display:grid; gap:8px;"></div>
+    <button class="btn" id="elem-cancel" type="button">ยังไม่เลือก</button>
   </div>
 </div>
 <div class="overlay" id="menu" hidden>
@@ -112,15 +125,15 @@ body { background: #2a1f14; color: var(--ink); font-family: "Sarabun", system-ui
 "use strict";
 /* ===== ข้อมูลภาพ (ใช้ชุดเดียวกับโหมดหลัก) ===== */
 const ART_DIR = "assets/art/", ANIM_DIR = "assets/anim/";
-const VER = "?v=20261110h";   // เปลี่ยนเมื่อมีภาพใหม่ กันเบราว์เซอร์ใช้ภาพเก่าที่จำไว้
-const ART = "mount_warrior mount_archer mount_mage ballista1 ballista2 ballista3 cactus1 cactus2 cliff1 cliff2 dry_bush barricade boulder hero_warrior hero_archer hero_mage u_sword u_archer zombie0 skel0 wolf0 orc0 ghoul0 knight0 boss0 tower1 tower2 tower3 barracks camp5 rock wall1 wall2 tree1 tree2 stump pebbles tuft fx_arrow fx_fireball".split(" ");
+const VER = "?v=20261110i";   // เปลี่ยนเมื่อมีภาพใหม่ กันเบราว์เซอร์ใช้ภาพเก่าที่จำไว้
+const ART = "fx_frostbolt fx_bolt mount_warrior mount_archer mount_mage ballista1 ballista2 ballista3 cactus1 cactus2 cliff1 cliff2 dry_bush barricade boulder hero_warrior hero_archer hero_mage u_sword u_archer zombie0 skel0 wolf0 orc0 ghoul0 knight0 boss0 tower1 tower2 tower3 barracks camp5 rock wall1 wall2 tree1 tree2 stump pebbles tuft fx_arrow fx_fireball".split(" ");
 const ANIM = {"mount_warrior_idle":{"n":4,"w":140,"h":132,"fps":6,"loop":true,"ref":128,"oy":0.9848},"mount_warrior_walk":{"n":6,"w":148,"h":137,"fps":12,"loop":true,"ref":128,"oy":0.9854},"mount_warrior_attack":{"n":6,"w":146,"h":143,"fps":12,"loop":false,"ref":128,"oy":0.986},"mount_warrior_death":{"n":4,"w":204,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"mount_archer_idle":{"n":4,"w":158,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"mount_archer_walk":{"n":6,"w":160,"h":136,"fps":12,"loop":true,"ref":128,"oy":0.9853},"mount_archer_attack":{"n":6,"w":138,"h":134,"fps":12,"loop":false,"ref":128,"oy":0.9851},"mount_archer_death":{"n":4,"w":188,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"mount_mage_idle":{"n":4,"w":146,"h":134,"fps":6,"loop":true,"ref":128,"oy":0.9851},"mount_mage_walk":{"n":6,"w":158,"h":133,"fps":12,"loop":true,"ref":128,"oy":0.985},"mount_mage_attack":{"n":6,"w":144,"h":138,"fps":12,"loop":false,"ref":128,"oy":0.9855},"mount_mage_death":{"n":4,"w":202,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"hero_archer_idle":{"n":4,"w":148,"h":134,"fps":6,"loop":true,"ref":128,"oy":0.9851},"hero_archer_walk":{"n":6,"w":138,"h":136,"fps":10,"loop":true,"ref":128,"oy":0.9853},"hero_archer_attack":{"n":6,"w":206,"h":138,"fps":12,"loop":false,"ref":128,"oy":0.9855},"u_archer_attack":{"n":6,"w":218,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"u_sword_attack":{"n":6,"w":162,"h":136,"fps":12,"loop":false,"ref":128,"oy":0.9853},"hero_warrior_idle":{"n":4,"w":190,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_warrior_walk":{"n":6,"w":120,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_warrior_attack":{"n":6,"w":168,"h":146,"fps":12,"loop":false,"ref":128,"oy":0.9863},"hero_mage_idle":{"n":4,"w":142,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_mage_walk":{"n":6,"w":146,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_mage_attack":{"n":6,"w":200,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"zombie0_walk":{"n":6,"w":164,"h":135,"fps":8,"loop":true,"ref":128,"oy":0.9852},"wolf0_walk":{"n":6,"w":228,"h":146,"fps":14,"loop":true,"ref":128,"oy":0.9863},"skel0_walk":{"n":6,"w":166,"h":134,"fps":8,"loop":true,"ref":128,"oy":0.9851},"ghoul0_walk":{"n":6,"w":172,"h":136,"fps":8,"loop":true,"ref":128,"oy":0.9853},"orc0_walk":{"n":6,"w":186,"h":138,"fps":7,"loop":true,"ref":128,"oy":0.9855},"knight0_walk":{"n":6,"w":176,"h":137,"fps":8,"loop":true,"ref":128,"oy":0.9854},"boss0_walk":{"n":6,"w":248,"h":201,"fps":8,"loop":true,"ref":192,"oy":0.99}};
 
 /* ===== สมดุลเกม ===== */
 const WORLD = { w: 900, h: 1130 };
 const PATH = [[230, 1130], [230, 980], [670, 980], [670, 750], [230, 750], [230, 520], [450, 520], [450, 400]];   // ทางคดเคี้ยวรูปตัว S
 const CASTLE = { x: 450, y: 210 };
-const WAVES = 10;
+const WAVES = 100;
 const ENEMY = {
   //        ภาพ      สูง  hp   atk  speed เหรียญ
   zombie: { art: "zombie0", h: 34, hp: 30, atk: 5, spd: 55, gold: 1 },
@@ -147,6 +160,8 @@ const PADS = [
   { id: "t2", kind: "tower", x: 340, y: 635, cost: 25 },
   { id: "bar1", kind: "barricade", x: 565, y: 450, cost: 25, at: 6.5 },
   { id: "brk", kind: "barracksUp", x: 170, y: 320, cost: 30 },
+  { id: "unit", kind: "unitUp", x: 170, y: 425, cost: 40 },
+  { id: "prod", kind: "prodUp", x: 60, y: 425, cost: 35 },
   { id: "t3", kind: "tower", x: 450, y: 865, cost: 35 },
   { id: "rock1", kind: "boulder", x: 115, y: 800, cost: 20, from: 4.0, to: 3.0 },
   { id: "arch", kind: "archery", x: 780, y: 320, cost: 45 },
@@ -157,12 +172,14 @@ const PADS = [
   { id: "t5", kind: "tower", x: 115, y: 1010, cost: 60 },
   { id: "t6", kind: "tower", x: 115, y: 560, cost: 70 },
 ];
-const TOWER_LV = [null,
-  { dmg: 16, cd: 0.85, range: 230, shots: 1 }, { dmg: 26, cd: 0.7, range: 250, shots: 2 }, { dmg: 40, cd: 0.6, range: 270, shots: 3 },
-  { dmg: 58, cd: 0.55, range: 285, shots: 3 }, { dmg: 80, cd: 0.5, range: 300, shots: 4 }, { dmg: 110, cd: 0.45, range: 310, shots: 4 }, { dmg: 150, cd: 0.4, range: 320, shots: 5 }];
-const TOWER_MAX = TOWER_LV.length - 1;
-// Lv4+ ใช้ภาพ Lv3 แล้วเปลี่ยนสี + ออร่ารอบป้อม: [สีภาพ, สีออร่า, ชื่อ]
-const TOWER_TIER = { 4: [0xd8ecff, 0x6fb6e8, "ฟ้า"], 5: [0xfff0b0, 0xf2c14e, "ทอง"], 6: [0xead2ff, 0xb070ff, "ม่วง"], 7: [0xffc8b8, 0xff5a3a, "เพลิง"] };
+// เลเวลป้อม 1–15: แรงขึ้นทุกเลเวล · Lv4 ขึ้นไปต้องเลือกธาตุ
+const TOWER_MAX = 15;
+const towerStat = (lv) => ({ dmg: 16 * Math.pow(1.45, lv - 1), cd: Math.max(0.35, 0.85 - 0.04 * (lv - 1)), range: Math.min(330, 230 + 8 * (lv - 1)), shots: Math.min(6, 1 + Math.floor(lv / 2)) });
+const ELEM = {
+  fire:  { name: "ไฟ", icon: "🔥", tint: 0xffc0a0, col: 0xff5a3a, shot: "fx_fireball", note: "ระเบิดวงเล็ก + ติดไฟเผาต่อเนื่อง" },
+  ice:   { name: "น้ำแข็ง", icon: "❄️", tint: 0xd0f2ff, col: 0x5ad0ff, shot: "fx_frostbolt", note: "ทำให้ศัตรูรอบ ๆ เดินช้าลงครึ่งหนึ่ง" },
+  bolt:  { name: "สายฟ้า", icon: "⚡", tint: 0xfff4b0, col: 0xffe14a, shot: null, note: "สายฟ้ากระโดดหลายตัวทันที" },
+};
 
 /* ===== เส้นทาง ===== */
 const Path = (() => {
@@ -336,7 +353,7 @@ class RushScene extends Phaser.Scene {
     this.objs = [];
     const keep = (o) => { this.objs.push(o); return o; };
     this.keep = keep;
-    this.s = { coins: 25, wave: 0, phase: "build", timer: 25, spawnLeft: 0, spawnT: 0, queue: [], income: 0, castleLv: 1, over: false };
+    this.s = { unitLv: 1, prodLv: 1, coins: 25, wave: 0, phase: "build", timer: 25, spawnLeft: 0, spawnT: 0, queue: [], income: 0, castleLv: 1, over: false };
     this.castle = { x: CASTLE.x, y: CASTLE.y, hp: 2500, max: 2500 };
     this.castle.sp = keep(this.img("camp5", CASTLE.x, CASTLE.y + 40, 230, 0x4a6fb0)).setDepth(CASTLE.y + 40);
     this._posts = null; this.enemies = []; this.units = []; this.towers = []; this.shots = []; this.boulders = [];
@@ -401,19 +418,21 @@ class RushScene extends Phaser.Scene {
       const lv = (p.lv || 0) + 1, base = p.base || { x: p.x, y: p.y };
       let t = this.towers.find((q) => q.id === p.id);
       if (!t) { t = { id: p.id, x: base.x, y: base.y, lv, cd: 0 }; this.towers.push(t); }
-      t.lv = lv; t.sp && t.sp.destroy();
+      t.lv = lv; if (p.element) t.elem = p.element; t.sp && t.sp.destroy();
       const art = this.has("ballista1") ? "ballista" + Math.min(3, lv) : "tower" + Math.min(3, lv);
-      t.sp = this.keep(this.img(art, t.x, t.y + 30, 80 + Math.min(lv, 5) * 12, 0x9a7a5a)).setDepth(t.y + 30); pop(t.sp);
+      t.sp = this.keep(this.img(art, t.x, t.y + 30, 80 + Math.min(lv, 6) * 11, 0x9a7a5a)).setDepth(t.y + 30); pop(t.sp);
       this.towerFx(t);
-      const tier = TOWER_TIER[lv];
-      UI.toast(`ป้อมหน้าไม้ เลเวล ${lv}${tier ? " · ออร่า" + tier[2] : ""}`);
+      const E = ELEM[t.elem];
+      UI.toast(E ? `ป้อม${E.name} เลเวล ${lv}` : `ป้อมหน้าไม้ เลเวล ${lv}`);
       if (lv < TOWER_MAX) {
         const spot = this.upgradeSpot(base, p.id);
-        this.time.delayedCall(400, () => this.addPad({ id: p.id, kind: "tower", x: spot.x, y: spot.y, cost: p.cost * 2, lv, label: `อัปหน้าไม้ Lv${lv + 1}`, base }));
+        const cost = Math.round(p.cost * (lv < 3 ? 2 : 1.6));
+        const label = lv === 3 ? "เลือกธาตุ Lv4" : `อัป${E ? "ป้อม" + E.name : "หน้าไม้"} Lv${lv + 1}`;
+        this.time.delayedCall(400, () => this.addPad({ id: p.id, kind: "tower", x: spot.x, y: spot.y, cost, lv, label, base, element: t.elem, pick: lv === 3 }));
       }
     } else if (p.kind === "barricade") {
       const d = Path.vert(p.at), q = Path.at(d), lv = (p.lv || 0) + 1;
-      const w = { d, x: q.x, y: q.y, hp: 500 * lv, max: 500 * lv, lv, pad: p };
+      const whp = 500 * lv * (1 + 0.2 * this.s.wave), w = { d, x: q.x, y: q.y, hp: whp, max: whp, lv, pad: p };
       w.sp = this.keep(this.img(this.has("barricade") ? "barricade" : lv > 1 ? "wall2" : "wall1", q.x, q.y + 20, this.has("barricade") ? 60 : 70, 0x9a7a5a)).setDepth(q.y + 20);
       w.sp.setScale(w.sp.scale * 1.5); pop(w.sp);
       w.bar = this.keep(this.add.graphics()).setDepth(1e6);
@@ -423,22 +442,31 @@ class RushScene extends Phaser.Scene {
       this.rollBoulder(p);
     } else if (p.kind === "archery") {
       const b = this.addBarracks("archer", p.x, p.y - 40); pop(b.sp);
-      UI.toast("ค่ายพลธนูพร้อม! เดินผ่านเพื่อรับพลธนู");
+      UI.toast("ค่ายพลธนูพร้อม! พลธนูจะออกไปเฝ้าทางเอง");
     } else if (p.kind === "barracksUp") {
       const b = this.barracks[0]; b.lv++;
       UI.toast(`ค่ายทหาร Lv${b.lv} · ทหารสูงสุด ${this.armyCap()}`);
-      if (b.lv < 4) this.time.delayedCall(400, () => this.addPad({ ...p, cost: p.cost * 2, label: `อัปค่ายทหาร Lv${b.lv + 1}` }));
+      if (b.lv < 6) this.time.delayedCall(400, () => this.addPad({ ...p, cost: Math.round(p.cost * 1.8), label: `ขยายค่าย Lv${b.lv + 1}` }));
+    } else if (p.kind === "unitUp") {
+      const s = this.s; s.unitLv++;
+      for (const u of this.units) this.levelUnit(u);
+      UI.toast(`ทหาร Lv${s.unitLv} · เลือดและพลังโจมตี x${this.unitMul().toFixed(1)}`);
+      if (s.unitLv < 20) this.time.delayedCall(400, () => this.addPad({ ...p, cost: Math.round(p.cost * 1.6), label: `อัปทหาร Lv${s.unitLv + 1}` }));
+    } else if (p.kind === "prodUp") {
+      const s = this.s; s.prodLv++;
+      UI.toast(`ผลิตทหารทุก ${this.prodTime().toFixed(1)} วิ`);
+      if (s.prodLv < 10) this.time.delayedCall(400, () => this.addPad({ ...p, cost: Math.round(p.cost * 1.7), label: `เร่งผลิต Lv${s.prodLv + 1}` }));
     } else if (p.kind === "castleUp") {
       this.s.castleLv++; this.castle.max += 800; this.castle.hp = this.castle.max;
       UI.toast(`ป้อม Lv${this.s.castleLv} · ซ่อมเต็ม · รายได้เพิ่ม`);
-      if (this.s.castleLv < 4) this.time.delayedCall(400, () => this.addPad({ ...p, cost: p.cost * 2, label: `อัปป้อม Lv${this.s.castleLv + 1}` }));
+      if (this.s.castleLv < 10) this.time.delayedCall(400, () => this.addPad({ ...p, cost: Math.round(p.cost * 1.8), label: `อัปป้อม Lv${this.s.castleLv + 1}` }));
     }
     this.updateHud();
   }
 
   // ช่องอัปเกรดอยู่จุดเดิมทุกเลเวล: เลือกด้านที่อยู่ในแผนที่ ไม่ทับเลน ไม่ทับช่องอื่น
   upgradeSpot(base, id) {
-    const M = 45, opts = [[0, 74], [0, -74], [78, 0], [-78, 0], [60, 60], [-60, 60], [60, -60], [-60, -60]];
+    const M = 45, opts = [[0, 80], [95, 0], [-95, 0], [95, 60], [-95, 60], [0, -125], [95, -60], [-95, -60]];   // ไม่ทับรูปป้อม (ป้อมสูงขึ้นไปด้านบน)
     for (const [dx, dy] of opts) {
       const x = base.x + dx, y = base.y + dy;
       if (x < M || x > WORLD.w - M || y < 150 || y > WORLD.h - 90) continue;   // ล่างสุดเว้นที่ให้ปุ่มด้านล่างจอ
@@ -453,18 +481,19 @@ class RushScene extends Phaser.Scene {
     t.aura && t.aura.forEach((o) => o.destroy()); t.aura = null;
     t.badge && t.badge.destroy();
     t.badge = this.keep(this.add.text(t.x, t.y - 78 - Math.min(t.lv, 5) * 10, "Lv" + t.lv, { fontFamily: "Sarabun", fontSize: "13px", fontStyle: "bold", color: "#fff3c8", stroke: "#2a1a0a", strokeThickness: 4 }).setOrigin(0.5).setDepth(1e6 - 2));
-    const tier = TOWER_TIER[t.lv];
-    if (!tier) return;
-    const [tint, col] = tier;
-    t.sp.setTint(tint);
-    t.badge.setColor("#" + col.toString(16).padStart(6, "0"));
+    const E = ELEM[t.elem];
+    if (!E) return;
+    const col = E.col, k = Math.min(1, (t.lv - 3) / 12);   // ยิ่งเลเวลสูงออร่ายิ่งใหญ่
+    t.sp.setTint(E.tint);
+    t.badge.setText(E.icon + " Lv" + t.lv).setColor("#" + col.toString(16).padStart(6, "0"));
     const g = this.keep(this.add.graphics()).setDepth(t.y + 29).setBlendMode(Phaser.BlendModes.ADD);
-    g.fillStyle(col, 0.35).fillEllipse(t.x, t.y + 30, 120, 46).fillStyle(col, 0.25).fillEllipse(t.x, t.y + 30, 84, 30);
-    g.lineStyle(3, col, 0.9).strokeEllipse(t.x, t.y + 30, 128, 50);
+    const W = 110 + 50 * k;
+    g.fillStyle(col, 0.3 + 0.15 * k).fillEllipse(t.x, t.y + 30, W, W * 0.38).fillStyle(col, 0.25).fillEllipse(t.x, t.y + 30, W * 0.7, W * 0.26);
+    g.lineStyle(2 + 2 * k, col, 0.9).strokeEllipse(t.x, t.y + 30, W + 8, W * 0.38 + 4);
     this.tweens.add({ targets: g, alpha: 0.35, duration: 700, yoyo: true, repeat: -1, ease: "Sine.InOut" });
     // ประกายลอยขึ้นรอบป้อม
     const sparks = [];
-    for (let i = 0; i < 3 + (t.lv - 4) * 2; i++) {
+    for (let i = 0; i < Math.min(12, 3 + (t.lv - 4)); i++) {
       const sp = this.keep(this.add.image(t.x, t.y, "dot").setScale(0.14).setTint(col).setBlendMode(Phaser.BlendModes.ADD).setDepth(t.y + 31));
       const run = () => { if (!sp.scene) return; const a = Math.random() * Math.PI * 2; sp.setPosition(t.x + Math.cos(a) * 50, t.y + 30 + Math.sin(a) * 18).setAlpha(1);
         this.tweens.add({ targets: sp, y: sp.y - 70 - Math.random() * 40, alpha: 0, duration: 1100 + Math.random() * 600, delay: Math.random() * 600, onComplete: run }); };
@@ -492,21 +521,21 @@ class RushScene extends Phaser.Scene {
   /* ----- เวฟ ----- */
   startWave() {
     const s = this.s; s.wave++; s.phase = "fight";
-    const n = s.wave, mul = 1 + 0.32 * (n - 1), q = [];
-    const count = 80 + 50 * (n - 1);   // เวฟ 10 ≈ 530 ตัว
+    const n = s.wave, mul = (1 + 0.3 * (n - 1)) * Math.pow(1.055, n - 1), q = [];
+    const count = Math.min(500, 80 + 25 * (n - 1));   // สูงสุด 500 ตัวต่อเวฟ เวฟหลัง ๆ ตัวถึกขึ้นแทน
     for (let i = 0; i < count; i++) {
       const r = Math.random();
       let t = "zombie";
       if (n >= 2 && r < 0.35) t = "skel";
       if (n >= 3 && r < 0.15) t = "wolf";
-      if (n >= 4 && r > 0.85) t = "ghoul";
-      if (n >= 5 && r > 0.94) t = "orc";
-      if (n >= 7 && r > 0.975) t = "knight";
+      if (n >= 4 && r > 0.85 - Math.min(0.2, n * 0.003)) t = "ghoul";
+      if (n >= 5 && r > 0.94 - Math.min(0.15, n * 0.002)) t = "orc";
+      if (n >= 7 && r > 0.975 - Math.min(0.1, n * 0.0015)) t = "knight";
       q.push(t);
     }
-    if (n % 5 === 0) q.splice(q.length >> 1, 0, "boss");
+    if (n % 5 === 0) for (let b = 0; b < 1 + Math.floor(n / 25); b++) q.splice((q.length * (b + 1)) / (2 + Math.floor(n / 25)) | 0, 0, "boss");
     s.queue = q; s.mul = mul; s.spawnT = 0;
-    UI.banner(`เวฟ ${n} / ${WAVES}`, n % 5 === 0 ? "บอสกำลังมา!" : `${q.length} ตัว`);
+    UI.banner(`เวฟ ${n} / ${WAVES}`, n % 5 === 0 ? `บอสกำลังมา! · ${q.length} ตัว` : `${q.length} ตัว`);
     this.updateHud();
   }
   spawn(type) {
@@ -520,7 +549,7 @@ class RushScene extends Phaser.Scene {
 
   kill(e) {
     if (e.dead) return;
-    e.dead = true; this.s.coins += e.gold;
+    e.dead = true; this.s.coins += e.gold * (1 + 0.08 * (this.s.wave - 1));
     const sp = e.sp;
     this.tweens.add({ targets: sp, alpha: 0, scaleY: sp.scaleY * 0.3, duration: 220, onComplete: () => sp.destroy() });
     e.bar && e.bar.destroy();
@@ -535,7 +564,14 @@ class RushScene extends Phaser.Scene {
   shoot(fromX, fromY, e, dmg, art, aoe) {
     const sp = this.has(art) ? this.add.image(fromX, fromY, "art_" + art).setScale(art === "fx_arrow" ? 0.45 : 0.5) : this.add.image(fromX, fromY, "dot").setScale(0.25).setTint(0xffe08a);
     sp.setDepth(1e6 - 1);
-    this.shots.push({ x: fromX, y: fromY, e, dmg, sp, aoe, spd: 620 });
+    const s = { x: fromX, y: fromY, e, dmg, sp, aoe, spd: 620 };
+    this.shots.push(s); return s;
+  }
+
+  puff(x, y, col, r) {
+    const g = this.add.graphics().setDepth(1e6 - 2).setBlendMode(Phaser.BlendModes.ADD);
+    g.fillStyle(col, 0.45).fillEllipse(x, y + 10, r * 2, r * 0.8);
+    this.tweens.add({ targets: g, alpha: 0, duration: 260, onComplete: () => g.destroy() });
   }
 
   /* ----- อัปเดต ----- */
@@ -559,8 +595,8 @@ class RushScene extends Phaser.Scene {
       } else if (!this.enemies.some((e) => !e.dead)) {
         const bonus = 15 + 5 * s.wave; s.coins += bonus;
         if (s.wave >= WAVES) return this.finish(true);
-        s.phase = "build"; s.timer = 18;
-        UI.banner(`ผ่านเวฟ ${s.wave}!`, `+${bonus} เหรียญ · เวฟถัดไปใน 18 วิ`);
+        s.phase = "build"; s.timer = 15;
+        UI.banner(`ผ่านเวฟ ${s.wave}!`, `+${bonus} เหรียญ · เวฟถัดไปใน 15 วิ`);
       }
     }
 
@@ -600,8 +636,9 @@ class RushScene extends Phaser.Scene {
       if (tgts.length) {
         tgts.sort((a, b) => a[0] - b[0]);
         h.t = h.cd; this.heroAnim("attack");
-        if (h.shot) this.shoot(h.x, h.y - 30, tgts[0][1], h.atk, h.shot, h.aoe);
-        else for (const [, e] of tgts.slice(0, h.multi)) this.hit(e, h.atk);
+        const atk = h.atk * (1 + 0.08 * Math.max(0, this.s.wave - 1));   // Hero เก่งขึ้นตามเวฟ
+        if (h.shot) this.shoot(h.x, h.y - 30, tgts[0][1], atk, h.shot, h.aoe);
+        else for (const [, e] of tgts.slice(0, h.multi)) this.hit(e, atk);
         h.face = tgts[0][1].x < h.x ? -1 : 1;
       }
     }
@@ -622,7 +659,7 @@ class RushScene extends Phaser.Scene {
     for (const b of this.barracks) {
       b.t -= dt;
       if (b.t > 0 || this.units.length >= this.armyCap()) continue;
-      b.t = Math.max(1.0, 3.0 - 0.5 * b.lv);
+      b.t = this.prodTime();
       const u = this.makeUnit(b.type, b.x, b.y + 20);
       this.assignPost(u); this.units.push(u);
     }
@@ -645,12 +682,23 @@ class RushScene extends Phaser.Scene {
     const q = Path.at(p.d + along);
     u.gx = q.x + q.nx * side; u.gy = q.y + q.ny * side;
   }
+  unitMul() { return 1 + 0.3 * (this.s.unitLv - 1); }
+  prodTime() { return Math.max(0.35, 3.0 * Math.pow(0.8, this.s.prodLv - 1)); }
   makeUnit(type, x, y) {
     const U = UNIT[type];
     const sp = this.keep(this.img(U.art, x, y, 36, 0x6fb6e8));
-    return { type, ...U, x, y, hp: U.hp * (1 + 0.15 * (this.barracks[0].lv - 1)), max: U.hp, t: Math.random() * U.cd, sp, base: sp.scale };
+    const u = { type, ...U, x, y, hp: U.hp, max: U.hp, t: Math.random() * U.cd, sp, base: sp.scale, lv: 1 };
+    this.levelUnit(u); u.hp = u.max;
+    return u;
   }
-
+  // ปรับทหารตามเลเวล: เลือด/พลังโจมตี · ตัวใหญ่ขึ้นนิด · สีเปลี่ยนตามขั้น
+  levelUnit(u) {
+    const U = UNIT[u.type], m = this.unitMul(), lv = this.s.unitLv;
+    const r = u.hp / u.max;
+    u.max = U.hp * m; u.hp = Math.max(1, r * u.max); u.atk = U.atk * m; u.lv = lv;
+    u.sp.setScale(u.base * Math.min(1.3, 1 + 0.02 * (lv - 1)));
+    if (lv >= 15) u.sp.setTint(0xffb070); else if (lv >= 10) u.sp.setTint(0xffe080); else if (lv >= 5) u.sp.setTint(0xd8ecff); else u.sp.clearTint();
+  }
   updateUnits(dt) {
     for (let i = 0; i < this.units.length; i++) {
       const u = this.units[i];
@@ -692,6 +740,10 @@ class RushScene extends Phaser.Scene {
       if (e.dead) continue;
       if (e.flash) { e.flash -= dt; if (e.flash <= 0) { e.flash = 0; e.sp.setAlpha(1); } }
       e.cd -= dt;
+      if (e.burnT > 0) { e.burnT -= dt; this.hit(e, e.burn * dt); if (e.dead) continue; }
+      if (e.slowT > 0) e.slowT -= dt;
+      const st = e.slowT > 0 ? 1 : e.burnT > 0 ? 2 : 0;
+      if (st !== e.st) { e.st = st; if (st === 1) e.sp.setTint(0x9fdcff); else if (st === 2) e.sp.setTint(0xffa070); else e.sp.clearTint(); }
       const wall = walls.find((w) => e.d < w.d && e.d > w.d - 34 - (e.off * 0.1));
       if (e.block && !e.block.dead) {
         if (e.cd <= 0) { e.cd = 1; this.damageDefender(e.block, e.atk); }
@@ -700,7 +752,7 @@ class RushScene extends Phaser.Scene {
       } else if (e.d >= Path.total - 10) {
         if (e.cd <= 0) { e.cd = 1; this.castle.hp -= e.atk * (e.siege || 1); if (this.castle.hp <= 0) return this.finish(false); }
       } else {
-        e.d += e.spd * dt;
+        e.d += e.spd * dt * (e.slowT > 0 ? e.slow : 1);
       }
       const p = Path.at(e.d);
       e.x = p.x + p.nx * e.off; e.y = p.y + p.ny * e.off;
@@ -731,22 +783,51 @@ class RushScene extends Phaser.Scene {
 
   updateTowers(dt) {
     for (const t of this.towers) {
-      const L = TOWER_LV[t.lv]; t.cd -= dt;
+      const L = towerStat(t.lv); t.cd -= dt;
       if (t.cd > 0) continue;
       const list = [];
       this.grid.near(t.x, t.y, L.range, (e, d2) => list.push([e.d, e]));
       if (!list.length) continue;
       list.sort((a, b) => b[0] - a[0]);   // ยิงตัวที่ใกล้ป้อมที่สุดก่อน
       t.cd = L.cd;
-      for (const [, e] of list.slice(0, L.shots)) this.shoot(t.x, t.y - 60, e, L.dmg, "fx_arrow");
+      const tg = list.slice(0, L.shots).map((x) => x[1]);
+      if (t.elem === "bolt") { for (const e of tg) this.chain(t, e, L.dmg); continue; }
+      const E = ELEM[t.elem];
+      for (const e of tg) { const s = this.shoot(t.x, t.y - 60, e, L.dmg, E ? E.shot : "fx_arrow"); s.elem = t.elem; s.lv = t.lv; }
     }
+  }
+  // สายฟ้า: โดนเป้าแรกแล้วกระโดดต่อไปตัวใกล้ ๆ
+  chain(t, first, dmg) {
+    const n = 3 + Math.floor(t.lv / 3), hitSet = new Set(), pts = [[t.x, t.y - 70]];
+    let e = first;
+    for (let i = 0; i < n && e; i++) {
+      hitSet.add(e); pts.push([e.x, e.y - 16]); this.hit(e, dmg * (i ? 0.75 : 1));
+      let best = null, bd = Infinity;
+      this.grid.near(e.x, e.y, 110, (q, d2) => { if (!hitSet.has(q) && d2 < bd) { bd = d2; best = q; } });
+      e = best;
+    }
+    const g = this.add.graphics().setDepth(1e6 - 1).setBlendMode(Phaser.BlendModes.ADD);
+    for (const [w, c, a] of [[6, 0xffe14a, 0.35], [2, 0xffffff, 1]]) {
+      g.lineStyle(w, c, a).beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; g.lineTo((x0 + x1) / 2 + (Math.random() - 0.5) * 18, (y0 + y1) / 2 + (Math.random() - 0.5) * 18); g.lineTo(x1, y1); }
+      g.strokePath();
+    }
+    this.tweens.add({ targets: g, alpha: 0, duration: 160, onComplete: () => g.destroy() });
   }
   updateShots(dt) {
     for (const s of this.shots) {
       const tx = s.e.x, ty = s.e.y - 14, dx = tx - s.x, dy = ty - s.y, l = Math.hypot(dx, dy), m = s.spd * dt;
       if (l <= m || s.e.dead) {
         if (!s.e.dead) {
-          if (s.aoe) this.grid.near(tx, ty, s.aoe, (e) => this.hit(e, s.dmg)); else this.hit(s.e, s.dmg);
+          if (s.elem === "fire") {
+            this.hit(s.e, s.dmg);
+            this.grid.near(tx, ty, 50, (e) => { if (e !== s.e) this.hit(e, s.dmg * 0.5); if (!e.dead) { e.burnT = 3; e.burn = Math.max(e.burn || 0, s.dmg * 0.4); } });
+            this.puff(tx, ty, 0xff7a3a, 50);
+          } else if (s.elem === "ice") {
+            this.hit(s.e, s.dmg * 0.8);
+            this.grid.near(tx, ty, 60, (e) => { e.slowT = 2 + s.lv * 0.05; e.slow = e.boss ? 0.7 : 0.45; });
+            this.puff(tx, ty, 0x9fe4ff, 60);
+          } else if (s.aoe) this.grid.near(tx, ty, s.aoe, (e) => this.hit(e, s.dmg)); else this.hit(s.e, s.dmg);
         }
         s.done = true; s.sp.destroy(); continue;
       }
@@ -760,7 +841,7 @@ class RushScene extends Phaser.Scene {
       b.d -= 320 * dt;
       const p = Path.at(b.d);
       b.sp.setPosition(p.x, p.y - 30).setDepth(p.y + 5).setRotation(b.sp.rotation - 6 * dt);
-      this.grid.near(p.x, p.y, 70, (e) => { if (!b.hit.has(e)) { b.hit.add(e); this.hit(e, e.boss ? 500 : 9999); } });
+      this.grid.near(p.x, p.y, 70, (e) => { if (!b.hit.has(e)) { b.hit.add(e); this.hit(e, e.boss ? e.max * 0.08 : 1e9); } });
       if (b.d <= b.end) {
         b.done = true;
         const sp = b.sp; this.tweens.add({ targets: sp, alpha: 0, duration: 300, onComplete: () => sp.destroy() });
@@ -774,8 +855,9 @@ class RushScene extends Phaser.Scene {
     const h = this.hero; if (h.dead > 0) return;
     for (const p of this.pads) {
       const on = Math.abs(h.x - p.x) < 38 && Math.abs(h.y - p.y) < 40;
-      if (!on) { p.t = 0; continue; }
+      if (!on) { p.t = 0; p.asked = false; continue; }
       p.t += dt;
+      if (p.pick && !p.element) { if (p.t > 0.25 && !p.asked) { p.asked = true; this.askElement(p); } continue; }
       if (p.t < 0.25 || this.s.coins <= 0) continue;
       p.acc = (p.acc || 0) + dt * Math.max(12, p.cost / 1.4);
       const n = Math.min(Math.floor(p.acc), this.s.coins, p.cost - p.paid);
@@ -786,6 +868,24 @@ class RushScene extends Phaser.Scene {
       this.padText(p);
       if (p.paid >= p.cost) { this.build(p); break; }
     }
+  }
+
+  // เลือกธาตุป้อมตอนอัปจาก Lv3 → Lv4
+  askElement(p) {
+    this.paused = true;
+    const el = $("elem");
+    $("elem-list").innerHTML = Object.entries(ELEM).map(([k, E]) =>
+      `<button type="button" class="btn elem-btn" data-k="${k}" style="--c:#${E.col.toString(16).padStart(6, "0")}"><b>${E.icon} ป้อม${E.name}</b><span>${E.note}</span></button>`).join("");
+    el.hidden = false;
+    const done = (k) => {
+      el.hidden = true; this.paused = false; $("elem-list").onclick = null; $("elem-cancel").onclick = null;
+      if (!k) return;
+      p.element = k; p.pick = false;
+      p.label.setText(`ป้อม${ELEM[k].name} Lv4`);
+      UI.toast(`เลือกป้อม${ELEM[k].name} · ยืนต่อเพื่อจ่ายเหรียญ`);
+    };
+    $("elem-list").onclick = (e) => { const b = e.target.closest("[data-k]"); if (b) done(b.dataset.k); };
+    $("elem-cancel").onclick = () => done(null);
   }
 
   updateHud() {
@@ -806,7 +906,7 @@ class RushScene extends Phaser.Scene {
     $("result").hidden = false;
   }
 }
-const PAD_LABEL = { tower: "ป้อมหน้าไม้", barricade: "เครื่องกีดขวาง", boulder: "หินกลิ้ง", archery: "ค่ายพลธนู", barracksUp: "อัปค่ายทหาร", castleUp: "อัปป้อม" };
+const PAD_LABEL = { unitUp: "อัปทหาร Lv2", prodUp: "เร่งผลิต Lv2", tower: "ป้อมหน้าไม้", barricade: "เครื่องกีดขวาง", boulder: "หินกลิ้ง", archery: "ค่ายพลธนู", barracksUp: "ขยายค่าย", castleUp: "อัปป้อม" };
 
 /* ===== ตัวควบคุมเกม ===== */
 window.Game = {
