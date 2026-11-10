@@ -112,7 +112,7 @@ body { background: #2a1f14; color: var(--ink); font-family: "Sarabun", system-ui
 "use strict";
 /* ===== ข้อมูลภาพ (ใช้ชุดเดียวกับโหมดหลัก) ===== */
 const ART_DIR = "assets/art/", ANIM_DIR = "assets/anim/";
-const VER = "?v=20261110g";   // เปลี่ยนเมื่อมีภาพใหม่ กันเบราว์เซอร์ใช้ภาพเก่าที่จำไว้
+const VER = "?v=20261110h";   // เปลี่ยนเมื่อมีภาพใหม่ กันเบราว์เซอร์ใช้ภาพเก่าที่จำไว้
 const ART = "mount_warrior mount_archer mount_mage ballista1 ballista2 ballista3 cactus1 cactus2 cliff1 cliff2 dry_bush barricade boulder hero_warrior hero_archer hero_mage u_sword u_archer zombie0 skel0 wolf0 orc0 ghoul0 knight0 boss0 tower1 tower2 tower3 barracks camp5 rock wall1 wall2 tree1 tree2 stump pebbles tuft fx_arrow fx_fireball".split(" ");
 const ANIM = {"mount_warrior_idle":{"n":4,"w":140,"h":132,"fps":6,"loop":true,"ref":128,"oy":0.9848},"mount_warrior_walk":{"n":6,"w":148,"h":137,"fps":12,"loop":true,"ref":128,"oy":0.9854},"mount_warrior_attack":{"n":6,"w":146,"h":143,"fps":12,"loop":false,"ref":128,"oy":0.986},"mount_warrior_death":{"n":4,"w":204,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"mount_archer_idle":{"n":4,"w":158,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"mount_archer_walk":{"n":6,"w":160,"h":136,"fps":12,"loop":true,"ref":128,"oy":0.9853},"mount_archer_attack":{"n":6,"w":138,"h":134,"fps":12,"loop":false,"ref":128,"oy":0.9851},"mount_archer_death":{"n":4,"w":188,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"mount_mage_idle":{"n":4,"w":146,"h":134,"fps":6,"loop":true,"ref":128,"oy":0.9851},"mount_mage_walk":{"n":6,"w":158,"h":133,"fps":12,"loop":true,"ref":128,"oy":0.985},"mount_mage_attack":{"n":6,"w":144,"h":138,"fps":12,"loop":false,"ref":128,"oy":0.9855},"mount_mage_death":{"n":4,"w":202,"h":132,"fps":10,"loop":false,"ref":128,"oy":0.9848},"hero_archer_idle":{"n":4,"w":148,"h":134,"fps":6,"loop":true,"ref":128,"oy":0.9851},"hero_archer_walk":{"n":6,"w":138,"h":136,"fps":10,"loop":true,"ref":128,"oy":0.9853},"hero_archer_attack":{"n":6,"w":206,"h":138,"fps":12,"loop":false,"ref":128,"oy":0.9855},"u_archer_attack":{"n":6,"w":218,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"u_sword_attack":{"n":6,"w":162,"h":136,"fps":12,"loop":false,"ref":128,"oy":0.9853},"hero_warrior_idle":{"n":4,"w":190,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_warrior_walk":{"n":6,"w":120,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_warrior_attack":{"n":6,"w":168,"h":146,"fps":12,"loop":false,"ref":128,"oy":0.9863},"hero_mage_idle":{"n":4,"w":142,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_mage_walk":{"n":6,"w":146,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_mage_attack":{"n":6,"w":200,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"zombie0_walk":{"n":6,"w":164,"h":135,"fps":8,"loop":true,"ref":128,"oy":0.9852},"wolf0_walk":{"n":6,"w":228,"h":146,"fps":14,"loop":true,"ref":128,"oy":0.9863},"skel0_walk":{"n":6,"w":166,"h":134,"fps":8,"loop":true,"ref":128,"oy":0.9851},"ghoul0_walk":{"n":6,"w":172,"h":136,"fps":8,"loop":true,"ref":128,"oy":0.9853},"orc0_walk":{"n":6,"w":186,"h":138,"fps":7,"loop":true,"ref":128,"oy":0.9855},"knight0_walk":{"n":6,"w":176,"h":137,"fps":8,"loop":true,"ref":128,"oy":0.9854},"boss0_walk":{"n":6,"w":248,"h":201,"fps":8,"loop":true,"ref":192,"oy":0.99}};
 
@@ -157,7 +157,12 @@ const PADS = [
   { id: "t5", kind: "tower", x: 115, y: 1010, cost: 60 },
   { id: "t6", kind: "tower", x: 115, y: 560, cost: 70 },
 ];
-const TOWER_LV = [null, { dmg: 16, cd: 0.85, range: 230, shots: 1 }, { dmg: 26, cd: 0.7, range: 250, shots: 2 }, { dmg: 40, cd: 0.6, range: 270, shots: 3 }];
+const TOWER_LV = [null,
+  { dmg: 16, cd: 0.85, range: 230, shots: 1 }, { dmg: 26, cd: 0.7, range: 250, shots: 2 }, { dmg: 40, cd: 0.6, range: 270, shots: 3 },
+  { dmg: 58, cd: 0.55, range: 285, shots: 3 }, { dmg: 80, cd: 0.5, range: 300, shots: 4 }, { dmg: 110, cd: 0.45, range: 310, shots: 4 }, { dmg: 150, cd: 0.4, range: 320, shots: 5 }];
+const TOWER_MAX = TOWER_LV.length - 1;
+// Lv4+ ใช้ภาพ Lv3 แล้วเปลี่ยนสี + ออร่ารอบป้อม: [สีภาพ, สีออร่า, ชื่อ]
+const TOWER_TIER = { 4: [0xd8ecff, 0x6fb6e8, "ฟ้า"], 5: [0xfff0b0, 0xf2c14e, "ทอง"], 6: [0xead2ff, 0xb070ff, "ม่วง"], 7: [0xffc8b8, 0xff5a3a, "เพลิง"] };
 
 /* ===== เส้นทาง ===== */
 const Path = (() => {
@@ -280,7 +285,7 @@ class RushScene extends Phaser.Scene {
 
     this.drawMap();
     this.reset();
-    this.cameras.main.setBounds(0, 0, WORLD.w, WORLD.h);
+    this.cameras.main.setBounds(0, -40, WORLD.w, WORLD.h + 120);   // เผื่อขอบให้ HUD ไม่บังช่องริมแผนที่
     this.cameras.main.startFollow(this.hero.sp, true, 0.12, 0.12);
     this.fitZoom(); this.scale.on("resize", () => this.fitZoom());
     this.paused = true;
@@ -393,14 +398,19 @@ class RushScene extends Phaser.Scene {
     this.cameras.main.shake(120, 0.004);
     const pop = (o) => { const s = o.scale; o.setScale(s * 0.3); this.tweens.add({ targets: o, scale: s, duration: 320, ease: "Back.Out" }); };
     if (p.kind === "tower") {
-      const lv = (p.lv || 0) + 1;
+      const lv = (p.lv || 0) + 1, base = p.base || { x: p.x, y: p.y };
       let t = this.towers.find((q) => q.id === p.id);
-      if (!t) { t = { id: p.id, x: p.x, y: p.y, lv, cd: 0 }; this.towers.push(t); }
+      if (!t) { t = { id: p.id, x: base.x, y: base.y, lv, cd: 0 }; this.towers.push(t); }
       t.lv = lv; t.sp && t.sp.destroy();
-      t.sp = this.keep(this.img(this.has("ballista1") ? "ballista" + lv : "tower" + lv, p.x, p.y + 30, 80 + lv * 12, 0x9a7a5a)).setDepth(p.y + 30); pop(t.sp);
-      UI.toast(`ป้อมหน้าไม้ เลเวล ${lv}`);
-      if (lv < 3) this.time.delayedCall(400, () => this.addPad({ id: p.id, kind: "tower", x: p.x, y: p.y + 74, cost: p.cost * 2, lv, label: `อัปหน้าไม้ Lv${lv + 1}`, base: p.base || { x: p.x, y: p.y } }));
-      if (p.base) { t.x = p.base.x; t.y = p.base.y; t.sp.setPosition(t.x, t.y + 30).setDepth(t.y + 30); }
+      const art = this.has("ballista1") ? "ballista" + Math.min(3, lv) : "tower" + Math.min(3, lv);
+      t.sp = this.keep(this.img(art, t.x, t.y + 30, 80 + Math.min(lv, 5) * 12, 0x9a7a5a)).setDepth(t.y + 30); pop(t.sp);
+      this.towerFx(t);
+      const tier = TOWER_TIER[lv];
+      UI.toast(`ป้อมหน้าไม้ เลเวล ${lv}${tier ? " · ออร่า" + tier[2] : ""}`);
+      if (lv < TOWER_MAX) {
+        const spot = this.upgradeSpot(base, p.id);
+        this.time.delayedCall(400, () => this.addPad({ id: p.id, kind: "tower", x: spot.x, y: spot.y, cost: p.cost * 2, lv, label: `อัปหน้าไม้ Lv${lv + 1}`, base }));
+      }
     } else if (p.kind === "barricade") {
       const d = Path.vert(p.at), q = Path.at(d), lv = (p.lv || 0) + 1;
       const w = { d, x: q.x, y: q.y, hp: 500 * lv, max: 500 * lv, lv, pad: p };
@@ -426,6 +436,42 @@ class RushScene extends Phaser.Scene {
     this.updateHud();
   }
 
+  // ช่องอัปเกรดอยู่จุดเดิมทุกเลเวล: เลือกด้านที่อยู่ในแผนที่ ไม่ทับเลน ไม่ทับช่องอื่น
+  upgradeSpot(base, id) {
+    const M = 45, opts = [[0, 74], [0, -74], [78, 0], [-78, 0], [60, 60], [-60, 60], [60, -60], [-60, -60]];
+    for (const [dx, dy] of opts) {
+      const x = base.x + dx, y = base.y + dy;
+      if (x < M || x > WORLD.w - M || y < 150 || y > WORLD.h - 90) continue;   // ล่างสุดเว้นที่ให้ปุ่มด้านล่างจอ
+      if (this.nearLane(x, y) < 95) continue;
+      if (this.pads.some((q) => q.id !== id && Math.hypot(q.x - x, q.y - y) < 76)) continue;
+      return { x, y };
+    }
+    return { x: Math.min(WORLD.w - M, Math.max(M, base.x)), y: Math.min(WORLD.h - M, base.y + 74) };
+  }
+  // สีและออร่าของป้อม Lv4+
+  towerFx(t) {
+    t.aura && t.aura.forEach((o) => o.destroy()); t.aura = null;
+    t.badge && t.badge.destroy();
+    t.badge = this.keep(this.add.text(t.x, t.y - 78 - Math.min(t.lv, 5) * 10, "Lv" + t.lv, { fontFamily: "Sarabun", fontSize: "13px", fontStyle: "bold", color: "#fff3c8", stroke: "#2a1a0a", strokeThickness: 4 }).setOrigin(0.5).setDepth(1e6 - 2));
+    const tier = TOWER_TIER[t.lv];
+    if (!tier) return;
+    const [tint, col] = tier;
+    t.sp.setTint(tint);
+    t.badge.setColor("#" + col.toString(16).padStart(6, "0"));
+    const g = this.keep(this.add.graphics()).setDepth(t.y + 29).setBlendMode(Phaser.BlendModes.ADD);
+    g.fillStyle(col, 0.35).fillEllipse(t.x, t.y + 30, 120, 46).fillStyle(col, 0.25).fillEllipse(t.x, t.y + 30, 84, 30);
+    g.lineStyle(3, col, 0.9).strokeEllipse(t.x, t.y + 30, 128, 50);
+    this.tweens.add({ targets: g, alpha: 0.35, duration: 700, yoyo: true, repeat: -1, ease: "Sine.InOut" });
+    // ประกายลอยขึ้นรอบป้อม
+    const sparks = [];
+    for (let i = 0; i < 3 + (t.lv - 4) * 2; i++) {
+      const sp = this.keep(this.add.image(t.x, t.y, "dot").setScale(0.14).setTint(col).setBlendMode(Phaser.BlendModes.ADD).setDepth(t.y + 31));
+      const run = () => { if (!sp.scene) return; const a = Math.random() * Math.PI * 2; sp.setPosition(t.x + Math.cos(a) * 50, t.y + 30 + Math.sin(a) * 18).setAlpha(1);
+        this.tweens.add({ targets: sp, y: sp.y - 70 - Math.random() * 40, alpha: 0, duration: 1100 + Math.random() * 600, delay: Math.random() * 600, onComplete: run }); };
+      run(); sparks.push(sp);
+    }
+    t.aura = [g, ...sparks];
+  }
   rollBoulder(p) {
     const d0 = Path.vert(p.from), d1 = Path.vert(p.to), q = Path.at(d0);
     const sp = this.keep(this.img(this.has("boulder") ? "boulder" : "rock", q.x, q.y, 84, 0x888888)).setOrigin(0.5, 0.5);
