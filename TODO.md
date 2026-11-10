@@ -2,3 +2,4 @@
 
 - [x] ~~ทหารเฝ้าค่าย: วิ่งลาดตระเวนรอบค่าย และไล่ตี Monster ที่มาบุก~~ (ทำแล้วใน 0.10: โหมด "เฝ้าค่าย")
 - [ ] ใส่ภาพที่ gen จาก AI ตาม [docs/ART_SPEC.md](docs/ART_SPEC.md)
+- [ ] ภาพโหมด Lord Rush (Hero ขี่ม้า ฯลฯ) ตาม [docs/ART_SPEC_RUSH.md](docs/ART_SPEC_RUSH.md)
