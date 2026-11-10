@@ -81,7 +81,7 @@ body { background: #2a1f14; color: var(--ink); font-family: "Sarabun", system-ui
     <p>ฝูงมอนสเตอร์กำลังเดินเข้ามาตามหุบเขา ปกป้องป้อมให้รอดครบ 10 เวฟ</p>
     <ul>
       <li><b>เดิน:</b> ลากนิ้วตรงไหนก็ได้ / W A S D</li>
-      <li><b>รับทหาร:</b> เดินผ่านค่ายทหาร ทหารจะมาต่อแถวตามคุณ</li>
+      <li><b>ทหาร:</b> ออกจากค่ายเองแล้วไปเฝ้าจุดตามเส้นทาง</li>
       <li><b>สร้าง:</b> ยืนบนช่องที่มีตัวเลข เหรียญจะไหลเข้าจนครบ</li>
       <li><b>กับดักหินกลิ้ง:</b> จ่ายแล้วหินกลิ้งทับศัตรูทั้งแถว</li>
       <li>ฆ่าศัตรูได้เหรียญ · Hero และทหารตีอัตโนมัติ</li>
@@ -112,28 +112,29 @@ body { background: #2a1f14; color: var(--ink); font-family: "Sarabun", system-ui
 "use strict";
 /* ===== ข้อมูลภาพ (ใช้ชุดเดียวกับโหมดหลัก) ===== */
 const ART_DIR = "assets/art/", ANIM_DIR = "assets/anim/";
-const ART = "hero_warrior hero_archer hero_mage u_sword u_archer zombie0 skel0 wolf0 orc0 ghoul0 knight0 boss0 tower1 tower2 tower3 barracks camp5 rock wall1 wall2 tree1 tree2 stump pebbles tuft fx_arrow fx_fireball".split(" ");
-const ANIM = {"hero_archer_idle":{"n":4,"w":148,"h":134,"fps":6,"loop":true,"ref":128,"oy":0.9851},"hero_archer_walk":{"n":6,"w":138,"h":136,"fps":10,"loop":true,"ref":128,"oy":0.9853},"hero_archer_attack":{"n":6,"w":206,"h":138,"fps":12,"loop":false,"ref":128,"oy":0.9855},"u_archer_attack":{"n":6,"w":218,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"u_sword_attack":{"n":6,"w":162,"h":136,"fps":12,"loop":false,"ref":128,"oy":0.9853},"hero_warrior_idle":{"n":4,"w":190,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_warrior_walk":{"n":6,"w":120,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_warrior_attack":{"n":6,"w":168,"h":146,"fps":12,"loop":false,"ref":128,"oy":0.9863},"hero_mage_idle":{"n":4,"w":142,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_mage_walk":{"n":6,"w":146,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_mage_attack":{"n":6,"w":200,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"zombie0_walk":{"n":6,"w":164,"h":135,"fps":8,"loop":true,"ref":128,"oy":0.9852},"wolf0_walk":{"n":6,"w":228,"h":146,"fps":14,"loop":true,"ref":128,"oy":0.9863},"skel0_walk":{"n":6,"w":166,"h":134,"fps":8,"loop":true,"ref":128,"oy":0.9851},"ghoul0_walk":{"n":6,"w":172,"h":136,"fps":8,"loop":true,"ref":128,"oy":0.9853},"orc0_walk":{"n":6,"w":186,"h":138,"fps":7,"loop":true,"ref":128,"oy":0.9855},"knight0_walk":{"n":6,"w":176,"h":137,"fps":8,"loop":true,"ref":128,"oy":0.9854},"boss0_walk":{"n":6,"w":248,"h":201,"fps":8,"loop":true,"ref":192,"oy":0.99}};
+const VER = "?v=20261110f";   // เปลี่ยนเมื่อมีภาพใหม่ กันเบราว์เซอร์ใช้ภาพเก่าที่จำไว้
+const ART = "mount_warrior mount_archer mount_mage ballista1 ballista2 ballista3 cactus1 cactus2 cliff1 cliff2 dry_bush barricade boulder hero_warrior hero_archer hero_mage u_sword u_archer zombie0 skel0 wolf0 orc0 ghoul0 knight0 boss0 tower1 tower2 tower3 barracks camp5 rock wall1 wall2 tree1 tree2 stump pebbles tuft fx_arrow fx_fireball".split(" ");
+const ANIM = {"mount_warrior_idle":{"n":4,"w":140,"h":132,"fps":6,"loop":true,"ref":128,"oy":0.9848},"mount_warrior_walk":{"n":6,"w":148,"h":137,"fps":12,"loop":true,"ref":128,"oy":0.9854},"mount_warrior_attack":{"n":6,"w":146,"h":143,"fps":12,"loop":false,"ref":128,"oy":0.986},"hero_archer_idle":{"n":4,"w":148,"h":134,"fps":6,"loop":true,"ref":128,"oy":0.9851},"hero_archer_walk":{"n":6,"w":138,"h":136,"fps":10,"loop":true,"ref":128,"oy":0.9853},"hero_archer_attack":{"n":6,"w":206,"h":138,"fps":12,"loop":false,"ref":128,"oy":0.9855},"u_archer_attack":{"n":6,"w":218,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"u_sword_attack":{"n":6,"w":162,"h":136,"fps":12,"loop":false,"ref":128,"oy":0.9853},"hero_warrior_idle":{"n":4,"w":190,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_warrior_walk":{"n":6,"w":120,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_warrior_attack":{"n":6,"w":168,"h":146,"fps":12,"loop":false,"ref":128,"oy":0.9863},"hero_mage_idle":{"n":4,"w":142,"h":133,"fps":6,"loop":true,"ref":128,"oy":0.985},"hero_mage_walk":{"n":6,"w":146,"h":135,"fps":10,"loop":true,"ref":128,"oy":0.9852},"hero_mage_attack":{"n":6,"w":200,"h":145,"fps":12,"loop":false,"ref":128,"oy":0.9862},"zombie0_walk":{"n":6,"w":164,"h":135,"fps":8,"loop":true,"ref":128,"oy":0.9852},"wolf0_walk":{"n":6,"w":228,"h":146,"fps":14,"loop":true,"ref":128,"oy":0.9863},"skel0_walk":{"n":6,"w":166,"h":134,"fps":8,"loop":true,"ref":128,"oy":0.9851},"ghoul0_walk":{"n":6,"w":172,"h":136,"fps":8,"loop":true,"ref":128,"oy":0.9853},"orc0_walk":{"n":6,"w":186,"h":138,"fps":7,"loop":true,"ref":128,"oy":0.9855},"knight0_walk":{"n":6,"w":176,"h":137,"fps":8,"loop":true,"ref":128,"oy":0.9854},"boss0_walk":{"n":6,"w":248,"h":201,"fps":8,"loop":true,"ref":192,"oy":0.99}};
 
 /* ===== สมดุลเกม ===== */
-const WORLD = { w: 1400, h: 2250 };
-const PATH = [[160, 2250], [200, 1800], [620, 1650], [1180, 1520], [1220, 1150], [700, 1020], [340, 860], [420, 560], [700, 430]];
-const CASTLE = { x: 700, y: 330 };
+const WORLD = { w: 900, h: 1130 };
+const PATH = [[230, 1130], [230, 980], [670, 980], [670, 750], [230, 750], [230, 520], [450, 520], [450, 400]];   // ทางคดเคี้ยวรูปตัว S
+const CASTLE = { x: 450, y: 210 };
 const WAVES = 10;
 const ENEMY = {
   //        ภาพ      สูง  hp   atk  speed เหรียญ
-  zombie: { art: "zombie0", h: 34, hp: 30, atk: 5, spd: 34, gold: 1 },
-  skel:   { art: "skel0",   h: 34, hp: 24, atk: 6, spd: 42, gold: 1 },
-  wolf:   { art: "wolf0",   h: 30, hp: 22, atk: 5, spd: 78, gold: 1 },
-  ghoul:  { art: "ghoul0",  h: 36, hp: 45, atk: 8, spd: 40, gold: 2 },
-  orc:    { art: "orc0",    h: 44, hp: 120, atk: 16, spd: 28, gold: 4, siege: 3 },
-  knight: { art: "knight0", h: 42, hp: 180, atk: 14, spd: 32, gold: 5 },
-  boss:   { art: "boss0",   h: 96, hp: 2400, atk: 45, spd: 22, gold: 80, siege: 3, boss: true },
+  zombie: { art: "zombie0", h: 34, hp: 30, atk: 5, spd: 55, gold: 1 },
+  skel:   { art: "skel0",   h: 34, hp: 24, atk: 6, spd: 65, gold: 1 },
+  wolf:   { art: "wolf0",   h: 30, hp: 22, atk: 5, spd: 115, gold: 1 },
+  ghoul:  { art: "ghoul0",  h: 36, hp: 45, atk: 8, spd: 60, gold: 2 },
+  orc:    { art: "orc0",    h: 44, hp: 120, atk: 16, spd: 45, gold: 4, siege: 3 },
+  knight: { art: "knight0", h: 42, hp: 180, atk: 14, spd: 50, gold: 5 },
+  boss:   { art: "boss0",   h: 96, hp: 2400, atk: 45, spd: 34, gold: 80, siege: 3, boss: true },
 };
 const HERO = {
-  warrior: { hp: 420, atk: 26, range: 62, cd: 0.5, multi: 5, spd: 235 },
-  archer:  { hp: 300, atk: 30, range: 210, cd: 0.42, multi: 1, spd: 245, shot: "fx_arrow" },
-  mage:    { hp: 280, atk: 34, range: 190, cd: 0.8, multi: 1, aoe: 60, spd: 235, shot: "fx_fireball" },
+  warrior: { hp: 420, atk: 26, range: 62, cd: 0.5, multi: 8, spd: 260 },
+  archer:  { hp: 300, atk: 30, range: 210, cd: 0.42, multi: 1, spd: 270, shot: "fx_arrow" },
+  mage:    { hp: 280, atk: 34, range: 190, cd: 0.8, multi: 1, aoe: 60, spd: 260, shot: "fx_fireball" },
 };
 const UNIT = {
   sword:  { art: "u_sword", hp: 70, atk: 10, range: 24, cd: 0.75 },
@@ -141,19 +142,20 @@ const UNIT = {
 };
 // ช่องสร้าง: kind, ตำแหน่ง, ราคา
 const PADS = [
-  { id: "t1", kind: "tower", x: 580, y: 610, cost: 15 },
-  { id: "t2", kind: "tower", x: 860, y: 560, cost: 25 },
-  { id: "bar1", kind: "barricade", x: 520, y: 720, cost: 25, at: 6.45 },
-  { id: "brk", kind: "barracksUp", x: 250, y: 420, cost: 30 },
-  { id: "arch", kind: "archery", x: 1060, y: 380, cost: 45 },
-  { id: "t3", kind: "tower", x: 520, y: 1110, cost: 35 },
-  { id: "rock1", kind: "boulder", x: 1335, y: 1200, cost: 20, from: 4.05, to: 3.0 },
-  { id: "bar2", kind: "barricade", x: 930, y: 1200, cost: 35, at: 4.5 },
-  { id: "t4", kind: "tower", x: 1060, y: 1330, cost: 45 },
-  { id: "castle", kind: "castleUp", x: 860, y: 360, cost: 50 },
-  { id: "t5", kind: "tower", x: 820, y: 1770, cost: 60 },
-  { id: "rock2", kind: "boulder", x: 90, y: 1730, cost: 20, from: 1.0, to: 0.0 },
-  { id: "t6", kind: "tower", x: 250, y: 680, cost: 70 },
+  // ป้อมแทรกอยู่ระหว่างแนวทางเดิน ยิงคลุมได้ 2 แนว
+  { id: "t1", kind: "tower", x: 580, y: 635, cost: 15 },
+  { id: "t2", kind: "tower", x: 340, y: 635, cost: 25 },
+  { id: "bar1", kind: "barricade", x: 565, y: 450, cost: 25, at: 6.5 },
+  { id: "brk", kind: "barracksUp", x: 170, y: 320, cost: 30 },
+  { id: "t3", kind: "tower", x: 450, y: 865, cost: 35 },
+  { id: "rock1", kind: "boulder", x: 115, y: 800, cost: 20, from: 4.0, to: 3.0 },
+  { id: "arch", kind: "archery", x: 780, y: 320, cost: 45 },
+  { id: "castle", kind: "castleUp", x: 660, y: 330, cost: 50 },
+  { id: "bar2", kind: "barricade", x: 785, y: 690, cost: 35, at: 3.2 },
+  { id: "t4", kind: "tower", x: 785, y: 880, cost: 45 },
+  { id: "rock2", kind: "boulder", x: 785, y: 1060, cost: 20, from: 2.0, to: 1.0 },
+  { id: "t5", kind: "tower", x: 115, y: 1010, cost: 60 },
+  { id: "t6", kind: "tower", x: 115, y: 560, cost: 70 },
 ];
 const TOWER_LV = [null, { dmg: 16, cd: 0.85, range: 230, shots: 1 }, { dmg: 26, cd: 0.7, range: 250, shots: 2 }, { dmg: 40, cd: 0.6, range: 270, shots: 3 }];
 
@@ -243,8 +245,8 @@ class RushScene extends Phaser.Scene {
 
   preload() {
     this.load.on("loaderror", () => {});
-    for (const n of ART) this.load.image("art_" + n, ART_DIR + n + ".webp");
-    for (const [n, a] of Object.entries(ANIM)) this.load.spritesheet("an_" + n, ANIM_DIR + n + ".webp", { frameWidth: a.w, frameHeight: a.h });
+    for (const n of ART) this.load.image("art_" + n, ART_DIR + n + ".webp" + VER);
+    for (const [n, a] of Object.entries(ANIM)) this.load.spritesheet("an_" + n, ANIM_DIR + n + ".webp" + VER, { frameWidth: a.w, frameHeight: a.h });
   }
 
   has(n) { return this.textures.exists("art_" + n); }
@@ -297,15 +299,17 @@ class RushScene extends Phaser.Scene {
     // หุบเขา (ทางเดินศัตรู) ทรายสว่าง
     const lane = this.add.graphics().setDepth(-9);
     const stroke = (w, c, a) => { lane.lineStyle(w, c, a); lane.beginPath(); lane.moveTo(PATH[0][0], PATH[0][1]); for (const [x, y] of PATH.slice(1)) lane.lineTo(x, y); lane.strokePath(); for (const [x, y] of PATH) lane.fillStyle(c, a).fillCircle(x, y, w / 2); };
-    stroke(150, 0x5c3a20, 0.9); stroke(120, 0xc89058, 1); stroke(70, 0xd8a468, 0.6);
+    stroke(134, 0x5c3a20, 0.9); stroke(108, 0xc89058, 1); stroke(60, 0xd8a468, 0.6);
     // ลานค่าย
     lane.fillStyle(0xd2a066, 1).fillEllipse(CASTLE.x, CASTLE.y + 60, 900, 330);
     // ของประดับ
-    const deco = ["tree1", "tree2", "rock", "stump", "pebbles", "tuft"];
-    for (let i = 0; i < 110; i++) {
-      const x = rnd.between(20, WORLD.w - 20), y = rnd.between(560, WORLD.h - 20);
-      if (this.nearLane(x, y) < 110 || PADS.some((p) => Math.hypot(p.x - x, p.y - y) < 80)) continue;
-      const n = rnd.pick(deco), h = n.startsWith("tree") ? rnd.between(60, 90) : rnd.between(20, 40);
+    const desert = this.has("cactus1");
+    const deco = desert ? ["cactus1", "cactus2", "cliff1", "cliff2", "cliff1", "dry_bush", "dry_bush", "pebbles"] : ["tree1", "tree2", "rock", "stump", "pebbles", "tuft"];
+    const SIZE = { cactus1: [55, 80], cactus2: [30, 45], cliff1: [80, 130], cliff2: [70, 110], dry_bush: [26, 40], tree1: [60, 90], tree2: [60, 90] };
+    for (let i = 0; i < 60; i++) {
+      const x = rnd.between(20, WORLD.w - 20), y = rnd.between(430, WORLD.h - 20);
+      if (this.nearLane(x, y) < 100 || PADS.some((p) => Math.hypot(p.x - x, p.y - y) < 80)) continue;
+      const n = rnd.pick(deco), z = SIZE[n] || [20, 40], h = rnd.between(z[0], z[1]);
       const im = this.img(n, x, y, h, 0x6b4a2a); im.setDepth(y);
     }
   }
@@ -328,19 +332,25 @@ class RushScene extends Phaser.Scene {
     const keep = (o) => { this.objs.push(o); return o; };
     this.keep = keep;
     this.s = { coins: 25, wave: 0, phase: "build", timer: 25, spawnLeft: 0, spawnT: 0, queue: [], income: 0, castleLv: 1, over: false };
-    this.castle = { x: CASTLE.x, y: CASTLE.y, hp: 1500, max: 1500 };
+    this.castle = { x: CASTLE.x, y: CASTLE.y, hp: 2500, max: 2500 };
     this.castle.sp = keep(this.img("camp5", CASTLE.x, CASTLE.y + 40, 230, 0x4a6fb0)).setDepth(CASTLE.y + 40);
-    this.enemies = []; this.units = []; this.towers = []; this.shots = []; this.boulders = [];
+    this._posts = null; this.enemies = []; this.units = []; this.towers = []; this.shots = []; this.boulders = [];
     this.grid = new Grid();
     // Hero
     const H = HERO[cls];
-    const sp = keep(this.anim(`hero_${cls}_idle`) ? this.add.sprite(CASTLE.x, CASTLE.y + 180, "an_hero_" + cls + "_idle").setOrigin(0.5, 0.985).setScale(56 / 128) : this.img("hero_" + cls, CASTLE.x, CASTLE.y + 180, 56, 0x6fb6e8));
-    this.hero = { cls, ...H, x: CASTLE.x, y: CASTLE.y + 180, hp: H.hp, max: H.hp, t: 0, dead: 0, sp, trail: [], cur: "", face: 1 };
+    // ขี่ม้า: มีท่าทางใช้ท่าทาง · มีแค่ภาพนิ่งใช้ภาพนิ่ง + เด้งด้วยโค้ด · ไม่มีเลยใช้ Hero เดินเท้า
+    let base = `hero_${cls}`, size = 56, mode = "anim";
+    if (this.anim(`mount_${cls}_walk`)) { base = `mount_${cls}`; size = 92; }
+    else if (this.has(`mount_${cls}`)) { base = `mount_${cls}`; size = 92; mode = "static"; }
+    else if (!this.anim(`hero_${cls}_walk`)) mode = "static";
+    const first = [`${base}_idle`, `${base}_walk`].find((k) => this.anim(k));
+    const sp = keep(mode === "anim" && first ? this.add.sprite(CASTLE.x, CASTLE.y + 180, "an_" + first) : this.img(base, CASTLE.x, CASTLE.y + 180, size, 0x6fb6e8));
+    this.hero = { cls, ...H, x: CASTLE.x, y: CASTLE.y + 180, hp: H.hp, max: H.hp, t: 0, dead: 0, sp, trail: [], cur: "", face: 1, base, size, mode, sc: sp.scale };
     this.heroAnim("idle");
     this.ring = keep(this.add.graphics());
     // ค่ายทหาร
     this.barracks = [];
-    this.addBarracks("sword", 420, 330);
+    this.addBarracks("sword", 290, 200);
     // ช่องสร้าง
     this.pads = [];
     for (const p of PADS) this.addPad({ ...p });
@@ -387,14 +397,14 @@ class RushScene extends Phaser.Scene {
       let t = this.towers.find((q) => q.id === p.id);
       if (!t) { t = { id: p.id, x: p.x, y: p.y, lv, cd: 0 }; this.towers.push(t); }
       t.lv = lv; t.sp && t.sp.destroy();
-      t.sp = this.keep(this.img("tower" + lv, p.x, p.y + 30, 80 + lv * 10, 0x9a7a5a)).setDepth(p.y + 30); pop(t.sp);
+      t.sp = this.keep(this.img(this.has("ballista1") ? "ballista" + lv : "tower" + lv, p.x, p.y + 30, 80 + lv * 12, 0x9a7a5a)).setDepth(p.y + 30); pop(t.sp);
       UI.toast(`ป้อมหน้าไม้ เลเวล ${lv}`);
       if (lv < 3) this.time.delayedCall(400, () => this.addPad({ id: p.id, kind: "tower", x: p.x, y: p.y + 74, cost: p.cost * 2, lv, label: `อัปหน้าไม้ Lv${lv + 1}`, base: p.base || { x: p.x, y: p.y } }));
       if (p.base) { t.x = p.base.x; t.y = p.base.y; t.sp.setPosition(t.x, t.y + 30).setDepth(t.y + 30); }
     } else if (p.kind === "barricade") {
       const d = Path.vert(p.at), q = Path.at(d), lv = (p.lv || 0) + 1;
       const w = { d, x: q.x, y: q.y, hp: 500 * lv, max: 500 * lv, lv, pad: p };
-      w.sp = this.keep(this.img(lv > 1 ? "wall2" : "wall1", q.x, q.y + 20, 70, 0x9a7a5a)).setDepth(q.y + 20);
+      w.sp = this.keep(this.img(this.has("barricade") ? "barricade" : lv > 1 ? "wall2" : "wall1", q.x, q.y + 20, this.has("barricade") ? 60 : 70, 0x9a7a5a)).setDepth(q.y + 20);
       w.sp.setScale(w.sp.scale * 1.5); pop(w.sp);
       w.bar = this.keep(this.add.graphics()).setDepth(1e6);
       this.walls = (this.walls || []).filter((x) => x.pad.id !== p.id); this.walls.push(w);
@@ -418,23 +428,26 @@ class RushScene extends Phaser.Scene {
 
   rollBoulder(p) {
     const d0 = Path.vert(p.from), d1 = Path.vert(p.to), q = Path.at(d0);
-    const sp = this.keep(this.img("rock", q.x, q.y, 84, 0x888888)).setOrigin(0.5, 0.5);
+    const sp = this.keep(this.img(this.has("boulder") ? "boulder" : "rock", q.x, q.y, 84, 0x888888)).setOrigin(0.5, 0.5);
     this.boulders.push({ d: d0, end: d1, sp, hit: new Set(), pad: p });
     UI.toast("หินกลิ้ง!");
   }
 
   heroAnim(act) {
-    const h = this.hero, k = `hero_${h.cls}_${act}`;
+    const h = this.hero;
+    if (h.mode === "static") { if (act === "attack") h.punch = 0.15; return; }
+    let k = `${h.base}_${act}`;
+    if (!this.anim(k) && act === "idle") k = `${h.base}_walk`;
     if (!this.anim(k)) return;
     if (act !== "attack" && (h.cur === k || (h.cur.endsWith("attack") && h.sp.anims.isPlaying))) return;
-    h.cur = k; const a = ANIM[k]; h.sp.play("a_" + k); h.sp.setOrigin(0.5, a.oy).setScale(56 / a.ref);
+    h.cur = k; const a = ANIM[k]; h.sp.play("a_" + k); h.sp.setOrigin(0.5, a.oy).setScale(h.size / a.ref);
   }
 
   /* ----- เวฟ ----- */
   startWave() {
     const s = this.s; s.wave++; s.phase = "fight";
     const n = s.wave, mul = 1 + 0.32 * (n - 1), q = [];
-    const count = 36 + 26 * (n - 1);
+    const count = 80 + 50 * (n - 1);   // เวฟ 10 ≈ 530 ตัว
     for (let i = 0; i < count; i++) {
       const r = Math.random();
       let t = "zombie";
@@ -452,7 +465,7 @@ class RushScene extends Phaser.Scene {
   }
   spawn(type) {
     const E = ENEMY[type], m = this.s.mul;
-    const e = { type, ...E, hp: E.hp * m, max: E.hp * m, atk: E.atk * (1 + 0.1 * (this.s.wave - 1)), d: Math.random() * 30, off: (Math.random() - 0.5) * (E.boss ? 20 : 90), cd: Math.random(), x: 0, y: 0, dead: false };
+    const e = { type, ...E, hp: E.hp * m * 0.6, max: E.hp * m * 0.6, atk: E.atk * 0.5 * (1 + 0.1 * (this.s.wave - 1)), d: Math.random() * 30, off: (Math.random() - 0.5) * (E.boss ? 16 : 84), cd: Math.random(), x: 0, y: 0, dead: false };
     const p = Path.at(e.d); e.x = p.x + p.nx * e.off; e.y = p.y + p.ny * e.off;
     e.sp = this.keep(this.mob(E.art, e.x, e.y, E.h, 0xc0392b));
     if (E.boss) { e.bar = this.keep(this.add.graphics()).setDepth(1e6); }
@@ -496,7 +509,7 @@ class RushScene extends Phaser.Scene {
     else if (s.phase === "fight") {
       if (s.queue.length) {
         s.spawnT -= dt;
-        while (s.spawnT <= 0 && s.queue.length) { this.spawn(s.queue.shift()); s.spawnT += 0.11 + Math.random() * 0.08; }
+        while (s.spawnT <= 0 && s.queue.length) { this.spawn(s.queue.shift()); s.spawnT += 0.04 + Math.random() * 0.04; }
       } else if (!this.enemies.some((e) => !e.dead)) {
         const bonus = 15 + 5 * s.wave; s.coins += bonus;
         if (s.wave >= WAVES) return this.finish(true);
@@ -548,26 +561,43 @@ class RushScene extends Phaser.Scene {
     }
     if (!h.cur.endsWith("attack") || !h.sp.anims || !h.sp.anims.isPlaying) this.heroAnim(moving ? "walk" : "idle");
     h.sp.setPosition(h.x, h.y).setDepth(h.y).setFlipX(h.face < 0);
-    this.ring.clear().lineStyle(2, 0x6fb6e8, 0.8).strokeEllipse(h.x, h.y, 46, 18).setDepth(h.y - 1);
+    if (h.mode === "static") {
+      const now = this.time.now / 1000;
+      h.punch = Math.max(0, (h.punch || 0) - dt);
+      h.sp.y -= moving ? Math.abs(Math.sin(now * 13)) * 5 : Math.sin(now * 3) * 1;
+      h.sp.setRotation(moving ? Math.sin(now * 13) * 0.05 : 0);
+      h.sp.setScale(h.sc * (1 + h.punch * 0.8));
+    }
+    this.ring.clear().lineStyle(2, 0x6fb6e8, 0.8).strokeEllipse(h.x, h.y, h.size > 60 ? 70 : 46, h.size > 60 ? 24 : 18).setDepth(h.y - 1);
   }
 
+  // ทหารออกจากค่ายเอง ไปเฝ้าจุดตามเส้นทาง (ไม่ตาม Hero)
   updateBarracks(dt) {
-    const h = this.hero;
     for (const b of this.barracks) {
       b.t -= dt;
-      const max = 4 + 2 * b.lv;
-      if (b.t <= 0 && b.stock.length < max) {
-        b.t = Math.max(1.2, 3.2 - 0.5 * b.lv);
-        const i = b.stock.length, x = b.x - 45 + (i % 4) * 30, y = b.y + 20 + Math.floor(i / 4) * 26;
-        const u = this.makeUnit(b.type, x, y); u.home = { x, y }; b.stock.push(u);
-      }
-      // Hero เดินผ่าน: ทหารมาต่อแถว
-      if (h.dead <= 0 && Math.hypot(h.x - b.x, h.y - b.y) < 110 && b.stock.length && this.units.length < this.armyCap()) {
-        b.pull = (b.pull || 0) - dt;
-        if (b.pull <= 0) { b.pull = 0.12; const u = b.stock.shift(); u.home = null; this.units.push(u); }
-      }
-      for (const u of b.stock) { u.sp.setPosition(u.x, u.y + Math.sin(this.time.now / 300 + u.x) * 1).setDepth(u.y); }
+      if (b.t > 0 || this.units.length >= this.armyCap()) continue;
+      b.t = Math.max(1.0, 3.0 - 0.5 * b.lv);
+      const u = this.makeUnit(b.type, b.x, b.y + 20);
+      this.assignPost(u); this.units.push(u);
     }
+  }
+  // จุดเฝ้า: ระยะบนเลนนับจากปลายทาง (ใกล้ป้อม → ไกล) · น้ำหนัก = สัดส่วนทหาร
+  posts() {
+    if (!this._posts) {
+      const T = Path.total;
+      this._posts = [[T - 70, 1.6], [T - 360, 1.2], [T - 760, 1], [T - 1180, 0.8]].filter(([d]) => d > 60).map(([d, w]) => ({ d, w, n: 0 }));
+    }
+    return this._posts;
+  }
+  assignPost(u) {
+    const ps = this.posts();
+    const p = ps.reduce((a, b) => (b.n / b.w < a.n / a.w ? b : a));
+    const k = p.n++; u.post = p;
+    // นักดาบยืนขวางเลน · พลธนูยืนข้างเลนถอยหลังไปทางป้อม
+    const along = u.type === "archer" ? 40 : -Math.floor(k / 5) * 18;
+    const side = u.type === "archer" ? (k % 2 ? 1 : -1) * (68 + (k % 4 >> 1) * 14) : ((k % 5) - 2) * 17;
+    const q = Path.at(p.d + along);
+    u.gx = q.x + q.nx * side; u.gy = q.y + q.ny * side;
   }
   makeUnit(type, x, y) {
     const U = UNIT[type];
@@ -576,16 +606,13 @@ class RushScene extends Phaser.Scene {
   }
 
   updateUnits(dt) {
-    const h = this.hero, alive = h.dead <= 0;
     for (let i = 0; i < this.units.length; i++) {
       const u = this.units[i];
-      const slot = alive ? h.trail[Math.min(h.trail.length - 1, 4 + i * 4)] || h : u.hold || (u.hold = { x: u.x, y: u.y });
-      if (alive) u.hold = null;
       u.t -= dt;
-      const look = u.type === "archer" ? u.range : 110;
+      const look = u.type === "archer" ? u.range : 120;
       const e = this.grid.nearest(u.x, u.y, look);
-      const leash = alive ? Math.hypot(u.x - h.x, u.y - h.y) < 240 : true;
-      let tx = slot.x, ty = slot.y;
+      const leash = Math.hypot(u.x - u.gx, u.y - u.gy) < 150;
+      let tx = u.gx, ty = u.gy;
       if (e && leash) {
         const dd = Math.hypot(e.x - u.x, e.y - u.y);
         if (dd <= u.range) {
@@ -596,7 +623,7 @@ class RushScene extends Phaser.Scene {
           }
         } else { tx = e.x; ty = e.y; }
       }
-      const dx = tx - u.x, dy = ty - u.y, l = Math.hypot(dx, dy), sp = l > 60 ? 300 : 230;
+      const dx = tx - u.x, dy = ty - u.y, l = Math.hypot(dx, dy), sp = l > 60 ? 170 : 130;
       if (l > 3) { const m = Math.min(l, sp * dt); u.x += dx / l * m; u.y += dy / l * m; u.face = dx < 0 ? -1 : 1; }
       if (u.lunge) u.lunge = Math.max(0, u.lunge - dt);
       const bob = l > 3 ? Math.abs(Math.sin(this.time.now / 90 + i)) * 3 : 0;
@@ -605,6 +632,7 @@ class RushScene extends Phaser.Scene {
   }
   killUnit(u) {
     u.dead = true; this.units = this.units.filter((q) => q !== u);
+    if (u.post) u.post.n--;
     const sp = u.sp; this.tweens.add({ targets: sp, alpha: 0, angle: 80, duration: 300, onComplete: () => sp.destroy() });
   }
 
@@ -643,6 +671,7 @@ class RushScene extends Phaser.Scene {
     } else if (dfd.hp <= 0) this.killUnit(dfd);
   }
   breakWall(w) {
+    if (w.broken) return; w.broken = true;
     w.hp = 0; w.sp.destroy(); w.bar.destroy();
     this.walls = this.walls.filter((x) => x !== w);
     UI.toast("เครื่องกีดขวางพัง! สร้างใหม่ได้");
